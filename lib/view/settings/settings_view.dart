@@ -18,7 +18,6 @@ import '../../res/components/app_expansion_tile.dart';
 import '../../res/components/app_icon.dart';
 import '../../view_models/providers/settings_provider.dart';
 import 'widgets/screens_mangement.dart';
-import 'widgets/backup_dialog.dart';
 
 class SettingsPage extends ConsumerWidget {
   final VoidCallback openDrawer;
@@ -969,21 +968,6 @@ class SettingsPage extends ConsumerWidget {
                     ),
                   ],
                 ],
-              ),
-            ),
-            SizedBox(height: 16.h),
-            // Backup Section
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-              child: AppExpansionTile(
-                initiallyExpanded: false,
-                tilePadding: EdgeInsets.symmetric(horizontal: 16.w),
-                childrenPadding: EdgeInsets.all(16.h),
-                // leading: Icon(TablerIcons.cloud_upload, size: 24.spMin),
-                title: mdTextBold(text: 'Backup & Restore'),
-                children: const [BackupInfoCard()],
               ),
             ),
             SizedBox(height: 16.h),

@@ -10,12 +10,12 @@ import 'package:local_auth/local_auth.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../res/colors/app_color.dart';
 import '../../res/components/app_flushbar.dart';
 import '../../routes/routes_name.dart';
 import '../providers/settings_provider.dart';
-import 'backup/backup_service.dart';
+import 'cloud_user/cloud_user_service.dart';
 import 'database/database_services.dart';
+import 'firebase/firebase_auth_service.dart';
 
 class SplashServices {
   Future<bool> _authenticate(BuildContext context) async {
@@ -127,17 +127,34 @@ class SplashServices {
         }
       }
 
-      // Check if profile data exists
-      final hasProfileData = await _checkProfileDataExists();
+      // Not signed in with Firebase? Go to the login screen.
+      if (!FirebaseAuthService().isSignedIn) {
+        Timer(const Duration(seconds: 1), () {
+          if (context.mounted) {
+            Navigator.pushReplacementNamed(context, RouteName.loginView);
+          }
+        });
+        return;
+      }
+
+      // Signed in. Check whether a shop profile exists locally.
+      bool hasProfileData = await _checkProfileDataExists();
+
+      // No local profile yet? Try to pull it from the cloud (re-install / new
+      // device for an already-set-up shop). If found, restore and go home;
+      // otherwise send the user to complete their shop info.
+      if (!hasProfileData) {
+        hasProfileData = await _tryRestoreProfileFromCloud();
+      }
 
       // Navigate after 1 sec
       Timer(const Duration(seconds: 1), () {
         if (context.mounted) {
           if (!hasProfileData) {
-            // No profile data, navigate to profile edit page
+            // Signed in but no shop info yet — finish setup.
             Navigator.pushReplacementNamed(context, RouteName.profileEdit);
           } else {
-            // Profile exists, navigate to main screen
+            // Profile exists (local or restored from cloud), go to home.
             Navigator.pushReplacementNamed(context, RouteName.mainScreen);
           }
         }
@@ -145,301 +162,25 @@ class SplashServices {
     });
   }
 
-  /// Check for cloud backup and offer to restore if available
-  // ignore: unused_element
-  Future<bool> _checkAndOfferBackupRestore(BuildContext context) async {
+  /// Fetch the shop profile from Firestore and, if present, persist it
+  /// locally so the rest of the app (which reads from Hive) sees it. Returns
+  /// true if a cloud profile was found and saved. Any error (offline, no table,
+  /// empty table) returns false so we safely fall back to account creation.
+  Future<bool> _tryRestoreProfileFromCloud() async {
     try {
-      final hiveService = HiveService();
-      final backupService = BackupService(hiveService);
+      final cloudUser = await CloudUserService().getFirstUser();
+      if (cloudUser == null) return false;
 
-      // Ask user for email to check for backup
-      final emailController = TextEditingController();
-      String? email;
-
-      final wantsToCheck = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder:
-            (ctx) => AlertDialog(
-              title: Row(
-                children: [
-                  Icon(Icons.cloud_sync, color: AppColors.primary),
-                  SizedBox(width: 8.w),
-                  Expanded(child: mdTextBold(text: 'Restore from Cloud?')),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  smText(
-                    text:
-                        'If you have previously backed up your data, enter your email to check for existing backups.',
-                    maxLines: 3,
-                  ),
-                  SizedBox(height: 16.h),
-                  TextField(
-                    controller: emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                      labelText: 'Email',
-                      hintText: 'Enter your email',
-                      prefixIcon: Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: Text(
-                    'Skip',
-                    style: TextStyle(fontSize: 14.spMin, color: Colors.grey),
-                  ),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    email = emailController.text.trim();
-                    Navigator.pop(ctx, true);
-                  },
-                  icon: Icon(Icons.search, size: 18.spMin),
-                  label: Text(
-                    'Check for Backup',
-                    style: TextStyle(fontSize: 14.spMin),
-                  ),
-                ),
-              ],
-            ),
-      );
-
-      if (wantsToCheck != true || email == null || email!.isEmpty) {
-        return false;
-      }
-
-      if (!context.mounted) return false;
-
-      // Convert email to backup ID format
-      final backupId = email!.replaceAll(RegExp(r'[^\w]'), '_');
-
-      // Check if there's an existing backup with this email
-      final hasBackup = await backupService.hasBackupForId(backupId);
-
-      if (!hasBackup) {
-        if (context.mounted) {
-          AppFlushbar.info(
-            context,
-            message: 'No backup found for this email. Starting fresh!',
-          );
-        }
-        return false;
-      }
-
-      // Get backup info
-      final backupInfo = await backupService.getBackupInfoForId(backupId);
-
-      if (!context.mounted) return false;
-
-      // Show restore dialog
-      final shouldRestore = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder:
-            (ctx) => AlertDialog(
-              title: Row(
-                children: [
-                  Icon(Icons.cloud_download, color: AppColors.primary),
-                  SizedBox(width: 8.w),
-                  Expanded(child: mdTextBold(text: 'Backup Found!')),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  smText(
-                    text: 'We found an existing cloud backup for $email',
-                    maxLines: 2,
-                  ),
-                  SizedBox(height: 12.h),
-                  if (backupInfo != null) ...[
-                    Container(
-                      padding: EdgeInsets.all(12.h),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (backupInfo['updatedAt'] != null)
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.access_time,
-                                  size: 16.spMin,
-                                  color: Colors.grey,
-                                ),
-                                SizedBox(width: 4.w),
-                                Expanded(
-                                  child: smText(
-                                    text:
-                                        'Last backup: ${_formatDate(backupInfo['updatedAt'])}',
-                                    color: Colors.grey.shade700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          // if (backupInfo['itemsCount'] != null) ...[
-                          //   SizedBox(height: 4.h),
-                          //   Row(
-                          //     children: [
-                          //       Icon(Icons.inventory_2, size: 16.spMin, color: Colors.grey),
-                          //       SizedBox(width: 4.w),
-                          //       smText(
-                          //         text: '${backupInfo['itemsCount']} items',
-                          //         color: Colors.grey.shade700,
-                          //       ),
-                          //     ],
-                          //   ),
-                          // ],
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 12.h),
-                  ],
-                  smText(
-                    text: 'Would you like to restore your data?',
-                    maxLines: 2,
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: Text(
-                    'Skip',
-                    style: TextStyle(fontSize: 14.spMin, color: Colors.grey),
-                  ),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  icon: Icon(Icons.restore, size: 18.spMin),
-                  label: Text(
-                    'Restore Backup',
-                    style: TextStyle(fontSize: 14.spMin),
-                  ),
-                ),
-              ],
-            ),
-      );
-
-      if (shouldRestore == true && context.mounted) {
-        // Show progress dialog and restore with specific backup ID
-        return await _performRestore(context, backupService, backupId);
-      }
-
-      return false;
+      final dbService = DatabaseService();
+      await dbService.initialize();
+      await dbService.saveUser(cloudUser);
+      return true;
     } catch (e) {
-      debugPrint('Error checking backup: $e');
+      debugPrint('Cloud profile restore skipped: $e');
       return false;
     }
   }
 
-  /// Perform the actual restore with progress dialog
-  Future<bool> _performRestore(
-    BuildContext context,
-    BackupService backupService,
-    String backupId,
-  ) async {
-    bool success = false;
-    String statusMessage = 'Starting restore...';
-    double progress = 0.0;
-
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder:
-          (ctx) => StatefulBuilder(
-            builder: (context, setState) {
-              // Start restore process
-              if (progress == 0.0) {
-                backupService.restoreBackup(
-                  customBackupId: backupId,
-                  onProgress: (p, message) {
-                    setState(() {
-                      progress = p;
-                      statusMessage = message;
-                    });
-
-                    if (p >= 1.0 || p < 0) {
-                      // Restore complete or failed
-                      Future.delayed(const Duration(milliseconds: 500), () {
-                        if (context.mounted) {
-                          success = p >= 1.0;
-                          Navigator.pop(ctx);
-                        }
-                      });
-                    }
-                  },
-                );
-              }
-
-              return AlertDialog(
-                title: Row(
-                  children: [
-                    SizedBox(
-                      width: 24.w,
-                      height: 24.w,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                    SizedBox(width: 12.w),
-                    mdTextBold(text: 'Restoring Backup'),
-                  ],
-                ),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    LinearProgressIndicator(
-                      value: progress > 0 ? progress : null,
-                      backgroundColor: Colors.grey.shade200,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        AppColors.primary,
-                      ),
-                    ),
-                    SizedBox(height: 16.h),
-                    smText(text: statusMessage),
-                  ],
-                ),
-              );
-            },
-          ),
-    );
-
-    if (success && context.mounted) {
-      AppFlushbar.success(context, message: 'Backup restored successfully!');
-    }
-
-    return success;
-  }
-
-  /// Format date for display
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays == 0) {
-      return 'Today at ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-    } else if (difference.inDays == 1) {
-      return 'Yesterday';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} days ago';
-    } else {
-      return '${date.day}/${date.month}/${date.year}';
-    }
-  }
   /// Check if this is the first time the app is installed
   /// by checking if first setup was completed
   Future<bool> _checkFirstInstall() async {
@@ -467,12 +208,20 @@ class SplashServices {
   ) async {
     String? selectedPath;
 
-    // On Android, use app's external storage directory to avoid permission issues
-    final isAndroid = Platform.isAndroid;
-    if (isAndroid) {
-      final appDir = await getExternalStorageDirectory();
+    // On mobile (Android/iOS), skip the picker entirely and use a sensible
+    // default directory automatically. Only desktop asks the user to choose.
+    final isMobile = Platform.isAndroid || Platform.isIOS;
+    if (isMobile) {
+      final appDir =
+          Platform.isAndroid ? await getExternalStorageDirectory() : null;
       selectedPath =
           appDir?.path ?? (await getApplicationDocumentsDirectory()).path;
+
+      // Save the default directory path and mark setup complete — no dialog.
+      await ref.read(settingsProvider.notifier).setDirectoryPath(selectedPath);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('firstSetupCompleted', true);
+      return true;
     }
 
     final result = await showDialog<bool>(
@@ -489,9 +238,7 @@ class SplashServices {
                     children: [
                       smText(
                         text:
-                            isAndroid
-                                ? 'Your app data will be stored in the app\'s private storage.'
-                                : 'Please select a directory where your app data will be stored.',
+                            'Please select a directory where your app data will be stored.',
                         maxLines: 3,
                       ),
                       SizedBox(height: 16.h),
@@ -517,26 +264,24 @@ class SplashServices {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            if (!isAndroid) ...[
-                              SizedBox(width: 8.w),
-                              ElevatedButton.icon(
-                                onPressed: () async {
-                                  final path =
-                                      await FilePicker.platform
-                                          .getDirectoryPath();
-                                  if (path != null) {
-                                    setState(() {
-                                      selectedPath = path;
-                                    });
-                                  }
-                                },
-                                icon: Icon(Icons.folder_open, size: 18.spMin),
-                                label: Text(
-                                  'Browse',
-                                  style: TextStyle(fontSize: 12.spMin),
-                                ),
+                            SizedBox(width: 8.w),
+                            ElevatedButton.icon(
+                              onPressed: () async {
+                                final path =
+                                    await FilePicker.platform
+                                        .getDirectoryPath();
+                                if (path != null) {
+                                  setState(() {
+                                    selectedPath = path;
+                                  });
+                                }
+                              },
+                              icon: Icon(Icons.folder_open, size: 18.spMin),
+                              label: Text(
+                                'Browse',
+                                style: TextStyle(fontSize: 12.spMin),
                               ),
-                            ],
+                            ),
                           ],
                         ),
                       ),

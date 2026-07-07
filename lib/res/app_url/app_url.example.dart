@@ -12,10 +12,8 @@ class AppUrl {
   static const String postListApi =
       'https://jsonplaceholder.typicode.com/posts';
 
-  // ============ SUPABASE CONFIGURATION ============
-  // Get these from: Supabase Dashboard > Settings > API
-  static const String supabaseUrl = 'YOUR_SUPABASE_URL';
-  static const String supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
+  // NOTE: Cloud auth/data/backup use Firebase — configure via `flutterfire
+  // configure` (generates firebase_options.dart + google-services.json).
 
   // ============ CLOUDINARY CONFIGURATION ============
   // Get these from: Cloudinary Dashboard > Settings > Access Keys

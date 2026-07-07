@@ -128,5 +128,16 @@ MyShop/
 # Local secrets — copy app_url.example.dart to app_url.dart and fill in your keys.
 lib/res/app_url/app_url.dart
 
+# Firebase config — per-project, generated locally via `flutterfire configure`.
+# Keep out of version control; each dev/machine generates their own.
+lib/firebase_options.dart
+firebase.json
+.firebaserc
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+ios/firebase_app_id_file.json
+macos/Runner/GoogleService-Info.plist
+macos/firebase_app_id_file.json
+
 # Large archives should never be committed.
 *.zip

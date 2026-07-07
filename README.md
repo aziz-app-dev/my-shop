@@ -2,7 +2,7 @@
 
 A cross-platform **Point of Sale (POS) and shop management** application built with Flutter. My Shop lets a shop owner manage products, sales, billing, customers, repairs, expenses and inventory from a single app that runs on desktop, mobile and web.
 
-The app works **offline-first** using a local Hive database and syncs to the cloud (Supabase) when a connection is available.
+The app works **offline-first** using a local Hive database and syncs to the cloud (Firebase Cloud Firestore) when a connection is available. Users sign in with email/password (Firebase Auth).
 
 ---
 
@@ -18,11 +18,11 @@ The app works **offline-first** using a local Hive database and syncs to the clo
 - **Expenses** — record and review shop expenses.
 - **Shopping List** — restock planning (see [SHOPPING_LIST_IMPLEMENTATION_GUIDE.md](SHOPPING_LIST_IMPLEMENTATION_GUIDE.md)).
 - **Barcode Scanning** — scan products via `mobile_scanner`.
+- **Authentication** — email/password login & registration (Firebase Auth) with animated screens; new users complete their full shop profile during sign-up.
 - **Cloud Image Storage** — product images hosted on Cloudinary with local caching.
-- **Offline-first Sync** — local Hive storage with background Supabase sync.
+- **Offline-first Sync** — local Hive storage with background Cloud Firestore sync (writes queue offline and flush when online; realtime changes apply back to Hive).
 - **Theming** — light/dark mode with a customizable primary color.
-- **Biometric Auth** — optional local authentication (`local_auth`).
-- **Backup & Restore** — export/import app data.
+- **Biometric Auth** — optional local app-lock (`local_auth`).
 
 ---
 
@@ -33,7 +33,8 @@ The app works **offline-first** using a local Hive database and syncs to the clo
 | Framework          | Flutter (Dart SDK `^3.7.0`)                                   |
 | State management   | Riverpod (`flutter_riverpod`, `StateNotifierProvider`)        |
 | Local persistence  | Hive (offline-first)                                          |
-| Cloud backend      | Supabase                                                      |
+| Auth               | Firebase Auth (email/password)                                |
+| Cloud backend      | Firebase Cloud Firestore                                      |
 | Image hosting      | Cloudinary                                                    |
 | Responsive sizing  | `flutter_screenutil` (design size 360×690)                    |
 | Charts             | `fl_chart`                                                    |
@@ -46,12 +47,13 @@ The app works **offline-first** using a local Hive database and syncs to the clo
 
 ```text
 lib/
-├── main.dart                 # App entry point (Supabase + Hive + cache init)
+├── main.dart                 # App entry point (Firebase + Hive + cache init)
+├── firebase_options.dart     # FlutterFire config (gitignored)
 ├── models/                   # Data models (Hive toMap/fromMap)
 ├── res/
 │   ├── colors/               # app_color.dart — brand orange 0xFFff6701
 │   ├── components/           # Reusable UI (CustomTextField, AppButton, AppDropdown…)
-│   └── app_url/              # Supabase / API config
+│   └── app_url/              # Cloudinary / API config
 ├── responsive/               # Responsive layout helpers
 ├── routes/                   # Named routes & route generation
 ├── utils/                    # app_sizes.dart (breakpoints), helpers
@@ -59,10 +61,10 @@ lib/
 │   │                         #          customers, repairs, expenses, settings…
 │   └── widgets/              # Shared widgets
 └── view_models/
-    ├── providers/            # Riverpod StateNotifierProviders
+    ├── providers/            # Riverpod StateNotifierProviders (incl. auth)
     ├── states/               # Immutable state classes
-    └── services/             # database (Hive), sync, cloudinary, backup,
-                              # theme, image_cache, user_preference…
+    └── services/             # database (Hive), firebase (auth + Firestore),
+                              # sync, cloudinary, theme, image_cache…
 ```
 
 **Responsive breakpoints** (`lib/utils/app_sizes.dart`): mobile `<600`, tablet `600–1100`, desktop `≥1100`.
@@ -80,7 +82,8 @@ Android · iOS · Windows · macOS · Linux · Web
 ### Prerequisites
 
 - [Flutter SDK](https://docs.flutter.dev/get-started/install) (Dart `^3.7.0`)
-- A Supabase project (URL + anon key)
+- A Firebase project with **Authentication → Email/Password** enabled and a **Cloud Firestore** database
+- The [FlutterFire CLI](https://firebase.google.com/docs/flutter/setup) (`dart pub global activate flutterfire_cli`)
 - A Cloudinary account (for product images)
 
 ### 1. Clone & install dependencies
@@ -91,13 +94,33 @@ cd desktopapp
 flutter pub get
 ```
 
-### 2. Configure credentials
+### 2. Configure Firebase
 
-The app reads Supabase config from `lib/res/app_url/app_url.dart` (`AppUrl.supabaseUrl` / `AppUrl.supabaseAnonKey`). Set your own Supabase URL and anon key there, along with any Cloudinary credentials the app expects.
+Firebase config is **gitignored** and must be generated locally per project:
 
-> **Do not commit real secrets.** Keep credentials out of version control.
+```bash
+flutterfire configure
+```
 
-### 3. Run
+This generates `lib/firebase_options.dart` and the native config
+(`android/app/google-services.json`, etc.). Then lock your **Firestore security
+rules** so data is scoped to the signed-in user, e.g.:
+
+```
+match /users/{uid}/{document=**} {
+  allow read, write: if request.auth != null && request.auth.uid == uid;
+}
+```
+
+### 3. Configure Cloudinary (optional, for images)
+
+Copy `lib/res/app_url/app_url.example.dart` to `lib/res/app_url/app_url.dart`
+and fill in your Cloudinary credentials.
+
+> **Do not commit real secrets.** `app_url.dart` and the Firebase config files
+> are gitignored — keep credentials out of version control.
+
+### 4. Run
 
 ```bash
 # Desktop

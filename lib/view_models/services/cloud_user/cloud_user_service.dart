@@ -1,50 +1,45 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 
 import '../../../models/user/user_model.dart';
+import '../firebase/firebase_service.dart';
 
+/// Shop profile stored in Firestore at `users/{uid}` (the same doc the data
+/// subcollections hang off). The stored shape matches `User.toMap()` so it
+/// round-trips through Hive, Firestore, and backup unchanged.
 class CloudUserService {
-  final SupabaseClient _supabase;
+  final FirebaseService _fb;
 
-  CloudUserService({SupabaseClient? supabase})
-    : _supabase = supabase ?? Supabase.instance.client;
+  CloudUserService({FirebaseService? firebase})
+    : _fb = firebase ?? FirebaseService.instance;
 
-  /// Table used for non-auth "profile by email".
-  /// You need a Supabase table `app_users` with a UNIQUE `email` column.
-  static const String table = 'app_users';
-
-  Future<User?> getUserByEmail(String email) async {
-    final normalized = email.trim().toLowerCase();
-    if (normalized.isEmpty) return null;
-
-    final row =
-        await _supabase.from(table).select().eq('email', normalized).maybeSingle();
-    if (row == null) return null;
-
-    return _fromRow(row);
+  /// Fetch the signed-in user's shop profile, or null if none / signed out.
+  Future<User?> getProfile() async {
+    if (!_fb.isSignedIn) return null;
+    final snap = await _fb.userDoc.get();
+    final data = snap.data();
+    if (data == null || data['ownerName'] == null) return null;
+    return _fromRow(data);
   }
 
+  /// Back-compat alias used by the splash first-open flow.
+  Future<User?> getFirstUser() => getProfile();
+
+  /// Save/overwrite the signed-in user's shop profile.
   Future<void> upsertUser(User user) async {
-    final payload = _toRow(user);
-    await _supabase.from(table).upsert(payload);
-  }
-
-  Map<String, dynamic> _toRow(User user) {
-    return {
+    if (!_fb.isSignedIn) return;
+    await _fb.userDoc.set({
       ...user.toMap(),
       'email': user.email.trim().toLowerCase(),
       'updatedAt': DateTime.now().toIso8601String(),
-    };
+    }, SetOptions(merge: true));
   }
 
   User _fromRow(Map<String, dynamic> row) {
-    // Stored shape matches User.toMap(), so we can parse directly.
-    // Guard: email normalization.
     final map = <String, dynamic>{...row};
     if (map['email'] is String) {
       map['email'] = (map['email'] as String).trim().toLowerCase();
     }
-
     try {
       return User.fromMap(map);
     } catch (e) {
@@ -83,4 +78,3 @@ class CloudUserService {
     );
   }
 }
-

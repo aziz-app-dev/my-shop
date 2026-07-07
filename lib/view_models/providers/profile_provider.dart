@@ -394,9 +394,10 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         instagram: state.instagram,
       );
 
-      // If this email already exists in cloud, pull it and merge (handles "other data" on same email).
+      // If a profile already exists in the cloud for this account, pull it and
+      // merge (handles data saved on another device).
       try {
-        final remote = await _cloudUserService.getUserByEmail(user.email);
+        final remote = await _cloudUserService.getProfile();
         if (remote != null) {
           user = _cloudUserService.mergePreferLocal(local: user, remote: remote);
         }
@@ -410,7 +411,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         await _databaseService.saveUser(user);
       }
 
-      // Upsert to cloud (no Supabase Auth, key is email).
+      // Upsert to cloud (scoped to the signed-in Firebase user).
       try {
         await _cloudUserService.upsertUser(user);
       } catch (_) {

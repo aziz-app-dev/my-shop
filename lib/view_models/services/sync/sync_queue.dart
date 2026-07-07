@@ -62,11 +62,19 @@ class SyncQueue {
     return SyncQueue(box);
   }
 
+  /// Whether the underlying Hive box is still usable. After a hot restart,
+  /// logout, or directory change the box may be closed while a lingering
+  /// connectivity/stream callback still holds a reference to this queue —
+  /// touching a closed box throws `HiveError: Box has already been closed`.
+  bool get isOpen => _box.isOpen;
+
   Future<void> enqueue(SyncOp op) async {
+    if (!_box.isOpen) return;
     await _box.put(op.id, op.toMap());
   }
 
   List<SyncOp> peekAllSorted() {
+    if (!_box.isOpen) return const [];
     final ops =
         _box.values
             .map((e) => SyncOp.fromMap(Map<String, dynamic>.from(e)))
@@ -76,9 +84,10 @@ class SyncQueue {
   }
 
   Future<void> remove(String id) async {
+    if (!_box.isOpen) return;
     await _box.delete(id);
   }
 
-  int get length => _box.length;
+  int get length => _box.isOpen ? _box.length : 0;
 }
 

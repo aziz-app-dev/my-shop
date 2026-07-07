@@ -1,10 +1,11 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart' hide Category;
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../database/database_services.dart';
+import '../firebase/firebase_service.dart';
 import 'sync_queue.dart';
 
 @immutable
@@ -36,24 +37,25 @@ class SyncStatus {
   }
 }
 
-/// Offline-first sync:
-/// - Local Hive is source of truth offline.
-/// - Writes enqueue into `sync_queue` and are flushed when online.
-/// - Realtime updates from Supabase are applied to Hive.
+/// Offline-first sync backed by Cloud Firestore.
 ///
-/// Assumption: you have Supabase tables named:
-/// `products`, `customers`, `bills`, `brands`, `categories`, `expenses`
-/// with columns compatible with the app's `toMap()` keys (stored as JSON for nested fields where needed).
-class SupabaseSyncService {
-  final SupabaseClient _supabase;
+/// - Local Hive is the source of truth. Writes enqueue into `sync_queue` and
+///   are flushed to Firestore when online.
+/// - Existing cloud rows are pulled once ([pullAll]) so a fresh install sees
+///   the shop's data.
+/// - Realtime Firestore listeners apply remote changes back into Hive.
+///
+/// All data lives under `users/{uid}/{collection}/{id}` where `collection` is
+/// one of products/customers/bills/brands/categories/expenses. Nothing syncs
+/// while signed out (there is no uid to scope to).
+class FirestoreSyncService {
+  final FirebaseService _fb;
   final HiveService _hive;
   final SyncQueue _queue;
   final Connectivity _connectivity;
 
   StreamSubscription<List<ConnectivityResult>>? _connSub;
-  RealtimeChannel? _productsChannel;
-  RealtimeChannel? _customersChannel;
-  RealtimeChannel? _billsChannel;
+  final List<StreamSubscription> _realtimeSubs = [];
 
   final ValueNotifier<SyncStatus> status = ValueNotifier(
     const SyncStatus(
@@ -66,13 +68,14 @@ class SupabaseSyncService {
 
   bool _started = false;
   bool _flushing = false;
+  bool _disposed = false;
 
-  SupabaseSyncService({
-    SupabaseClient? supabase,
+  FirestoreSyncService({
+    FirebaseService? firebase,
     required HiveService hive,
     required SyncQueue queue,
     Connectivity? connectivity,
-  }) : _supabase = supabase ?? Supabase.instance.client,
+  }) : _fb = firebase ?? FirebaseService.instance,
        _hive = hive,
        _queue = queue,
        _connectivity = connectivity ?? Connectivity();
@@ -88,6 +91,8 @@ class SupabaseSyncService {
 
     _connSub = _connectivity.onConnectivityChanged.listen(
       (results) async {
+        if (_disposed || !_queue.isOpen) return;
+
         final online = results.any((r) => r != ConnectivityResult.none);
         status.value = status.value.copyWith(
           isOnline: online,
@@ -99,18 +104,12 @@ class SupabaseSyncService {
           await flushQueue();
         }
       },
-      // The connectivity_plus Windows implementation can throw a
-      // PlatformException (NetworkManager::StartListen) when it fails to
-      // activate the change stream. Swallow it instead of crashing — we still
-      // fall back to the initial checkConnectivity() reading below.
       onError: (Object e, StackTrace st) {
         debugPrint('Connectivity stream error (ignored): $e');
       },
       cancelOnError: false,
     );
 
-    // Initial online detection. checkConnectivity() can also throw on Windows;
-    // assume online so sync isn't permanently disabled by a platform hiccup.
     bool online;
     try {
       final initial = await _connectivity.checkConnectivity();
@@ -128,79 +127,69 @@ class SupabaseSyncService {
     _startRealtime();
 
     if (online) {
+      // Push queued local writes up, then pull existing cloud rows down.
       await flushQueue();
+      await pullAll();
     }
   }
 
   void _startRealtime() {
-    // Products
-    _productsChannel ??=
-        _supabase
-            .channel('realtime:products')
-            .onPostgresChanges(
-              event: PostgresChangeEvent.all,
-              schema: 'public',
-              table: 'products',
-              callback: (payload) {
-                _applyRealtimeChange(table: 'products', payload: payload);
-              },
-            )
-            .subscribe();
-
-    // Customers
-    _customersChannel ??=
-        _supabase
-            .channel('realtime:customers')
-            .onPostgresChanges(
-              event: PostgresChangeEvent.all,
-              schema: 'public',
-              table: 'customers',
-              callback: (payload) {
-                _applyRealtimeChange(table: 'customers', payload: payload);
-              },
-            )
-            .subscribe();
-
-    // Bills
-    _billsChannel ??=
-        _supabase
-            .channel('realtime:bills')
-            .onPostgresChanges(
-              event: PostgresChangeEvent.all,
-              schema: 'public',
-              table: 'bills',
-              callback: (payload) {
-                _applyRealtimeChange(table: 'bills', payload: payload);
-              },
-            )
-            .subscribe();
+    if (!_fb.isSignedIn) return; // Nothing to listen to while signed out.
+    for (final name in FirebaseService.dataCollections) {
+      final sub = _fb.collection(name).snapshots().listen(
+        (snapshot) => _applySnapshot(name, snapshot),
+        onError: (e) => debugPrint('Realtime listen error ($name): $e'),
+      );
+      _realtimeSubs.add(sub);
+    }
   }
 
-  Future<void> _applyRealtimeChange({
-    required String table,
-    required PostgresChangePayload payload,
-  }) async {
-    try {
-      final eventType = payload.eventType;
-      if (eventType == PostgresChangeEvent.delete) {
-        final oldRow = payload.oldRecord;
-        final id = (oldRow['id'] ?? '').toString();
-        if (id.isEmpty) return;
-        await _hive.applyRemoteDelete(table: table, id: id);
-        return;
+  Future<void> _applySnapshot(
+    String table,
+    QuerySnapshot<Map<String, dynamic>> snapshot,
+  ) async {
+    if (_disposed) return;
+    for (final change in snapshot.docChanges) {
+      try {
+        final id = change.doc.id;
+        if (change.type == DocumentChangeType.removed) {
+          await _hive.applyRemoteDelete(table: table, id: id);
+        } else {
+          final data = change.doc.data();
+          if (data == null) continue;
+          await _hive.applyRemoteUpsert(
+            table: table,
+            record: Map<String, dynamic>.from(data),
+          );
+        }
+      } catch (e) {
+        debugPrint('Realtime apply error ($table): $e');
       }
+    }
+  }
 
-      final row = payload.newRecord;
-      final id = (row['id'] ?? '').toString();
-      if (id.isEmpty) return;
-      await _hive.applyRemoteUpsert(table: table, record: row);
-    } catch (e) {
-      debugPrint('Realtime apply error ($table): $e');
+  /// One-shot bulk fetch of existing cloud rows into local Hive.
+  Future<void> pullAll() async {
+    if (_disposed || !_fb.isSignedIn) return;
+    for (final table in FirebaseService.dataCollections) {
+      try {
+        final snapshot = await _fb.collection(table).get();
+        for (final doc in snapshot.docs) {
+          if (_disposed) return;
+          await _hive.applyRemoteUpsert(
+            table: table,
+            record: Map<String, dynamic>.from(doc.data()),
+          );
+        }
+      } catch (e) {
+        debugPrint('Initial pull failed for "$table": $e');
+      }
     }
   }
 
   Future<void> flushQueue() async {
-    if (_flushing) return;
+    if (_flushing || _disposed || !_queue.isOpen) return;
+    if (!_fb.isSignedIn) return; // Can't scope writes without a uid.
     _flushing = true;
     status.value = status.value.copyWith(isSyncing: true, message: 'Syncing...');
 
@@ -208,18 +197,21 @@ class SupabaseSyncService {
       final ops = _queue.peekAllSorted();
       for (final op in ops) {
         try {
+          final id = (op.payload['id'] ?? op.id).toString();
+          final col = _fb.collection(op.table);
           if (op.type == SyncOpType.upsert) {
-            await _supabase.from(op.table).upsert(op.payload);
+            await col.doc(id).set(
+              Map<String, dynamic>.from(op.payload),
+              SetOptions(merge: true),
+            );
           } else {
-            final id = (op.payload['id'] ?? '').toString();
             if (id.isNotEmpty) {
-              await _supabase.from(op.table).delete().eq('id', id);
+              await col.doc(id).delete();
             }
           }
           await _queue.remove(op.id);
           status.value = status.value.copyWith(queuedOps: _queue.length);
         } catch (e) {
-          // Stop on first failure (likely offline / permission / schema issue)
           debugPrint('Queue flush failed on op ${op.id}: $e');
           status.value = status.value.copyWith(
             message: 'Sync paused: ${e.toString()}',
@@ -241,23 +233,13 @@ class SupabaseSyncService {
   }
 
   Future<void> dispose() async {
+    _disposed = true;
     await _connSub?.cancel();
     _connSub = null;
-
-    if (_productsChannel != null) {
-      await _supabase.removeChannel(_productsChannel!);
-      _productsChannel = null;
+    for (final sub in _realtimeSubs) {
+      await sub.cancel();
     }
-    if (_customersChannel != null) {
-      await _supabase.removeChannel(_customersChannel!);
-      _customersChannel = null;
-    }
-    if (_billsChannel != null) {
-      await _supabase.removeChannel(_billsChannel!);
-      _billsChannel = null;
-    }
-
+    _realtimeSubs.clear();
     status.dispose();
   }
 }
-

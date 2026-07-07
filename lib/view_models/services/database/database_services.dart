@@ -1279,8 +1279,8 @@ class HiveService {
     await _syncQueueBox.put(op.id, op.toMap());
   }
 
-  /// Apply a Supabase realtime upsert into local Hive.
-  /// This expects the Supabase row to use the same keys used by local `toMap()`.
+  /// Apply a Firestore realtime upsert into local Hive.
+  /// This expects the remote doc to use the same keys used by local `toMap()`.
   Future<void> applyRemoteUpsert({
     required String table,
     required Map<String, dynamic> record,
@@ -1312,7 +1312,7 @@ class HiveService {
     }
   }
 
-  /// Apply a Supabase realtime delete into local Hive.
+  /// Apply a Firestore realtime delete into local Hive.
   Future<void> applyRemoteDelete({
     required String table,
     required String id,

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../res/colors/app_color.dart';
 import '../view_models/providers/profile_provider.dart';
 import '../view_models/services/splash_services.dart';
 
@@ -17,12 +18,53 @@ class SplashScreen extends ConsumerStatefulWidget {
   ConsumerState<ConsumerStatefulWidget> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends ConsumerState<SplashScreen> {
+class _SplashScreenState extends ConsumerState<SplashScreen>
+    with SingleTickerProviderStateMixin {
   final SplashServices splashScreen = SplashServices();
+
+  late final AnimationController _controller;
+  late final Animation<double> _logoScale;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _textSlide;
 
   @override
   void initState() {
     super.initState();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    );
+
+    // Logo pops in with an elastic bounce.
+    _logoScale = Tween<double>(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.6, curve: Curves.elasticOut),
+      ),
+    );
+
+    // Everything fades in together.
+    _fade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.15, 0.7, curve: Curves.easeIn),
+      ),
+    );
+
+    // Shop name slides up under the logo.
+    _textSlide = Tween<Offset>(
+      begin: const Offset(0, 0.4),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.4, 1.0, curve: Curves.easeOut),
+      ),
+    );
+
+    _controller.forward();
+
     ref.read(profileProvider.notifier).loadUserData();
 
     // Delay navigation until after first frame is built
@@ -32,14 +74,22 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final profileState = ref.watch(profileProvider);
+    final hasBranding =
+        profileState.shopName != null && profileState.shopLogo != null;
 
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.blue, Colors.purple],
+            colors: [AppColors.primary, Color(0xFFc74d00)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -48,38 +98,86 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (profileState.shopName != null &&
-                  profileState.shopLogo != null) ...[
-                Image.file(
-                  profileState.shopLogo!,
-                  height: 100.h,
-                  width: 100.h,
-                  fit: BoxFit.cover,
-                  errorBuilder:
-                      (context, error, stackTrace) =>
-                          Icon(Icons.store, size: 100.sp, color: Colors.white),
-                ),
-                SizedBox(height: 20.h),
-                Text(
-                  profileState.shopName!,
-                  style: TextStyle(
-                    fontSize: 30.spMin,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+              // Logo (or fallback store icon) with a scale + fade entrance.
+              ScaleTransition(
+                scale: _logoScale,
+                child: FadeTransition(
+                  opacity: _fade,
+                  child: Container(
+                    height: 110.spMin,
+                    width: 110.spMin,
+                    padding: EdgeInsets.all(hasBranding ? 6.spMin : 24.spMin),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.25),
+                          blurRadius: 24,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child:
+                          hasBranding
+                              ? Image.file(
+                                profileState.shopLogo!,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: double.infinity,
+                                errorBuilder:
+                                    (context, error, stackTrace) => Icon(
+                                      Icons.store,
+                                      size: 60.spMin,
+                                      color: AppColors.primary,
+                                    ),
+                              )
+                              : Icon(
+                                Icons.store,
+                                size: 60.spMin,
+                                color: AppColors.primary,
+                              ),
+                    ),
                   ),
-                  textAlign: TextAlign.center,
                 ),
-              ] else ...[
-                Text(
-                  'Welcome',
-                  style: TextStyle(
-                    fontSize: 24.sp,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+              ),
+              SizedBox(height: 28.spMin),
+
+              // Shop name (or "Welcome") slides up and fades in.
+              SlideTransition(
+                position: _textSlide,
+                child: FadeTransition(
+                  opacity: _fade,
+                  child: Text(
+                    hasBranding ? profileState.shopName! : 'Welcome',
+                    style: TextStyle(
+                      fontSize: 28.spMin,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
                 ),
-              ],
+              ),
+              SizedBox(height: 40.spMin),
+
+              // Subtle loading indicator.
+              FadeTransition(
+                opacity: _fade,
+                child: SizedBox(
+                  width: 26.spMin,
+                  height: 26.spMin,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Colors.white,
+                    ),
+                    backgroundColor: Colors.white.withOpacity(0.25),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

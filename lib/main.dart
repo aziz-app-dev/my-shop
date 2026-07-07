@@ -4,8 +4,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'res/app_url/app_url.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'routes/routes.dart';
 import 'view/splash_screen.dart';
 import 'view_models/providers/settings_provider.dart';
@@ -17,11 +17,15 @@ import 'view_models/services/theme/theme_services.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Supabase using AppUrl configuration
-  await Supabase.initialize(
-    url: AppUrl.supabaseUrl,
-    anonKey: AppUrl.supabaseAnonKey,
-  );
+  // Initialize Firebase. Wrapped so a config hiccup can't white-screen the
+  // whole (offline-first) app — local Hive still works without the cloud.
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('Firebase init failed (continuing offline): $e');
+  }
 
   // Initialize Hive with directory management
   final hiveService = HiveService();
