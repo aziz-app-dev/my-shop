@@ -22,12 +22,21 @@ class CloudinaryUploadResult {
   });
 }
 
-/// Service for uploading and managing images on Cloudinary
+/// Service for uploading and managing images on Cloudinary.
+///
+/// Cloudinary is OPTIONAL: if credentials aren't configured (still the
+/// placeholder values), the service constructs safely and every upload/delete
+/// becomes a graceful no-op — callers fall back to local image paths. The
+/// underlying SDK is built lazily so we never hand it placeholder credentials.
 class CloudinaryService {
-  late final Cloudinary _cloudinary;
+  Cloudinary? _cloudinaryInstance;
 
-  CloudinaryService() {
-    _cloudinary = Cloudinary.full(
+  CloudinaryService();
+
+  /// Lazily-built SDK handle. Null (and never used) when not configured.
+  Cloudinary? get _cloudinary {
+    if (!isConfigured) return null;
+    return _cloudinaryInstance ??= Cloudinary.full(
       apiKey: AppUrl.cloudinaryApiKey,
       apiSecret: AppUrl.cloudinaryApiSecret,
       cloudName: AppUrl.cloudinaryCloudName,
@@ -86,6 +95,13 @@ class CloudinaryService {
     String? publicId,
     int maxSizeKB = 800,
   }) async {
+    final cloudinary = _cloudinary;
+    if (cloudinary == null) {
+      return CloudinaryUploadResult(
+        success: false,
+        error: 'Cloudinary not configured',
+      );
+    }
     try {
       // Get file info
       final fileName = p.basenameWithoutExtension(file.path);
@@ -93,7 +109,7 @@ class CloudinaryService {
       debugPrint('Uploading image: $fileName, size: ${fileSize ~/ 1024}KB');
 
       // Upload to Cloudinary with transformations for size optimization
-      final response = await _cloudinary.uploadResource(
+      final response = await cloudinary.uploadResource(
         CloudinaryUploadResource(
           filePath: file.path,
           fileBytes: await file.readAsBytes(),
@@ -154,10 +170,17 @@ class CloudinaryService {
     String? publicId,
     String fileName = 'image',
   }) async {
+    final cloudinary = _cloudinary;
+    if (cloudinary == null) {
+      return CloudinaryUploadResult(
+        success: false,
+        error: 'Cloudinary not configured',
+      );
+    }
     try {
       debugPrint('Uploading image bytes: ${bytes.length ~/ 1024}KB');
 
-      final response = await _cloudinary.uploadResource(
+      final response = await cloudinary.uploadResource(
         CloudinaryUploadResource(
           fileBytes: bytes,
           resourceType: CloudinaryResourceType.image,
@@ -213,8 +236,10 @@ class CloudinaryService {
 
   /// Delete image from Cloudinary
   Future<bool> deleteImage(String publicId) async {
+    final cloudinary = _cloudinary;
+    if (cloudinary == null) return false;
     try {
-      final response = await _cloudinary.deleteResource(
+      final response = await cloudinary.deleteResource(
         publicId: publicId,
         resourceType: CloudinaryResourceType.image,
       );

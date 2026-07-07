@@ -112,10 +112,21 @@ match /users/{uid}/{document=**} {
 }
 ```
 
-### 3. Configure Cloudinary (optional, for images)
+### 3. Configure Cloudinary (optional — for cloud-hosted images)
 
-Copy `lib/res/app_url/app_url.example.dart` to `lib/res/app_url/app_url.dart`
-and fill in your Cloudinary credentials.
+Cloudinary hosts product/shop images. It is **optional**: if you skip it, image
+uploads are simply not performed and the app falls back to storing local image
+paths (so everything still works, images just aren't synced to the cloud).
+
+To enable it, copy the template and fill in your Cloudinary credentials:
+
+```bash
+cp lib/res/app_url/app_url.example.dart lib/res/app_url/app_url.dart
+```
+
+Get the cloud name / API key / API secret from **Cloudinary Dashboard →
+Settings → Access Keys**, and create an unsigned upload preset under
+**Settings → Upload → Upload presets**.
 
 > **Do not commit real secrets.** `app_url.dart` and the Firebase config files
 > are gitignored — keep credentials out of version control.

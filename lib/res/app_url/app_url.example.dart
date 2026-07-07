@@ -15,7 +15,10 @@ class AppUrl {
   // NOTE: Cloud auth/data/backup use Firebase — configure via `flutterfire
   // configure` (generates firebase_options.dart + google-services.json).
 
-  // ============ CLOUDINARY CONFIGURATION ============
+  // ============ CLOUDINARY CONFIGURATION (optional) ============
+  // Cloudinary hosts product/shop images. It is OPTIONAL — if you leave these
+  // as the YOUR_* placeholders, image uploads are skipped and the app falls
+  // back to storing local file paths (CloudinaryService.isConfigured == false).
   // Get these from: Cloudinary Dashboard > Settings > Access Keys
   // Create an unsigned upload preset in: Settings > Upload > Upload presets
   static const String cloudinaryCloudName =
