@@ -392,6 +392,8 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         facebook: state.facebook,
         twitter: state.twitter,
         instagram: state.instagram,
+        // Saving the shop info from this screen completes first-run setup.
+        shopSetupComplete: true,
       );
 
       // If a profile already exists in the cloud for this account, pull it and

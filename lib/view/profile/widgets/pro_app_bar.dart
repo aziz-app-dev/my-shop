@@ -1,16 +1,19 @@
 import 'package:desktopapp/res/assets/image_assets.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../../../res/components/app_bar_widget.dart';
 import '../../../res/components/app_icon.dart';
 import '../../../routes/routes_name.dart';
+import '../../../utils/app_sizes.dart';
 import '../../dashboard/dashborad_view.dart';
 import '../../expances/expanses_view.dart';
+import '../../main/main_view.dart';
 import '../../settings/settings_view.dart';
 
-class ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
+class ProfileAppBar extends ConsumerWidget implements PreferredSizeWidget {
   final VoidCallback openDrawer;
   final GlobalKey<ScaffoldState> scaffoldKey;
 
@@ -21,11 +24,15 @@ class ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return AppBarWidget.customAppBar(
       title: 'Profile',
       context: context,
-      automaticallyImplyLeading: false,
+      // Mobile: hamburger opens the drawer. Desktop/tablet: no leading.
+      automaticallyImplyLeading: AppSizes.isMobile(context),
+      backIcon: Icons.menu,
+      winBackIcon: ImageAssets.win11Menu,
+      leadingOnTap: openAppDrawer,
       actions: [
         PopupMenuButton<String>(
           icon: AppIcon(

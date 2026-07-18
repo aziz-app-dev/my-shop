@@ -7,8 +7,10 @@ import '../widgets/comparison_chart.dart';
 import '../widgets/customer_bar_chart.dart';
 import '../widgets/dashboard_app_bar.dart';
 import '../widgets/expense_pie_chart.dart';
+import '../widgets/forecast_card.dart';
 import '../widgets/opctions_toggle.dart';
 import '../widgets/payment_status_chart.dart';
+import '../widgets/reminders_alert_banner.dart';
 import '../widgets/sales_line_chart.dart';
 import '../widgets/summary_cards.dart';
 import '../widgets/trend_charts.dart';
@@ -37,7 +39,8 @@ class DashboardMobileView extends ConsumerWidget {
                     children: [
                       // ! mounth and year toggle
                       toggleRow(ref),
-                      SizedBox(height: 15.h),
+                      SizedBox(height: 12.h),
+                      const RemindersAlertBanner(),
                       // Summary Cards (2x2 Grid)
                       buildMobileSummaryCards(context, dashboardState),
                       SizedBox(height: 16.h),
@@ -60,6 +63,10 @@ class DashboardMobileView extends ConsumerWidget {
 
                       // Income vs Outflow Comparison Chart
                       buildComparisonChart(context, dashboardState),
+                      SizedBox(height: 16.h),
+
+                      // AI finance forecast
+                      const ForecastCard(),
                       SizedBox(height: 16.h),
 
                       // Monthly Breakdown Chart (only for yearly view)

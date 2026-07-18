@@ -97,6 +97,11 @@ class ProductCard extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onDoubleTap;
 
+  /// Secondary tap (right-click on desktop). Used by the home page to show a
+  /// "Details / Add to Cart" context menu. Null everywhere else, so other
+  /// screens keep their existing behaviour.
+  final GestureTapDownCallback? onSecondaryTapDown;
+
   /// Optional pre-loaded brand list. When provided, the brand badge is
   /// resolved synchronously with no database read. Callers that don't pass
   /// it simply render without a badge (avoids a per-card DB query).
@@ -107,6 +112,7 @@ class ProductCard extends StatelessWidget {
     required this.product,
     this.onDoubleTap,
     this.onTap,
+    this.onSecondaryTapDown,
     this.brands,
   });
 
@@ -156,6 +162,7 @@ class ProductCard extends StatelessWidget {
                 }
               },
           onTap: onTap,
+          onSecondaryTapDown: onSecondaryTapDown,
           borderRadius: BorderRadius.circular(AppSizes.borderRadiusSm.r),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

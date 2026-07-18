@@ -176,6 +176,7 @@ class Repair {
   Repair copyWith({
     String? id,
     String? customerId,
+    bool clearCustomerId = false,
     String? clientName,
     String? clientPhone,
     String? deviceType,
@@ -196,7 +197,7 @@ class Repair {
   }) {
     return Repair(
       id: id ?? this.id,
-      customerId: customerId ?? this.customerId,
+      customerId: clearCustomerId ? null : (customerId ?? this.customerId),
       clientName: clientName ?? this.clientName,
       clientPhone: clientPhone ?? this.clientPhone,
       deviceType: deviceType ?? this.deviceType,

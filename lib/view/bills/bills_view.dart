@@ -1,12 +1,15 @@
 import 'package:desktopapp/res/colors/app_color.dart';
 import 'package:desktopapp/res/components/app_bar_widget.dart';
 import 'package:desktopapp/res/components/empty_widget.dart';
+import 'package:desktopapp/utils/app_sizes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../res/assets/image_assets.dart';
 import '../../res/components/app_icon.dart';
 import '../../view_models/providers/bills_provider.dart';
+import '../main/main_view.dart';
+import 'widgets/bills_filter_bar.dart';
 import 'widgets/data_table_widgets.dart';
 import 'widgets/serch_bar_widget.dart';
 
@@ -26,13 +29,12 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
     });
   }
 
-  void _toggleFilterVisibility() {
-    ref.read(billsProvider.notifier).toggleFilterVisibility();
-  }
-
   @override
   Widget build(BuildContext context) {
     final billsState = ref.watch(billsProvider);
+    final hasActiveFilter = billsState.statusFilter != null ||
+        billsState.paymentMethodFilter != null ||
+        billsState.dateRangeFilter != null;
     final billsNotifier = ref.read(billsProvider.notifier);
     final selectedCount =
         billsState.selectedBills.values.where((v) => v).length;
@@ -41,7 +43,10 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
       appBar: AppBarWidget.customAppBar(
         title: "Invoices",
         context: context,
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading: AppSizes.isMobile(context),
+        backIcon: Icons.menu,
+        winBackIcon: ImageAssets.win11Menu,
+        leadingOnTap: openAppDrawer,
         actions: [
           IconButton(
             splashColor: Colors.transparent,
@@ -81,17 +86,9 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
               : Column(
                 children: [
                   SearchBarWidget(
-                    onFilterToggle: _toggleFilterVisibility,
-                    isFilterVisible: billsState.isFilterVisible,
+                    onFilterTap: () => showBillsFilterDialog(context),
+                    hasActiveFilter: hasActiveFilter,
                   ),
-                  // AnimatedSize(
-                  //   duration: const Duration(milliseconds: 300),
-                  //   curve: Curves.easeInOut,
-                  //   child:
-                  //       _isFilterVisible
-                  //           ? FilterRow()
-                  //           : const SizedBox.shrink(),
-                  // ),
                   Expanded(
                     child: Column(
                       children: [

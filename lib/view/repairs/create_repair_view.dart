@@ -7,6 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../models/brand_model.dart';
 import '../../models/coustomer_model.dart';
 import '../../models/items_model.dart';
 import '../../models/repair_model.dart';
@@ -19,6 +20,9 @@ import '../../utils/image_picker_helper.dart';
 import '../../view_models/providers/customer_prvider.dart';
 import '../../view_models/providers/product_view.dart';
 import '../../view_models/providers/repair_provider.dart';
+import '../brands/brand_management_view.dart' show brandsProvider;
+import '../home/rapper.dart';
+import '../widgets/cached_image_widget.dart';
 
 /// Create / edit a repair job. Rewritten from scratch with a dead-simple,
 /// bulletproof layout: a Scaffold whose body is a single ListView holding every
@@ -46,6 +50,17 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
   late final TextEditingController _estCostController;
   late final TextEditingController _advanceController;
 
+  // Focus nodes so Enter/Next jumps between fields in order.
+  final _nameNode = FocusNode();
+  final _phoneNode = FocusNode();
+  final _brandNode = FocusNode();
+  final _modelNode = FocusNode();
+  final _serialNode = FocusNode();
+  final _problemNode = FocusNode();
+  final _accessoriesNode = FocusNode();
+  final _estCostNode = FocusNode();
+  final _advanceNode = FocusNode();
+
   static const List<String> _deviceTypes = [
     'Laptop',
     'Desktop',
@@ -61,6 +76,19 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
   String? _imagePath;
   late DateTime _receivedDate;
   DateTime? _expectedDate;
+
+  /// Customer mode. Walk-in = collect nothing (no linked customer). Registered
+  /// = pick/search an existing customer in the name field.
+  bool _isWalkIn = false;
+
+  /// Whether the customer-search suggestions are currently shown.
+  bool _showSuggestions = false;
+
+  /// Whether the brand-search suggestions are currently shown.
+  bool _showBrandSuggestions = false;
+
+  /// Height of one suggestion row; the dropdown shows 4 then scrolls.
+  static const double _suggestionRowH = 54;
 
   // Parts/services added to this repair.
   final List<RepairItem> _items = [];
@@ -100,6 +128,11 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
     _imagePath = r?.imageUrl;
     _receivedDate = r?.receivedDate ?? DateTime.now();
     _expectedDate = r?.expectedDate;
+    // An existing repair with no linked customer and no real name is a walk-in.
+    final name = r?.clientName.trim() ?? '';
+    _isWalkIn = r != null &&
+        r.customerId == null &&
+        (name.isEmpty || name.toLowerCase() == 'walk-in');
     if (r != null) _items.addAll(r.items);
   }
 
@@ -114,168 +147,256 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
     _accessoriesController.dispose();
     _estCostController.dispose();
     _advanceController.dispose();
+    _nameNode.dispose();
+    _phoneNode.dispose();
+    _brandNode.dispose();
+    _modelNode.dispose();
+    _serialNode.dispose();
+    _problemNode.dispose();
+    _accessoriesNode.dispose();
+    _estCostNode.dispose();
+    _advanceNode.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final customers = ref.watch(customersProvider).allCustomers;
-
     return Scaffold(
-      appBar: AppBarWidget.customAppBar(title: 'Repair', context: context),
+      appBar: AppBarWidget.customAppBar(
+        title: _isEditing ? 'Edit Repair' : 'New Repair',
+        context: context,
+      ),
       body: Form(
         key: _formKey,
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(16.spMin, 16.spMin, 16.spMin, 24.spMin),
+        // Full-width section cards (settings-style). Fields stack on mobile and
+        // pair two-per-row on tablet/desktop; insets grow with the breakpoint.
+        child: ResponsiveWrapper(
+          mobile: _buildForm(twoCol: false, hPad: 16),
+          tablet: _buildForm(twoCol: true, hPad: 24),
+          desktop: _buildForm(twoCol: true, hPad: 40),
+        ),
+      ),
+    );
+  }
+
+  void _focus(FocusNode node) => FocusScope.of(context).requestFocus(node);
+
+  Widget _buildForm({required bool twoCol, required double hPad}) {
+    final customers = ref.watch(customersProvider).allCustomers;
+    final brands = ref.watch(brandsProvider).asData?.value ?? const <Brand>[];
+    return ListView(
+      // Horizontal insets grow with the breakpoint (like add_product /
+      // edit_bill); vertical rhythm uses .spMin per the project's sizing rule.
+      padding: EdgeInsets.symmetric(horizontal: hPad.w, vertical: 16.spMin),
+      children: _formChildren(customers, brands, twoCol),
+    );
+  }
+
+  List<Widget> _formChildren(
+    List<Customer> customers,
+    List<Brand> brands,
+    bool twoCol,
+  ) {
+    Widget gap([double h = 12]) => SizedBox(height: h.spMin);
+
+    // Always place two fields side by side in a row.
+    Widget row2(Widget a, Widget b) => Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _label('Client'),
-            _customerPicker(customers),
-            SizedBox(height: 12.spMin),
-            CustomTextField(
-              controller: _nameController,
-              label: 'Client Name',
-              hintText: 'e.g. Ahmed Khan',
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Client name is required'
-                  : null,
-            ),
-            SizedBox(height: 12.spMin),
-            CustomTextField(
-              controller: _phoneController,
-              label: 'Phone',
-              hintText: 'e.g. 0300xxxxxxx',
-              keyboardType: TextInputType.phone,
-            ),
-            SizedBox(height: 20.spMin),
+            Expanded(child: a),
+            SizedBox(width: 16.spMin),
+            Expanded(child: b),
+          ],
+        );
 
-            _label('Device'),
-            _deviceTypeDropdown(),
-            SizedBox(height: 12.spMin),
-            CustomTextField(
-              controller: _brandController,
-              label: 'Brand',
-              hintText: 'e.g. Dell, HP',
-            ),
-            SizedBox(height: 12.spMin),
-            CustomTextField(
-              controller: _modelController,
-              label: 'Model',
-              hintText: 'e.g. Latitude 5400',
-            ),
-            SizedBox(height: 12.spMin),
-            CustomTextField(
-              controller: _serialController,
-              label: 'Serial Number',
-              hintText: 'Optional',
-            ),
-            SizedBox(height: 12.spMin),
-            _photoPicker(),
-            SizedBox(height: 20.spMin),
+    // Pair two fields into a row on wide screens; stack them on mobile.
+    Widget pairOr(Widget a, Widget b) => twoCol ? row2(a, b) : Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [a, gap(), b],
+        );
 
-            _label('Problem & Accessories'),
-            CustomTextField(
-              controller: _problemController,
-              label: 'Reported Problem',
-              hintText: 'e.g. Not turning on, screen cracked',
-              maxLines: 3,
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Describe the problem'
-                  : null,
-            ),
-            SizedBox(height: 12.spMin),
-            CustomTextField(
-              controller: _accessoriesController,
-              label: 'Accessories Received',
-              hintText: 'e.g. Charger, bag, mouse',
-              maxLines: 2,
-            ),
-            SizedBox(height: 20.spMin),
+    final model = CustomTextField(
+      controller: _modelController,
+      focusNode: _modelNode,
+      textInputAction: TextInputAction.next,
+      onFieldSubmitted: (_) => _focus(_serialNode),
+      label: 'Model',
+      hintText: 'e.g. Latitude 5400',
+    );
+    final serial = CustomTextField(
+      controller: _serialController,
+      focusNode: _serialNode,
+      textInputAction: TextInputAction.next,
+      onFieldSubmitted: (_) => _focus(_problemNode),
+      label: 'Serial Number',
+      hintText: 'Optional',
+    );
+    final estCost = CustomTextField(
+      controller: _estCostController,
+      focusNode: _estCostNode,
+      textInputAction: TextInputAction.next,
+      onFieldSubmitted: (_) => _focus(_advanceNode),
+      label: 'Estimated Cost',
+      hintText: '0',
+      keyboardType: TextInputType.number,
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
+      ],
+    );
+    final advance = CustomTextField(
+      controller: _advanceController,
+      focusNode: _advanceNode,
+      textInputAction: TextInputAction.done,
+      label: 'Advance Paid',
+      hintText: '0',
+      keyboardType: TextInputType.number,
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
+      ],
+    );
+    final received = _dateField(
+      label: 'Received Date',
+      value: _receivedDate,
+      onPick: (d) => setState(() => _receivedDate = d),
+    );
+    final expected = _dateField(
+      label: 'Expected Date',
+      value: _expectedDate,
+      onPick: (d) => setState(() => _expectedDate = d),
+      allowClear: true,
+      onClear: () => setState(() => _expectedDate = null),
+    );
 
-            _itemsSection(),
-            SizedBox(height: 20.spMin),
+    final customerSec = _section(
+      icon: TablerIcons.user,
+      title: 'Customer',
+      children: [_customerSection(customers)],
+    );
+    final deviceSec = _section(
+      icon: TablerIcons.device_laptop,
+      title: 'Device',
+      children: [
+        pairOr(_deviceTypeDropdown(), _brandField(brands)),
+        gap(),
+        pairOr(model, serial),
+        gap(16),
+        _photoPicker(),
+      ],
+    );
+    final problemSec = _section(
+      icon: TablerIcons.alert_triangle,
+      title: 'Problem & Accessories',
+      children: [
+        CustomTextField(
+          controller: _problemController,
+          focusNode: _problemNode,
+          label: 'Reported Problem',
+          hintText: 'e.g. Not turning on, screen cracked',
+          maxLines: 3,
+          validator: (v) =>
+              (v == null || v.trim().isEmpty) ? 'Describe the problem' : null,
+        ),
+        gap(),
+        CustomTextField(
+          controller: _accessoriesController,
+          focusNode: _accessoriesNode,
+          label: 'Accessories Received',
+          hintText: 'e.g. Charger, bag, mouse',
+          maxLines: 2,
+        ),
+      ],
+    );
+    final itemsSec = _section(
+      icon: TablerIcons.package,
+      title: 'Items / Parts',
+      trailing: TextButton.icon(
+        onPressed: _showAddItemSheet,
+        icon: Icon(TablerIcons.plus, size: 16.spMin),
+        label: Text('Add Item', style: TextStyle(fontSize: 12.spMin)),
+      ),
+      children: [_itemsList()],
+    );
+    final costSec = _section(
+      icon: TablerIcons.cash,
+      title: 'Cost & Dates',
+      children: [
+        row2(estCost, advance),
+        gap(),
+        row2(received, expected),
+      ],
+    );
 
-            _label('Cost & Dates'),
-            CustomTextField(
-              controller: _estCostController,
-              label: 'Estimated Cost',
-              hintText: '0',
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
+    final submit = Padding(
+      padding: EdgeInsets.symmetric(vertical: 4.spMin),
+      child: AppButton().primaryButton(
+        text: _isEditing ? 'Save Changes' : 'Add Repair',
+        onPressed: _save,
+        height: 48.spMin,
+        borderRadius: 12,
+      ),
+    );
+
+    return [
+      customerSec,
+      deviceSec,
+      problemSec,
+      itemsSec,
+      costSec,
+      submit,
+      SizedBox(height: 8.spMin),
+    ];
+  }
+
+  // ---- pieces -----------------------------------------------------------
+
+  /// A titled, full-width section card (settings-style: rounded, subtle
+  /// elevation, no border).
+  Widget _section({
+    required IconData icon,
+    required String title,
+    Widget? trailing,
+    required List<Widget> children,
+  }) {
+    return Card(
+      margin: EdgeInsets.only(bottom: 16.spMin),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.r),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(16.spMin),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 18.spMin, color: AppColors.primary),
+                SizedBox(width: 8.spMin),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14.spMin,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+                if (trailing != null) ...[const Spacer(), trailing],
               ],
             ),
             SizedBox(height: 12.spMin),
-            CustomTextField(
-              controller: _advanceController,
-              label: 'Advance Paid',
-              hintText: '0',
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
-              ],
-            ),
-            SizedBox(height: 12.spMin),
-            _dateField(
-              label: 'Received Date',
-              value: _receivedDate,
-              onPick: (d) => setState(() => _receivedDate = d),
-            ),
-            SizedBox(height: 12.spMin),
-            _dateField(
-              label: 'Expected Date',
-              value: _expectedDate,
-              onPick: (d) => setState(() => _expectedDate = d),
-              allowClear: true,
-              onClear: () => setState(() => _expectedDate = null),
-            ),
-            SizedBox(height: 24.spMin),
-
-            // Submit button lives at the END of the list — always visible when
-            // scrolled to, no separate bottom bar to collapse the body.
-            AppButton().primaryButton(
-              text: _isEditing ? 'Save Changes' : 'Add Repair',
-              onPressed: _save,
-              height: 48.spMin,
-              borderRadius: 12,
-            ),
+            ...children,
           ],
         ),
       ),
     );
   }
 
-  // ---- pieces -----------------------------------------------------------
-
-  Widget _label(String text) => Padding(
-        padding: EdgeInsets.only(bottom: 8.spMin),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: 13.spMin,
-            fontWeight: FontWeight.bold,
-            color: AppColors.primary,
-          ),
-        ),
-      );
-
   // ---- Repair items (parts/services) -----------------------------------
 
-  Widget _itemsSection() {
+  Widget _itemsList() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _label('Items / Parts Used'),
-            TextButton.icon(
-              onPressed: _showAddItemSheet,
-              icon: Icon(TablerIcons.plus, size: 16.spMin),
-              label: Text('Add Item', style: TextStyle(fontSize: 12.spMin)),
-            ),
-          ],
-        ),
         if (_items.isEmpty)
           Container(
             width: double.infinity,
@@ -400,61 +521,376 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
   }
 
   void _showAddItemSheet() {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.spMin)),
-      ),
-      builder: (_) => _AddRepairItemSheet(
-        onAdd: (item) {
-          setState(() => _items.add(item));
-          _syncEstimatedCostToItems();
-        },
+      builder: (_) => Dialog(
+        insetPadding: EdgeInsets.symmetric(horizontal: 24.spMin, vertical: 24.spMin),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.spMin),
+        ),
+        child: _AddRepairItemSheet(
+          onAdd: (item) {
+            setState(() => _items.add(item));
+            _syncEstimatedCostToItems();
+          },
+        ),
       ),
     );
   }
 
-  Widget _customerPicker(List<Customer> customers) {
-    // De-duplicate ids so AppDropdown never gets two items with the same value.
-    final seen = <String>{};
-    final unique = <Customer>[];
-    for (final c in customers) {
-      if (c.id.isNotEmpty && seen.add(c.id)) unique.add(c);
-    }
-    // Keep the current selection valid.
-    final value =
-        (_customerId != null && seen.contains(_customerId)) ? _customerId : null;
-
-    return AppDropdown<String?>(
-      label: 'Pick Existing Client (optional)',
-      hintText: 'Select a client or type below',
-      isExpanded: true,
-      value: value,
-      items: <String?>[null, ...unique.map((c) => c.id)],
-      displayItems: <String>[
-        'New / walk-in client',
-        ...unique.map(
-          (c) => c.phoneNumber.isNotEmpty
-              ? '${c.name} (${c.phoneNumber})'
-              : c.name,
+  /// Customer selector: a Walk-in / Registered toggle. Walk-in collects
+  /// nothing; Registered shows a name field that searches existing customers
+  /// (mirrors the sales cart's customer picker) plus a phone field.
+  Widget _customerSection(List<Customer> customers) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _custTypeChip(
+              icon: TablerIcons.walk,
+              label: 'Walk-in',
+              selected: _isWalkIn,
+              onTap: () => setState(() {
+                _isWalkIn = true;
+                _showSuggestions = false;
+                _customerId = null;
+                _nameController.clear();
+                _phoneController.clear();
+              }),
+            ),
+            SizedBox(width: 8.spMin),
+            _custTypeChip(
+              icon: TablerIcons.user,
+              label: 'Registered',
+              selected: !_isWalkIn,
+              onTap: () => setState(() => _isWalkIn = false),
+            ),
+          ],
         ),
+        SizedBox(height: 12.spMin),
+        if (_isWalkIn)
+          _walkInNote(isDark)
+        else ...[
+          _customerNameField(customers),
+          SizedBox(height: 12.spMin),
+          CustomTextField(
+            controller: _phoneController,
+            focusNode: _phoneNode,
+            textInputAction: TextInputAction.next,
+            onFieldSubmitted: (_) => _focus(_brandNode),
+            label: 'Phone',
+            hintText: 'e.g. 03001234567',
+            keyboardType: TextInputType.phone,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9+]')),
+              LengthLimitingTextInputFormatter(15),
+            ],
+          ),
+        ],
       ],
-      onChanged: (id) {
+    );
+  }
+
+  Widget _custTypeChip({
+    required IconData icon,
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10.spMin),
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.symmetric(vertical: 12.spMin),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected
+                ? AppColors.primary.withValues(alpha: 0.15)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10.spMin),
+            border: Border.all(
+              color: selected ? AppColors.primary : AppColors.border,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16.spMin,
+                color: selected ? AppColors.primary : Colors.grey[600],
+              ),
+              SizedBox(width: 6.spMin),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12.spMin,
+                  fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                  color: selected ? AppColors.primary : Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _walkInNote(bool isDark) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(12.spMin),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: isDark ? 0.12 : 0.06),
+        borderRadius: BorderRadius.circular(10.spMin),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Icon(TablerIcons.info_circle, size: 16.spMin, color: AppColors.primary),
+          SizedBox(width: 8.spMin),
+          Expanded(
+            child: Text(
+              'Walk-in customer — no customer details are saved. Just add the '
+              'device and problem below.',
+              style: TextStyle(
+                fontSize: 11.spMin,
+                color: isDark ? AppColors.grey300 : AppColors.grey700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Name field for registered customers: typing filters existing customers
+  /// into an inline suggestions list; picking one links it (sets [_customerId]).
+  Widget _customerNameField(List<Customer> customers) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CustomTextField(
+          controller: _nameController,
+          focusNode: _nameNode,
+          textInputAction: TextInputAction.next,
+          onFieldSubmitted: (_) => _focus(_phoneNode),
+          label: 'Customer Name',
+          hintText: 'Type to search or add a new name',
+          prefixIcon: Icon(
+            TablerIcons.search,
+            size: 18.spMin,
+            color: AppColors.primary,
+          ),
+          validator: (v) => (v == null || v.trim().isEmpty)
+              ? 'Customer name is required'
+              : null,
+          onChange: (v) {
+            setState(() {
+              // Editing the name unlinks any previously picked customer.
+              _customerId = null;
+              _showSuggestions = (v ?? '').trim().isNotEmpty;
+            });
+            return null;
+          },
+        ),
+        if (_showSuggestions) _customerSuggestions(customers),
+      ],
+    );
+  }
+
+  Widget _customerSuggestions(List<Customer> customers) {
+    final q = _nameController.text.trim().toLowerCase();
+    if (q.isEmpty) return const SizedBox.shrink();
+    final seen = <String>{};
+    final matches = <Customer>[];
+    for (final c in customers) {
+      if (c.id.isEmpty || !seen.add(c.id)) continue;
+      if (c.name.toLowerCase().contains(q) ||
+          c.phoneNumber.toLowerCase().contains(q)) {
+        matches.add(c);
+      }
+    }
+    if (matches.isEmpty) return const SizedBox.shrink();
+    return _suggestionsScrollBox(
+      itemCount: matches.length,
+      itemBuilder: (context, i) => _suggestionRow(
+        matches[i],
+        showDivider: i != matches.length - 1,
+      ),
+    );
+  }
+
+  /// Bordered dropdown that shows up to 4 rows then scrolls the rest. Shared by
+  /// the customer and brand search fields.
+  Widget _suggestionsScrollBox({
+    required int itemCount,
+    required IndexedWidgetBuilder itemBuilder,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final visibleRows = itemCount < 4 ? itemCount : 4;
+    return Container(
+      margin: EdgeInsets.only(top: 6.spMin),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.dCardColor : AppColors.lCardColor,
+        borderRadius: BorderRadius.circular(10.spMin),
+        border: Border.all(color: AppColors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: visibleRows * _suggestionRowH.spMin,
+        child: Scrollbar(
+          child: ListView.builder(
+            padding: EdgeInsets.zero,
+            itemCount: itemCount,
+            itemBuilder: itemBuilder,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ---- Brand search ----------------------------------------------------
+
+  Widget _brandField(List<Brand> brands) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CustomTextField(
+          controller: _brandController,
+          focusNode: _brandNode,
+          textInputAction: TextInputAction.next,
+          onFieldSubmitted: (_) => _focus(_modelNode),
+          label: 'Brand',
+          hintText: 'Type to search brands',
+          prefixIcon: Icon(
+            TablerIcons.search,
+            size: 18.spMin,
+            color: AppColors.primary,
+          ),
+          onChange: (v) {
+            setState(() => _showBrandSuggestions = (v ?? '').trim().isNotEmpty);
+            return null;
+          },
+        ),
+        if (_showBrandSuggestions) _brandSuggestions(brands),
+      ],
+    );
+  }
+
+  Widget _brandSuggestions(List<Brand> brands) {
+    final q = _brandController.text.trim().toLowerCase();
+    if (q.isEmpty) return const SizedBox.shrink();
+    final matches =
+        brands.where((b) => b.name.toLowerCase().contains(q)).toList();
+    if (matches.isEmpty) return const SizedBox.shrink();
+    return _suggestionsScrollBox(
+      itemCount: matches.length,
+      itemBuilder: (context, i) => _brandRow(
+        matches[i],
+        showDivider: i != matches.length - 1,
+      ),
+    );
+  }
+
+  Widget _brandRow(Brand b, {required bool showDivider}) {
+    return InkWell(
+      onTap: () {
         setState(() {
-          _customerId = id;
-          if (id != null) {
-            final c = unique.firstWhere(
-              (e) => e.id == id,
-              orElse: () => Customer(id: '', name: ''),
-            );
-            if (c.id.isNotEmpty) {
-              _nameController.text = c.name;
-              _phoneController.text = c.phoneNumber;
-            }
-          }
+          _brandController.text = b.name;
+          _showBrandSuggestions = false;
         });
+        FocusScope.of(context).unfocus();
       },
+      child: Container(
+        height: _suggestionRowH.spMin,
+        padding: EdgeInsets.symmetric(horizontal: 12.spMin),
+        decoration: BoxDecoration(
+          border: showDivider
+              ? Border(bottom: BorderSide(color: AppColors.border))
+              : null,
+        ),
+        child: Row(
+          children: [
+            Icon(TablerIcons.tag, size: 18.spMin, color: AppColors.primary),
+            SizedBox(width: 8.spMin),
+            Expanded(
+              child: Text(
+                b.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12.spMin,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _suggestionRow(
+    Customer c, {
+    required bool showDivider,
+  }) {
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _customerId = c.id;
+          _nameController.text = c.name;
+          _phoneController.text = c.phoneNumber;
+          _showSuggestions = false;
+        });
+        FocusScope.of(context).unfocus();
+      },
+      child: Container(
+        height: _suggestionRowH.spMin,
+        padding: EdgeInsets.symmetric(horizontal: 12.spMin),
+        decoration: BoxDecoration(
+          border: showDivider
+              ? Border(bottom: BorderSide(color: AppColors.border))
+              : null,
+        ),
+        child: Row(
+          children: [
+            Icon(TablerIcons.user, size: 18.spMin, color: AppColors.primary),
+            SizedBox(width: 8.spMin),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    c.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12.spMin,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (c.phoneNumber.isNotEmpty)
+                    Text(
+                      c.phoneNumber,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11.spMin,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -473,37 +909,68 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
     final hasImage = _imagePath != null &&
         _imagePath!.isNotEmpty &&
         File(_imagePath!).existsSync();
-    return Row(
-      children: [
-        Container(
-          width: 64.spMin,
-          height: 64.spMin,
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(10.spMin),
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: hasImage
-              ? Image.file(File(_imagePath!), fit: BoxFit.cover)
-              : Icon(TablerIcons.camera, color: AppColors.primary),
-        ),
-        SizedBox(width: 12.spMin),
-        TextButton.icon(
-          onPressed: _pickImage,
-          icon: const Icon(TablerIcons.photo),
-          label: Text(
-            hasImage ? 'Change photo' : 'Add item photo',
-            style: TextStyle(fontSize: 12.spMin),
+    // Tap anywhere on the box to pick a photo; a corner ✕ removes it.
+    return GestureDetector(
+      onTap: _pickImage,
+      child: Container(
+        width: double.infinity,
+        height: 170.spMin,
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12.spMin),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.35),
           ),
         ),
-        if (hasImage)
-          IconButton(
-            tooltip: 'Remove photo',
-            onPressed: () => setState(() => _imagePath = null),
-            icon: Icon(TablerIcons.x, size: 16.spMin, color: AppColors.error),
-          ),
-      ],
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (hasImage)
+              Image.file(File(_imagePath!), fit: BoxFit.cover)
+            else
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    TablerIcons.camera_plus,
+                    color: AppColors.primary,
+                    size: 34.spMin,
+                  ),
+                  SizedBox(height: 8.spMin),
+                  Text(
+                    'Tap to add device photo',
+                    style: TextStyle(
+                      fontSize: 12.spMin,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            if (hasImage)
+              Positioned(
+                top: 8.spMin,
+                right: 8.spMin,
+                child: GestureDetector(
+                  onTap: () => setState(() => _imagePath = null),
+                  child: Container(
+                    padding: EdgeInsets.all(4.spMin),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      TablerIcons.x,
+                      size: 16.spMin,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -588,9 +1055,12 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
               updatedAt: now,
             ))
         .copyWith(
-      customerId: _customerId,
-      clientName: _nameController.text.trim(),
-      clientPhone: _phoneController.text.trim(),
+      // Walk-in: take nothing (no linked customer, generic name). Registered:
+      // save the linked/typed customer + phone.
+      customerId: _isWalkIn ? null : _customerId,
+      clearCustomerId: _isWalkIn,
+      clientName: _isWalkIn ? 'Walk-in' : _nameController.text.trim(),
+      clientPhone: _isWalkIn ? '' : _phoneController.text.trim(),
       deviceType: _deviceType ?? '',
       brand: _brandController.text.trim(),
       model: _modelController.text.trim(),
@@ -638,6 +1108,8 @@ class _AddRepairItemSheetState extends ConsumerState<_AddRepairItemSheet> {
   Product? _selectedProduct;
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
+  final _productSearchController = TextEditingController();
+  bool _showProductSuggestions = false;
   int _qty = 1;
 
   @override
@@ -653,6 +1125,7 @@ class _AddRepairItemSheetState extends ConsumerState<_AddRepairItemSheet> {
   void dispose() {
     _nameController.dispose();
     _priceController.dispose();
+    _productSearchController.dispose();
     super.dispose();
   }
 
@@ -661,158 +1134,255 @@ class _AddRepairItemSheetState extends ConsumerState<_AddRepairItemSheet> {
     final productsAsync = ref.watch(productsNotifierProvider);
     final products = productsAsync.asData?.value ?? const <Product>[];
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16.spMin,
-        right: 16.spMin,
-        top: 16.spMin,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16.spMin,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(TablerIcons.package, color: AppColors.primary),
-              SizedBox(width: 8.spMin),
-              Text(
-                'Add Item',
-                style: TextStyle(
-                  fontSize: 15.spMin,
-                  fontWeight: FontWeight.bold,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 460),
+      child: SingleChildScrollView(
+        padding: EdgeInsets.all(16.spMin),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(TablerIcons.package, color: AppColors.primary),
+                SizedBox(width: 8.spMin),
+                Text(
+                  'Add Item',
+                  style: TextStyle(
+                    fontSize: 15.spMin,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const Spacer(),
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close),
-              ),
-            ],
-          ),
-          SizedBox(height: 8.spMin),
-          // Toggle: inventory vs custom. Reset the fields on switch so a
-          // stale product name/price/id doesn't carry over.
-          Row(
-            children: [
-              _modeChip('From Inventory', !_custom, () {
-                setState(() {
-                  _custom = false;
-                  _selectedProduct = null;
-                  _nameController.clear();
-                  _priceController.clear();
-                });
-              }),
-              SizedBox(width: 8.spMin),
-              _modeChip('Custom Item', _custom, () {
-                setState(() {
-                  _custom = true;
-                  _selectedProduct = null;
-                  _nameController.clear();
-                  _priceController.clear();
-                });
-              }),
-            ],
-          ),
-          SizedBox(height: 16.spMin),
-
-          if (!_custom) ...[
-            // Inventory product dropdown
-            AppDropdown<Product?>(
-              label: 'Product',
-              hintText: products.isEmpty
-                  ? 'No products available'
-                  : 'Select a product',
-              isExpanded: true,
-              value: _selectedProduct,
-              items: <Product?>[...products],
-              displayItems: [
-                for (final p in products)
-                  '${p.name} (Rs ${p.price.toStringAsFixed(0)})',
+                const Spacer(),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
               ],
-              onChanged: (p) {
-                setState(() {
-                  _selectedProduct = p;
-                  if (p != null) {
-                    _nameController.text = p.name;
-                    _priceController.text = p.price.toStringAsFixed(0);
-                  }
-                });
-              },
             ),
-            SizedBox(height: 12.spMin),
-          ] else ...[
-            CustomTextField(
-              controller: _nameController,
-              label: 'Item Name',
-              hintText: 'e.g. Screen replacement, Labor',
+            SizedBox(height: 8.spMin),
+            // Toggle: inventory vs custom. Reset the fields on switch so a
+            // stale product name/price/id doesn't carry over.
+            Row(
+              children: [
+                _modeChip('From Inventory', !_custom, () {
+                  setState(() {
+                    _custom = false;
+                    _selectedProduct = null;
+                    _nameController.clear();
+                    _priceController.clear();
+                    _productSearchController.clear();
+                    _showProductSuggestions = false;
+                  });
+                }),
+                SizedBox(width: 8.spMin),
+                _modeChip('Custom Item', _custom, () {
+                  setState(() {
+                    _custom = true;
+                    _selectedProduct = null;
+                    _nameController.clear();
+                    _priceController.clear();
+                    _productSearchController.clear();
+                    _showProductSuggestions = false;
+                  });
+                }),
+              ],
             ),
-            SizedBox(height: 12.spMin),
-          ],
+            SizedBox(height: 16.spMin),
 
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: CustomTextField(
-                  controller: _priceController,
-                  label: 'Price',
-                  hintText: '0',
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
+            if (!_custom) ...[
+              _productSearchField(products),
+              SizedBox(height: 12.spMin),
+            ] else ...[
+              CustomTextField(
+                controller: _nameController,
+                label: 'Item Name',
+                hintText: 'e.g. Screen replacement, Labor',
+              ),
+              SizedBox(height: 12.spMin),
+            ],
+
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: CustomTextField(
+                    controller: _priceController,
+                    label: 'Price',
+                    hintText: '0',
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 12.spMin),
+                // Quantity stepper
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Qty',
+                      style: TextStyle(
+                        fontSize: 12.spMin,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    SizedBox(height: 6.spMin),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(8.spMin),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () {
+                              if (_qty > 1) setState(() => _qty--);
+                            },
+                            icon: Icon(Icons.remove, size: 16.spMin),
+                          ),
+                          Text('$_qty', style: TextStyle(fontSize: 13.spMin)),
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => setState(() => _qty++),
+                            icon: Icon(Icons.add, size: 16.spMin),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-              ),
-              SizedBox(width: 12.spMin),
-              // Quantity stepper
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Qty',
-                    style: TextStyle(
-                      fontSize: 12.spMin,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  SizedBox(height: 6.spMin),
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey),
-                      borderRadius: BorderRadius.circular(8.spMin),
-                    ),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () {
-                            if (_qty > 1) setState(() => _qty--);
-                          },
-                          icon: Icon(Icons.remove, size: 16.spMin),
-                        ),
-                        Text('$_qty', style: TextStyle(fontSize: 13.spMin)),
-                        IconButton(
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () => setState(() => _qty++),
-                          icon: Icon(Icons.add, size: 16.spMin),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
+            SizedBox(height: 20.spMin),
+            AppButton().primaryButton(
+              text: 'Add Item',
+              height: 46.spMin,
+              borderRadius: 12,
+              onPressed: _add,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Searchable inventory product picker: type to filter, results show the
+  /// product image + name + price; tap to select (fills name & price).
+  Widget _productSearchField(List<Product> products) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CustomTextField(
+          controller: _productSearchController,
+          label: 'Product',
+          hintText:
+              products.isEmpty ? 'No products available' : 'Search products',
+          prefixIcon: Icon(
+            TablerIcons.search,
+            size: 18.spMin,
+            color: AppColors.primary,
           ),
-          SizedBox(height: 20.spMin),
-          AppButton().primaryButton(
-            text: 'Add Item',
-            height: 46.spMin,
-            borderRadius: 12,
-            onPressed: _add,
+          onChange: (v) {
+            setState(() {
+              _showProductSuggestions = (v ?? '').trim().isNotEmpty;
+              _selectedProduct = null; // typing unlinks the picked product
+            });
+            return null;
+          },
+        ),
+        if (_showProductSuggestions) _productSuggestions(products),
+      ],
+    );
+  }
+
+  Widget _productSuggestions(List<Product> products) {
+    final q = _productSearchController.text.trim().toLowerCase();
+    if (q.isEmpty) return const SizedBox.shrink();
+    final matches =
+        products.where((p) => p.name.toLowerCase().contains(q)).toList();
+    if (matches.isEmpty) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final rowH = 56.spMin;
+    final visible = matches.length < 4 ? matches.length : 4;
+    return Container(
+      margin: EdgeInsets.only(top: 6.spMin),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.dCardColor : AppColors.lCardColor,
+        borderRadius: BorderRadius.circular(10.spMin),
+        border: Border.all(color: AppColors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: visible * rowH,
+        child: Scrollbar(
+          child: ListView.builder(
+            padding: EdgeInsets.zero,
+            itemCount: matches.length,
+            itemBuilder: (context, i) {
+              final p = matches[i];
+              return InkWell(
+                onTap: () {
+                  setState(() {
+                    _selectedProduct = p;
+                    _nameController.text = p.name;
+                    _priceController.text = p.price.toStringAsFixed(0);
+                    _productSearchController.text = p.name;
+                    _showProductSuggestions = false;
+                  });
+                  FocusScope.of(context).unfocus();
+                },
+                child: Container(
+                  height: rowH,
+                  padding: EdgeInsets.symmetric(horizontal: 10.spMin),
+                  decoration: BoxDecoration(
+                    border: i != matches.length - 1
+                        ? Border(bottom: BorderSide(color: AppColors.border))
+                        : null,
+                  ),
+                  child: Row(
+                    children: [
+                      CachedProductImage(
+                        imageUrl: p.imageUrl,
+                        width: 38.spMin,
+                        height: 38.spMin,
+                        borderRadius: BorderRadius.circular(8.spMin),
+                      ),
+                      SizedBox(width: 10.spMin),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              p.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12.spMin,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              'Rs ${p.price.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                fontSize: 11.spMin,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
-        ],
+        ),
       ),
     );
   }

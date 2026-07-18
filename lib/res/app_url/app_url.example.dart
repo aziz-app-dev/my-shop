@@ -34,6 +34,17 @@ class AppUrl {
   static String get cloudinaryUploadUrl =>
       'https://api.cloudinary.com/v1_1/$cloudinaryCloudName/image/upload';
 
+  // ============ GROQ (AI FORECASTING) CONFIGURATION (optional) ============
+  // Powers the AI finance forecasting on the Dashboard. OPTIONAL — if left as
+  // the placeholder, forecasting falls back to a local statistical trend and
+  // still works offline (GroqForecastService.isConfigured == false).
+  // Get a key from: https://console.groq.com/keys  (keep it secret!)
+  static const String groqApiKey = 'YOUR_GROQ_API_KEY';
+  // OpenAI-compatible chat-completions endpoint + model.
+  static const String groqBaseUrl =
+      'https://api.groq.com/openai/v1/chat/completions';
+  static const String groqModel = 'llama-3.3-70b-versatile';
+
   // ============ IMAGE SETTINGS ============
   // Maximum image size in bytes (800KB)
   static const int maxImageSizeBytes = 800 * 1024; // 800KB

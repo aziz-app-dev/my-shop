@@ -16,7 +16,9 @@ import '../../res/components/app_bar_widget.dart';
 import '../../res/components/app_flushbar.dart';
 import '../../res/components/app_expansion_tile.dart';
 import '../../res/components/app_icon.dart';
+import '../../utils/app_sizes.dart';
 import '../../view_models/providers/settings_provider.dart';
+import '../main/main_view.dart';
 import 'widgets/screens_mangement.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -320,11 +322,10 @@ class SettingsPage extends ConsumerWidget {
         title: 'Settings',
         backgroundColor: Colors.white,
         context: context,
-        backIcon: TablerIcons.menu_3,
-        automaticallyImplyLeading: false,
-        leadingOnTap: () {
-          openDrawer();
-        },
+        backIcon: Icons.menu,
+        winBackIcon: ImageAssets.win11Menu,
+        automaticallyImplyLeading: AppSizes.isMobile(context),
+        leadingOnTap: openAppDrawer,
       ),
       body: Theme(
         data: Theme.of(context).copyWith(

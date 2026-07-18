@@ -11,9 +11,9 @@ import '../login/login_view.dart' show AuthField;
 import '../login/widgets/auth_scaffold.dart';
 
 /// Step 1 of registration: create the Firebase account (email + password).
-/// On success it routes to the shop-info setup page ([RouteName.profileEdit]),
-/// which collects the full shop details and then continues to Home. This keeps
-/// the single, complete shop-info form in one place.
+/// On success it signs the auto-created session back out and routes to
+/// [RouteName.loginView] so the user explicitly logs in. Shop setup happens
+/// after that first login (flow: create account → log in → set up shop → Home).
 class SignUpView extends ConsumerStatefulWidget {
   const SignUpView({super.key});
 
@@ -53,9 +53,12 @@ class _SignUpViewState extends ConsumerState<SignUpView> {
       return;
     }
 
-    AppFlushbar.success(context, message: 'Account created! Set up your shop.');
-    // Continue to the full shop-info setup, which navigates to Home on save.
-    Navigator.pushReplacementNamed(context, RouteName.profileEdit);
+    // Firebase signs the new account in automatically. Sign back out so the
+    // user explicitly logs in next (flow: create account → log in → set up).
+    await ref.read(authProvider.notifier).logout();
+    if (!mounted) return;
+    AppFlushbar.success(context, message: 'Account created! Please log in.');
+    Navigator.pushReplacementNamed(context, RouteName.loginView);
   }
 
   @override

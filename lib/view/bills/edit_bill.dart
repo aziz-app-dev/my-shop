@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:data_table_2/data_table_2.dart';
+import 'package:intl/intl.dart';
 import 'package:desktopapp/res/colors/app_color.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
@@ -18,6 +19,7 @@ import '../../utils/payment_calculator.dart';
 import '../../view_models/providers/bills_provider.dart';
 import '../../view_models/providers/sales_provider.dart';
 import '../../view_models/providers/edit_bill_provider.dart';
+import '../../view_models/providers/reminder_provider.dart';
 import '../home/rapper.dart';
 import '../sales/check_out_view.dart';
 import '../../res/components/app_button.dart';
@@ -41,9 +43,13 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
   late TextEditingController statusController;
   late TextEditingController paymentMethodController;
 
+  /// Optional payment-due date+time for the reminder system (pending bills).
+  DateTime? _dueDate;
+
   @override
   void initState() {
     super.initState();
+    _dueDate = widget.bill.dueDate;
     // Initialize controllers with bill data
     nameController = TextEditingController(
       text: widget.bill.customerName ?? '',
@@ -218,6 +224,12 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
         paidAmount: paidAmount,
       );
 
+      // A fully-paid bill has nothing to remind about, so drop any due date.
+      final isPaidNow = billStatus == 'Paid';
+      // Reset the notify stamp whenever the due date changes so the reminder
+      // can fire for the new date.
+      final dueChanged = _dueDate != widget.bill.dueDate;
+
       final updatedBill = widget.bill.copyWith(
         customerName: nameController.text.isEmpty ? null : nameController.text,
         customerId:
@@ -243,10 +255,14 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
         totalAmount: totalAmount,
         items: updatedItems,
         quantities: updatedQuantities,
+        dueDate: isPaidNow ? null : _dueDate,
+        clearDueDate: isPaidNow || _dueDate == null,
+        clearReminderNotifiedAt: isPaidNow || dueChanged,
       );
 
       await ref.read(databaseServiceProvider).saveBill(updatedBill);
       ref.read(billsProvider.notifier).fetchBills();
+      ref.read(reminderProvider.notifier).loadReminders();
       Navigator.pop(context);
     }
   }
@@ -688,6 +704,90 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
     );
   }
 
+  Future<void> _pickDueDate() async {
+    final now = DateTime.now();
+    final initial = _dueDate ?? now.add(const Duration(days: 7));
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 5),
+      helpText: 'Select payment due date',
+    );
+    if (date == null) return;
+    if (!mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+      helpText: 'Select reminder time',
+    );
+    final chosen = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time?.hour ?? 9,
+      time?.minute ?? 0,
+    );
+    setState(() => _dueDate = chosen);
+  }
+
+  /// Due date + reminder field. Only meaningful for pending bills — collecting
+  /// a due date lets the reminder system alert on that date and time.
+  Widget _buildDueDateField() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final label = _dueDate == null
+        ? 'Set payment reminder (optional)'
+        : DateFormat('dd MMM yyyy,  hh:mm a').format(_dueDate!);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        smTextBold(text: 'Payment Reminder'),
+        SizedBox(height: 8.h),
+        InkWell(
+          borderRadius: BorderRadius.circular(8.r),
+          onTap: _pickDueDate,
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 14.h),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.dTFieldColor : AppColors.lTFieldColor,
+              borderRadius: BorderRadius.circular(8.r),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
+            ),
+            child: Row(
+              children: [
+                AppIcon(
+                  defaultIcon: Icons.notifications_active_outlined,
+                  win11IconPath: ImageAssets.win11Notification,
+                  size: 20.spMin,
+                  color: AppColors.primary,
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: mdText(
+                    text: label,
+                    color: _dueDate == null
+                        ? AppColors.grey500
+                        : (isDark ? Colors.white : Colors.black),
+                  ),
+                ),
+                if (_dueDate != null)
+                  IconButton(
+                    tooltip: 'Clear reminder',
+                    icon: AppIcon(
+                      defaultIcon: Icons.close,
+                      size: 18.spMin,
+                      color: Colors.red,
+                    ),
+                    onPressed: () => setState(() => _dueDate = null),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildItemsTable() {
     final editState = ref.watch(editBillProvider(widget.bill));
     return Card(
@@ -869,6 +969,10 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
           if (customerFormState.fieldConfigs['paidAmount']!.isShow &&
               statusController.text != 'Paid') ...[
             _buildPaidAmountField(customerFormState),
+            SizedBox(height: 24.h),
+          ],
+          if (statusController.text != 'Paid') ...[
+            _buildDueDateField(),
             SizedBox(height: 32.h),
           ],
           _buildItemsTable(),
@@ -935,6 +1039,10 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
           if (customerFormState.fieldConfigs['paidAmount']!.isShow &&
               statusController.text != 'Paid') ...[
             _buildPaidAmountField(customerFormState),
+            SizedBox(height: 24.h),
+          ],
+          if (statusController.text != 'Paid') ...[
+            _buildDueDateField(),
             SizedBox(height: 32.h),
           ],
           _buildItemsTable(),

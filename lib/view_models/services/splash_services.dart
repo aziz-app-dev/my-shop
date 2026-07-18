@@ -137,24 +137,24 @@ class SplashServices {
         return;
       }
 
-      // Signed in. Check whether a shop profile exists locally.
-      bool hasProfileData = await _checkProfileDataExists();
+      // Signed in. Has the shop setup been completed locally?
+      bool setupComplete = await _isShopSetupComplete();
 
-      // No local profile yet? Try to pull it from the cloud (re-install / new
-      // device for an already-set-up shop). If found, restore and go home;
-      // otherwise send the user to complete their shop info.
-      if (!hasProfileData) {
-        hasProfileData = await _tryRestoreProfileFromCloud();
+      // Not complete locally? Try to pull the profile from the cloud
+      // (re-install / new device for an already-set-up shop), then re-check.
+      if (!setupComplete) {
+        final restored = await _tryRestoreProfileFromCloud();
+        if (restored) setupComplete = await _isShopSetupComplete();
       }
 
       // Navigate after 1 sec
       Timer(const Duration(seconds: 1), () {
         if (context.mounted) {
-          if (!hasProfileData) {
-            // Signed in but no shop info yet — finish setup.
+          if (!setupComplete) {
+            // Signed in but shop setup not finished — go to Shop Setup.
             Navigator.pushReplacementNamed(context, RouteName.profileEdit);
           } else {
-            // Profile exists (local or restored from cloud), go to home.
+            // Shop setup complete (local or restored from cloud), go to home.
             Navigator.pushReplacementNamed(context, RouteName.mainScreen);
           }
         }
@@ -189,14 +189,19 @@ class SplashServices {
     return !setupCompleted;
   }
 
-  /// Check if profile data exists in the database
-  Future<bool> _checkProfileDataExists() async {
+  /// Whether the local user has completed the first-run shop setup. A profile
+  /// that already has a shop name counts as complete too, so an existing shop
+  /// (restored from the cloud on a new device, or saved before the
+  /// shopSetupComplete flag existed) doesn't get sent back through setup.
+  Future<bool> _isShopSetupComplete() async {
     try {
       final hiveService = HiveService();
       final users = hiveService.getUsers();
-      return users.isNotEmpty;
+      return users.isNotEmpty &&
+          (users.first.shopSetupComplete ||
+              users.first.shopName.trim().isNotEmpty);
     } catch (e) {
-      debugPrint('Error checking profile data: $e');
+      debugPrint('Error checking shop setup status: $e');
       return false;
     }
   }

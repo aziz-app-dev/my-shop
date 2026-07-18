@@ -143,45 +143,63 @@ class BillsNotifier extends StateNotifier<BillsState> {
   }
 
   void setStatusFilter(String? status) {
-    state = state.copyWith(statusFilter: status);
+    state = state.copyWith(
+      statusFilter: status,
+      clearStatusFilter: status == null,
+    );
     filterAndSortBills();
   }
 
   void setPaymentMethodFilter(String? method) {
-    state = state.copyWith(paymentMethodFilter: method);
+    state = state.copyWith(
+      paymentMethodFilter: method,
+      clearPaymentMethodFilter: method == null,
+    );
     filterAndSortBills();
   }
 
   void setCustomerFilter(String? customer) {
-    state = state.copyWith(customerFilter: customer);
+    state = state.copyWith(
+      customerFilter: customer,
+      clearCustomerFilter: customer == null,
+    );
     filterAndSortBills();
   }
 
   void setDateRangeFilter(DateTimeRange? range) {
-    state = state.copyWith(dateRangeFilter: range);
+    state = state.copyWith(
+      dateRangeFilter: range,
+      clearDateRangeFilter: range == null,
+    );
     filterAndSortBills();
   }
 
   void setTotalAmountRange(double? min, double? max) {
-    state = state.copyWith(totalAmountMin: min, totalAmountMax: max);
+    state = state.copyWith(
+      totalAmountMin: min,
+      totalAmountMax: max,
+      clearAmountRange: min == null && max == null,
+    );
     filterAndSortBills();
   }
 
   void setItemCountRange(int? min, int? max) {
-    state = state.copyWith(itemCountMin: min, itemCountMax: max);
+    state = state.copyWith(
+      itemCountMin: min,
+      itemCountMax: max,
+      clearItemCountRange: min == null && max == null,
+    );
     filterAndSortBills();
   }
 
   void clearFilters() {
     state = state.copyWith(
-      statusFilter: null,
-      paymentMethodFilter: null,
-      customerFilter: null,
-      dateRangeFilter: null,
-      totalAmountMin: null,
-      totalAmountMax: null,
-      itemCountMin: null,
-      itemCountMax: null,
+      clearStatusFilter: true,
+      clearPaymentMethodFilter: true,
+      clearCustomerFilter: true,
+      clearDateRangeFilter: true,
+      clearAmountRange: true,
+      clearItemCountRange: true,
       filteredBills:
           state.allBills, // Explicitly reset filteredBills to allBills
     );

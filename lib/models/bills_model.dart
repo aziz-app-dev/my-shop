@@ -13,6 +13,14 @@ class Bill {
   final double discount;
   final double paidAmount;
 
+  /// Optional payment-due date+time for pending bills. Drives the payment
+  /// reminder system (null = no reminder set).
+  final DateTime? dueDate;
+
+  /// Timestamp of when a due reminder was last fired for this bill, so the
+  /// scheduler doesn't notify repeatedly. Reset when [dueDate] changes.
+  final DateTime? reminderNotifiedAt;
+
   Bill({
     required this.id,
     required this.dateTime,
@@ -25,6 +33,8 @@ class Bill {
     this.paymentMethod,
     this.discount = 0.0,
     this.paidAmount = 0.0,
+    this.dueDate,
+    this.reminderNotifiedAt,
   });
 
   // Computed properties for payment calculations
@@ -50,6 +60,26 @@ class Bill {
     return (paidAmount / totalAfterDiscount * 100).clamp(0.0, 100.0);
   }
 
+  // Reminder helpers
+
+  /// True when this bill has a payment reminder that still needs collecting:
+  /// a due date is set and money is still owed.
+  bool get hasActiveReminder => dueDate != null && !isFullyPaid;
+
+  /// True when the due date has passed and the bill isn't fully paid.
+  bool get isOverdue =>
+      hasActiveReminder && dueDate!.isBefore(DateTime.now());
+
+  /// Whole days until the payment is due (negative if overdue). Null when no
+  /// reminder is set.
+  int? get daysUntilDue {
+    if (dueDate == null) return null;
+    final now = DateTime.now();
+    final due = DateTime(dueDate!.year, dueDate!.month, dueDate!.day);
+    final today = DateTime(now.year, now.month, now.day);
+    return due.difference(today).inDays;
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -63,6 +93,8 @@ class Bill {
       'paymentMethod': paymentMethod,
       'discount': discount,
       'paidAmount': paidAmount,
+      'dueDate': dueDate?.toIso8601String(),
+      'reminderNotifiedAt': reminderNotifiedAt?.toIso8601String(),
     };
   }
 
@@ -111,6 +143,9 @@ class Bill {
       paymentMethod: map['paymentMethod'] as String?,
       discount: (map['discount'] as num?)?.toDouble() ?? 0.0,
       paidAmount: (map['paidAmount'] as num?)?.toDouble() ?? 0.0,
+      dueDate: DateTime.tryParse(map['dueDate'] as String? ?? ''),
+      reminderNotifiedAt:
+          DateTime.tryParse(map['reminderNotifiedAt'] as String? ?? ''),
     );
   }
 
@@ -126,6 +161,10 @@ class Bill {
     String? paymentMethod,
     double? discount,
     double? paidAmount,
+    DateTime? dueDate,
+    bool clearDueDate = false,
+    DateTime? reminderNotifiedAt,
+    bool clearReminderNotifiedAt = false,
   }) {
     return Bill(
       id: id ?? this.id,
@@ -139,6 +178,10 @@ class Bill {
       paymentMethod: paymentMethod,
       discount: discount ?? this.discount,
       paidAmount: paidAmount ?? this.paidAmount,
+      dueDate: clearDueDate ? null : (dueDate ?? this.dueDate),
+      reminderNotifiedAt: clearReminderNotifiedAt
+          ? null
+          : (reminderNotifiedAt ?? this.reminderNotifiedAt),
     );
   }
 }

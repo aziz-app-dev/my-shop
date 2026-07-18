@@ -122,21 +122,39 @@ class BillsState {
     bool? isSelectionMode,
     bool? isFilterVisible,
     bool? isLoading,
+    // Clear flags — pass true to reset the matching filter to null (the plain
+    // `?? this.x` pattern can't clear a nullable field).
+    bool clearStatusFilter = false,
+    bool clearPaymentMethodFilter = false,
+    bool clearCustomerFilter = false,
+    bool clearAmountRange = false,
+    bool clearItemCountRange = false,
+    bool clearDateRangeFilter = false,
   }) {
     return BillsState(
       allBills: allBills ?? this.allBills,
       filteredBills: filteredBills ?? this.filteredBills,
       sortAscending: sortAscending ?? this.sortAscending,
       sortColumnIndex: sortColumnIndex ?? this.sortColumnIndex,
-      statusFilter: statusFilter ?? this.statusFilter,
-      paymentMethodFilter: paymentMethodFilter ?? this.paymentMethodFilter,
-      customerFilter: customerFilter ?? this.customerFilter,
-      totalAmountMin: totalAmountMin ?? this.totalAmountMin,
-      totalAmountMax: totalAmountMax ?? this.totalAmountMax,
-      itemCountMin: itemCountMin ?? this.itemCountMin,
-      itemCountMax: itemCountMax ?? this.itemCountMax,
+      statusFilter:
+          clearStatusFilter ? null : (statusFilter ?? this.statusFilter),
+      paymentMethodFilter: clearPaymentMethodFilter
+          ? null
+          : (paymentMethodFilter ?? this.paymentMethodFilter),
+      customerFilter:
+          clearCustomerFilter ? null : (customerFilter ?? this.customerFilter),
+      totalAmountMin:
+          clearAmountRange ? null : (totalAmountMin ?? this.totalAmountMin),
+      totalAmountMax:
+          clearAmountRange ? null : (totalAmountMax ?? this.totalAmountMax),
+      itemCountMin:
+          clearItemCountRange ? null : (itemCountMin ?? this.itemCountMin),
+      itemCountMax:
+          clearItemCountRange ? null : (itemCountMax ?? this.itemCountMax),
       error: error ?? this.error,
-      dateRangeFilter: dateRangeFilter ?? this.dateRangeFilter,
+      dateRangeFilter: clearDateRangeFilter
+          ? null
+          : (dateRangeFilter ?? this.dateRangeFilter),
       selectedBills: selectedBills ?? this.selectedBills,
       selectAll: selectAll ?? this.selectAll,
       currentPage: currentPage ?? this.currentPage,

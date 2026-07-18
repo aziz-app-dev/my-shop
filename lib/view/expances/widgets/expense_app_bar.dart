@@ -15,6 +15,7 @@ import '../../../res/components/app_icon.dart';
 import '../../../view_models/providers/expense_provider.dart';
 import '../../../view_models/providers/settings_provider.dart';
 import '../../../view_models/services/database/database_services.dart';
+import '../../main/main_view.dart';
 import 'expense_dialogs.dart';
 import 'expense_pdf_generator.dart';
 
@@ -35,8 +36,9 @@ class ExpenseAppBar extends ConsumerWidget implements PreferredSizeWidget {
       title: 'Expenses',
       context: context,
       automaticallyImplyLeading: isMobile,
-      backIcon: isMobile ? TablerIcons.menu_2 : null,
-      leadingOnTap: isMobile ? openDrawer : null,
+      backIcon: isMobile ? Icons.menu : null,
+      winBackIcon: isMobile ? ImageAssets.win11Menu : null,
+      leadingOnTap: isMobile ? openAppDrawer : null,
       actions: [
         if (!isMobile) ...[
           SizedBox(

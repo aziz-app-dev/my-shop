@@ -15,6 +15,7 @@ import '../../res/components/text_field_widget.dart';
 import '../../utils/app_sizes.dart';
 import '../../view_models/providers/repair_provider.dart';
 import '../../view_models/states/repair_state.dart';
+import '../main/main_view.dart';
 import 'repair_detail_view.dart';
 import 'create_repair_view.dart';
 import 'widgets/repair_summary_widget.dart';
@@ -29,16 +30,14 @@ class RepairView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final useSplitView =
-        AppSizes.isTablet(context) || AppSizes.isDesktop(context);
-
     return Scaffold(
       appBar: AppBarWidget.customAppBar(
         title: 'Repairs',
         context: context,
-        automaticallyImplyLeading: openDrawer != null,
-        leadingOnTap: openDrawer,
+        automaticallyImplyLeading: AppSizes.isMobile(context),
+        leadingOnTap: openAppDrawer,
         backIcon: Icons.menu,
+        winBackIcon: ImageAssets.win11Menu,
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
@@ -53,7 +52,17 @@ class RepairView extends ConsumerWidget {
           ),
         ),
       ),
-      body: useSplitView ? const _SplitLayout() : const _MobileList(),
+      // Decide from the width ACTUALLY available to the Repairs page — it sits
+      // next to the nav rail (tablet) / drawer (desktop), so the full-screen
+      // breakpoints over-report width. Below ~900px a two-pane split leaves the
+      // detail cramped, so narrow tablets (esp. portrait) collapse to the single
+      // list that pushes the detail screen, exactly like mobile.
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final useSplitView = constraints.maxWidth >= 900;
+          return useSplitView ? const _SplitLayout() : const _MobileList();
+        },
+      ),
     );
   }
 
@@ -113,7 +122,6 @@ class _SplitLayout extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final state = ref.watch(repairProvider);
     final repairs = state.filteredRepairs;
-    final isDesktop = AppSizes.isDesktop(context);
 
     // Keep the selection valid: if the selected repair is filtered out or
     // gone, fall back to the first visible repair.
@@ -122,12 +130,6 @@ class _SplitLayout extends ConsumerWidget {
         repairs.any((r) => r.id == selectedId)
             ? selectedId
             : (repairs.isNotEmpty ? repairs.first.id : null);
-
-    // List pane width via .spMin (scales by the smaller axis ratio, ~1.56x on
-    // a 1080p desktop — safe). Do NOT use .w here: it scales by the 360 design
-    // width (~5.3x on desktop) and would blow the pane up, pushing the detail
-    // pane into overflow.
-    final listPaneWidth = isDesktop ? 280.spMin : 200.spMin;
 
     final listPane = Column(
       children: [
@@ -158,16 +160,25 @@ class _SplitLayout extends ConsumerWidget {
           color: (isDark ? AppColors.grey800 : AppColors.border),
         ),
         Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(width: listPaneWidth, child: listPane),
-              VerticalDivider(
-                width: 1,
-                color: (isDark ? AppColors.grey800 : AppColors.border),
-              ),
-              Expanded(child: detailPane),
-            ],
+          // Size the list pane as a fraction of the REAL available width (not a
+          // fixed .spMin value, which over-scales on tablets and overflows the
+          // detail pane). Clamp so it never gets too narrow or too wide.
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final listPaneWidth =
+                  (constraints.maxWidth * 0.34).clamp(300.0, 400.0);
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(width: listPaneWidth, child: listPane),
+                  VerticalDivider(
+                    width: 1,
+                    color: (isDark ? AppColors.grey800 : AppColors.border),
+                  ),
+                  Expanded(child: detailPane),
+                ],
+              );
+            },
           ),
         ),
       ],
@@ -197,11 +208,10 @@ class _DetailPane extends ConsumerWidget {
 
     return Column(
       children: [
-        // Inline detail toolbar (edit / delete) — the screen-level app bar
-        // belongs to the whole Repairs page, so the pane carries its own.
+        // Inline detail toolbar (⋮ actions) — the screen-level app bar belongs
+        // to the whole Repairs page, so the pane carries its own.
         _DetailToolbar(repair: repair),
-        Expanded(child: RepairDetailBody(repair: repair, bottomPadding: 16)),
-        RepairStatusBar(repair: repair),
+        Expanded(child: RepairDetailBody(repair: repair, bottomPadding: 60)),
       ],
     );
   }
@@ -222,24 +232,7 @@ class _DetailToolbar extends ConsumerWidget {
             style: TextStyle(fontSize: 15.spMin, fontWeight: FontWeight.bold),
           ),
           const Spacer(),
-          IconButton(
-            tooltip: 'Edit',
-            onPressed: () => openRepairEditor(context, repair),
-            icon: AppIcon(
-              defaultIcon: TablerIcons.edit,
-              win11IconPath: ImageAssets.win11EditPencil,
-              size: 18.spMin,
-            ),
-          ),
-          IconButton(
-            tooltip: 'Delete',
-            onPressed: () => confirmDeleteRepair(context, ref, repair),
-            icon: Icon(
-              TablerIcons.trash,
-              size: 18.spMin,
-              color: AppColors.error,
-            ),
-          ),
+          RepairActionsMenu(repair: repair),
         ],
       ),
     );
@@ -496,40 +489,6 @@ class RepairCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                    if (repair.problem.isNotEmpty) ...[
-                      SizedBox(height: 4.spMin),
-                      Text(
-                        repair.problem,
-                        style: TextStyle(
-                          fontSize: 12.spMin,
-                          color: Colors.grey[700],
-                          fontStyle: FontStyle.italic,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    SizedBox(height: 6.spMin),
-                    Row(
-                      children: [
-                        if (repair.estimatedCost > 0)
-                          Text(
-                            'Est: Rs ${repair.estimatedCost.toStringAsFixed(0)}',
-                            style: TextStyle(fontSize: 11.spMin),
-                          ),
-                        if (repair.balanceDue > 0) ...[
-                          SizedBox(width: 10.spMin),
-                          Text(
-                            'Due: Rs ${repair.balanceDue.toStringAsFixed(0)}',
-                            style: TextStyle(
-                              fontSize: 11.spMin,
-                              color: AppColors.error,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
                   ],
                 ),
               ),

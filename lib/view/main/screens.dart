@@ -13,6 +13,7 @@ import '../../res/assets/image_assets.dart';
 import '../bills/bills_view.dart';
 import '../customers/customer_list_view.dart';
 import '../expances/expanses_view.dart';
+import '../reminders/reminders_view.dart';
 import '../repairs/repair_view.dart';
 import '../sales/sale_view.dart';
 
@@ -75,6 +76,12 @@ const List<NavigationItem> desktopNavItems = [
     activeIcon: TablerIcons.users,
     label: 'Customers',
     activeWind11Icon: ImageAssets.win11People,
+  ),
+  NavigationItem(
+    icon: TablerIcons.bell,
+    activeIcon: TablerIcons.bell_ringing,
+    label: 'Reminders',
+    activeWind11Icon: ImageAssets.win11Notification,
   ),
 
   NavigationItem(
@@ -150,13 +157,15 @@ List<Widget> pages(
     const SalesScreenSelector(), // Dynamically shows single or multi-cart based on settings
     BillsScreen(),
     CustomerListScreen(),
+    RemindersView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
     ProfileView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
     ExpensesView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
     DashboradView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
     SettingsPage(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
   ];
   if (showRepairs) {
-    // CustomerListScreen is at index 3 → insert Repairs at index 4.
+    // CustomerListScreen is at index 3 → insert Repairs at index 4 (right
+    // after Customers, before Reminders), matching navItemsFor's placement.
     list.insert(
       4,
       RepairView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),

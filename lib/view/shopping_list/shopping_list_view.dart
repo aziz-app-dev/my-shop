@@ -3,9 +3,11 @@
 import 'dart:io';
 import 'package:desktopapp/utils/app_sizes.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:open_file/open_file.dart';
+import 'package:printing/printing.dart';
 import '../../models/shopping_list_model.dart';
 import '../../res/colors/app_color.dart';
 import '../../res/components/app_bar_widget.dart';
@@ -14,6 +16,7 @@ import '../../res/components/app_text_widgrt.dart';
 import '../../view_models/providers/shopping_list_provider.dart';
 import '../../view_models/providers/settings_provider.dart';
 import '../../view_models/services/database/database_services.dart';
+import '../../view_models/states/shopping_list_state.dart';
 import '../product_details/product_details_view.dart';
 import 'shopping_list_search_view.dart';
 import 'widgets/shopping_list_pdf_generator.dart';
@@ -32,6 +35,31 @@ class _ShoppingListViewState extends ConsumerState<ShoppingListView> {
     final shoppingListNotifier = ref.read(shoppingListProvider.notifier);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // Ctrl+P prints the current shopping list. autofocus so the shortcut is
+    // active as soon as the page opens on desktop.
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyP, control: true):
+            _printShoppingList,
+      },
+      child: Focus(
+        autofocus: true,
+        child: _buildScaffold(
+          context,
+          shoppingListState,
+          shoppingListNotifier,
+          isDark,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScaffold(
+    BuildContext context,
+    ShoppingListState shoppingListState,
+    ShoppingListNotifier shoppingListNotifier,
+    bool isDark,
+  ) {
     return Scaffold(
       appBar: AppBarWidget.customAppBar(
         context: context,
@@ -48,6 +76,8 @@ class _ShoppingListViewState extends ConsumerState<ShoppingListView> {
                 _showDuplicateListDialog(context, shoppingListNotifier);
               } else if (value == 'download_pdf') {
                 await _generateAndDownloadPDF();
+              } else if (value == 'print') {
+                await _printShoppingList();
               } else if (value == 'select_all') {
                 shoppingListNotifier.selectAll();
               } else if (value == 'deselect_all') {
@@ -117,7 +147,7 @@ class _ShoppingListViewState extends ConsumerState<ShoppingListView> {
                         ],
                       ),
                     ),
-                  if (shoppingListState.unshoppedItems.isNotEmpty)
+                  if (shoppingListState.unshoppedItems.isNotEmpty) ...[
                     PopupMenuItem(
                       value: 'download_pdf',
                       child: Row(
@@ -132,6 +162,21 @@ class _ShoppingListViewState extends ConsumerState<ShoppingListView> {
                         ],
                       ),
                     ),
+                    PopupMenuItem(
+                      value: 'print',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.print,
+                            size: 18.spMin,
+                            color: AppColors.primary,
+                          ),
+                          SizedBox(width: 8),
+                          smText(text: 'Print List (Ctrl+P)'),
+                        ],
+                      ),
+                    ),
+                  ],
                   const PopupMenuDivider(),
 
                   // Show all lists with current one highlighted
@@ -393,6 +438,52 @@ class _ShoppingListViewState extends ConsumerState<ShoppingListView> {
         ),
       ),
     );
+  }
+
+  /// Sends the current shopping list to the system print dialog (Ctrl+P /
+  /// "Print List"). The PDF is generated lazily inside [onLayout] so the
+  /// printer picker opens immediately.
+  Future<void> _printShoppingList() async {
+    final shoppingListState = ref.read(shoppingListProvider);
+    final currentList = shoppingListState.currentList;
+
+    if (currentList == null) {
+      if (mounted) {
+        AppFlushbar.error(context, message: 'No shopping list selected');
+      }
+      return;
+    }
+
+    if (shoppingListState.items.isEmpty) {
+      if (mounted) {
+        AppFlushbar.warning(context, message: 'Nothing to print — list is empty');
+      }
+      return;
+    }
+
+    try {
+      final dbService = DatabaseService();
+      final users = await dbService.getUsers();
+      final shopName = users.isNotEmpty ? users.first.shopName : 'My Shop';
+      final ownerName = users.isNotEmpty ? users.first.ownerName : null;
+
+      final generator = ShoppingListPDFGenerator(
+        shoppingList: currentList,
+        items: shoppingListState.items,
+        shopName: shopName,
+        ownerName: ownerName,
+      );
+      final doc = generator.generatePDF();
+
+      await Printing.layoutPdf(
+        onLayout: (_) => doc.save(),
+        name: 'shopping_list_${currentList.name.replaceAll(' ', '_')}',
+      );
+    } catch (e) {
+      if (mounted) {
+        AppFlushbar.error(context, message: 'Error printing list: $e');
+      }
+    }
   }
 
   Future<void> _generateAndDownloadPDF() async {

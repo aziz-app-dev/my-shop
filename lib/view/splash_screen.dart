@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../res/assets/image_assets.dart';
 import '../res/colors/app_color.dart';
 import '../view_models/providers/profile_provider.dart';
 import '../view_models/services/splash_services.dart';
@@ -79,6 +80,21 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     super.dispose();
   }
 
+  /// The app's own logo, shown when the shop hasn't set its own logo yet.
+  Widget _appLogoImage() {
+    return Image.asset(
+      ImageAssets.appLogo,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+      errorBuilder: (context, error, stackTrace) => Icon(
+        Icons.store,
+        size: 60.spMin,
+        color: AppColors.primary,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileState = ref.watch(profileProvider);
@@ -106,7 +122,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   child: Container(
                     height: 110.spMin,
                     width: 110.spMin,
-                    padding: EdgeInsets.all(hasBranding ? 6.spMin : 24.spMin),
+                    padding: EdgeInsets.all(hasBranding ? 6.spMin : 8.spMin),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       shape: BoxShape.circle,
@@ -127,17 +143,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                                 width: double.infinity,
                                 height: double.infinity,
                                 errorBuilder:
-                                    (context, error, stackTrace) => Icon(
-                                      Icons.store,
-                                      size: 60.spMin,
-                                      color: AppColors.primary,
-                                    ),
+                                    (context, error, stackTrace) =>
+                                        _appLogoImage(),
                               )
-                              : Icon(
-                                Icons.store,
-                                size: 60.spMin,
-                                color: AppColors.primary,
-                              ),
+                              : _appLogoImage(),
                     ),
                   ),
                 ),

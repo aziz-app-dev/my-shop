@@ -11,9 +11,14 @@ plugins {
 android {
     namespace = "com.example.desktopapp"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
+    // Pinned to the locally-installed, complete NDK. The previously pinned
+    // 27.0.12077973 was a corrupt/partial download (missing source.properties).
+    ndkVersion = "27.1.12297006"
 
     compileOptions {
+        // Required by flutter_local_notifications (uses java.time APIs on
+        // older Android versions).
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -45,4 +50,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Core library desugaring runtime — required by flutter_local_notifications.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

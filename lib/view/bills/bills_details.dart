@@ -3,7 +3,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:desktopapp/res/assets/image_assets.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart' show rootBundle, LogicalKeyboardKey;
 import 'package:desktopapp/res/colors/app_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +12,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:intl/intl.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:open_file/open_file.dart';
+import 'package:printing/printing.dart';
 import '../../models/bills_model.dart';
 import '../../res/components/app_bar_widget.dart';
 import '../../res/components/app_flushbar.dart';
@@ -32,7 +33,16 @@ import '../../view_models/providers/settings_provider.dart';
 class BillDetailScreen extends ConsumerStatefulWidget {
   final Bill bill;
 
-  const BillDetailScreen({super.key, required this.bill});
+  /// True when this screen is opened right after a sale is completed. When set,
+  /// the "auto-save PDF" and "auto-print on complete" settings are honoured once
+  /// on open.
+  final bool justCreated;
+
+  const BillDetailScreen({
+    super.key,
+    required this.bill,
+    this.justCreated = false,
+  });
 
   @override
   BillDetailScreenState createState() => BillDetailScreenState();
@@ -44,10 +54,47 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
   Future<void> _initializeSettings() async {
     await _hiveService.init();
     await _loadCustomer();
+    if (widget.justCreated) {
+      await _runPostSaleAutoActions();
+    }
   }
 
   Future<void> _loadCustomer() async {
     await ref.read(billDetailProvider(widget.bill).notifier).loadCustomer();
+  }
+
+  /// Honours the settings-page "on complete" toggles once, when the bill view
+  /// is opened straight after a sale:
+  ///  * Auto-save   — [SettingsState.isPDFSave], or PDF print (which implies a
+  ///    saved file).
+  ///  * Auto-print  — the exposed "Enable Print Bills" master switch
+  ///    ([SettingsState.isPrintEnabled]) or the [isAutoPrintOnSale] flag.
+  Future<void> _runPostSaleAutoActions() async {
+    final settingsState = ref.read(settingsProvider);
+    final shopName = ref.read(profileProvider).shopName ?? 'Your Shop';
+
+    final bool isPdfFormat = settingsState.printFormat == PrintFormat.pdf;
+    final bool autoPrint =
+        settingsState.isPrintEnabled || settingsState.isAutoPrintOnSale;
+    final bool autoSave =
+        settingsState.isPDFSave || (settingsState.isPrintEnabled && isPdfFormat);
+
+    if (autoSave && isPdfFormat) {
+      try {
+        final bytes = await _buildInvoiceBytes(widget.bill, shopName);
+        await _writeInvoiceFile(widget.bill, bytes);
+      } catch (e) {
+        debugPrint('Auto-save PDF failed: $e');
+      }
+    }
+
+    if (autoPrint) {
+      if (settingsState.printFormat == PrintFormat.thermal) {
+        await _printThermal();
+      } else {
+        await _printInvoicePdf(widget.bill, shopName);
+      }
+    }
   }
 
   @override
@@ -66,7 +113,9 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
     }
   }
 
-  Future<void> _generateAndSavePDF(Bill bill, String shopName) async {
+  /// Builds the invoice PDF for [bill] and returns its bytes. Shared by
+  /// save-to-disk, open, and print paths so they always produce the same PDF.
+  Future<Uint8List> _buildInvoiceBytes(Bill bill, String shopName) async {
     // Load user profile data from database
     final dbService = ref.read(databaseServiceProvider);
     final users = await dbService.getUsers();
@@ -243,7 +292,12 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
       whatsappIcon: whatsappIcon,
     );
     final pdf = pdfGenerator.generatePDF();
+    return await pdf.save();
+  }
 
+  /// Writes invoice [bytes] to the app's `invoices` directory and returns the
+  /// file (creating the directory if needed).
+  Future<File> _writeInvoiceFile(Bill bill, Uint8List bytes) async {
     final directoryPath = await HiveService().directoryPath;
     final directory = Directory('$directoryPath/invoices');
     if (!await directory.exists()) {
@@ -252,8 +306,56 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
     final file = File(
       '$directoryPath/invoices/invoice_${bill.id.substring(0, 8)}.pdf',
     );
-    await file.writeAsBytes(await pdf.save());
+    await file.writeAsBytes(bytes);
+    return file;
+  }
+
+  /// Builds the invoice, saves it to disk and opens it in the default viewer.
+  Future<void> _generateAndSavePDF(Bill bill, String shopName) async {
+    final bytes = await _buildInvoiceBytes(bill, shopName);
+    final file = await _writeInvoiceFile(bill, bytes);
     await OpenFile.open(file.path);
+  }
+
+  /// Sends the invoice to the system print dialog (Ctrl+P / auto-print). Works
+  /// on Windows desktop via the `printing` package.
+  ///
+  /// The PDF is built lazily inside [onLayout] rather than before the call, so
+  /// the printer-selection dialog opens immediately instead of waiting for the
+  /// (DB + asset heavy) PDF generation to finish.
+  Future<void> _printInvoicePdf(Bill bill, String shopName) async {
+    await Printing.layoutPdf(
+      onLayout: (_) => _buildInvoiceBytes(bill, shopName),
+      name: 'invoice_${bill.id.substring(0, 8)}',
+    );
+  }
+
+  /// Builds the invoice and opens the system share sheet (email, WhatsApp,
+  /// etc.) so the customer can be sent their bill.
+  Future<void> _shareInvoicePdf(Bill bill, String shopName) async {
+    try {
+      final bytes = await _buildInvoiceBytes(bill, shopName);
+      await Printing.sharePdf(
+        bytes: bytes,
+        filename: 'invoice_${bill.id.substring(0, 8)}.pdf',
+      );
+    } catch (e) {
+      if (mounted) {
+        AppFlushbar.error(context, message: 'Could not share bill: $e');
+      }
+    }
+  }
+
+  /// Prints the current bill using whichever format is configured in settings
+  /// (thermal if selected, otherwise the PDF print dialog). Triggered by Ctrl+P.
+  Future<void> _printCurrentBill() async {
+    final settingsState = ref.read(settingsProvider);
+    if (settingsState.printFormat == PrintFormat.thermal) {
+      await _printThermal();
+    } else {
+      final shopName = ref.read(profileProvider).shopName ?? 'Your Shop';
+      await _printInvoicePdf(widget.bill, shopName);
+    }
   }
 
   Future<void> _deleteBill() async {
@@ -863,6 +965,21 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
     final profileState = ref.read(profileProvider);
     final shopName = profileState.shopName ?? 'Your Shop';
 
+    // Ctrl+P prints the bill (thermal or PDF dialog per settings). autofocus so
+    // the shortcut is active as soon as the bill view opens on desktop.
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyP, control: true):
+            _printCurrentBill,
+      },
+      child: Focus(
+        autofocus: true,
+        child: _buildScaffold(context, shopName),
+      ),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context, String shopName) {
     return Scaffold(
       appBar: AppBarWidget.customAppBar(
         title: 'Bill #${widget.bill.id}',
@@ -919,6 +1036,16 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                     ),
                     SizedBox(width: 8.w),
                     smText(text: 'Save as PDF'),
+                  ],
+                ),
+              ),
+              DropdownMenuItem<String>(
+                value: 'share',
+                child: Row(
+                  children: [
+                    Icon(Icons.share, size: 16.spMin),
+                    SizedBox(width: 8.w),
+                    smText(text: 'Share Bill'),
                   ],
                 ),
               ),
@@ -995,6 +1122,8 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                 }
               } else if (value == 'save_pdf') {
                 await _generateAndSavePDF(widget.bill, shopName);
+              } else if (value == 'share') {
+                await _shareInvoicePdf(widget.bill, shopName);
               } else if (value == 'select_printer') {
                 await _showPrinterSelectionDialog();
               } else if (value == 'print_thermal') {

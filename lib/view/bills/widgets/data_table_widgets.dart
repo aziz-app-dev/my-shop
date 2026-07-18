@@ -1,6 +1,5 @@
 import 'package:desktopapp/res/colors/app_color.dart';
 import 'package:desktopapp/res/components/app_icon.dart';
-import 'package:desktopapp/utils/app_sizes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -534,12 +533,18 @@ class DataTableHeaderCell extends StatelessWidget {
             color: Colors.white,
           ),
           SizedBox(width: 2.w),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 13.spMin,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+          // Flexible + ellipsis so a long title can't overflow a narrow column.
+          Flexible(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13.spMin,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
           ),
         ],

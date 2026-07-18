@@ -12,6 +12,7 @@ import 'view_models/providers/settings_provider.dart';
 import 'view_models/providers/sync_provider.dart';
 import 'view_models/services/database/database_services.dart';
 import 'view_models/services/image_cache/image_cache_service.dart';
+import 'view_models/services/notifications/notification_service.dart';
 import 'view_models/services/theme/theme_services.dart';
 
 Future<void> main() async {
@@ -33,6 +34,10 @@ Future<void> main() async {
 
   // Initialize Image Cache Service
   await ImageCacheService.instance.init();
+
+  // Initialize local notifications for the payment reminder system. Wrapped
+  // internally so an unsupported platform can't block startup.
+  await NotificationService.instance.init();
 
   runApp(ProviderScope(child: MyApp()));
 }

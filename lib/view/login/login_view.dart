@@ -50,29 +50,41 @@ class _LoginViewState extends ConsumerState<LoginView> {
       return;
     }
 
-    // Pull the cloud profile into local Hive, then route by whether a shop
-    // profile exists.
-    bool hasProfile = false;
+    // Route by whether the shop setup has been completed. Decide from the LOCAL
+    // profile so a flaky/offline cloud fetch (common on mobile right after
+    // sign-in) can't wrongly send an already-set-up shop back to setup. The
+    // cloud fetch is best-effort: it restores the profile on a fresh device but
+    // its failure must not abort the check.
+    bool setupComplete = false;
     try {
-      final cloudUser = await CloudUserService().getProfile();
-      if (cloudUser != null) {
-        final db = DatabaseService();
-        await db.initialize();
-        await db.saveUser(cloudUser);
-        hasProfile = true;
-      } else {
-        final db = DatabaseService();
-        await db.initialize();
-        hasProfile = (await db.getUsers()).isNotEmpty;
+      final db = DatabaseService();
+      await db.initialize();
+
+      // Best-effort cloud restore (new device / re-install). Isolated so a
+      // network error here doesn't skip the local check below.
+      try {
+        final cloudUser = await CloudUserService().getProfile();
+        if (cloudUser != null) {
+          await db.saveUser(cloudUser);
+        }
+      } catch (e) {
+        debugPrint('Cloud profile fetch failed, using local profile: $e');
       }
-    } catch (_) {
-      // Offline / no profile — fall through to setup.
+
+      // A profile with a shop name means the shop already exists (e.g. an older
+      // profile that predates the shopSetupComplete flag) — go Home.
+      final users = await db.getUsers();
+      setupComplete = users.isNotEmpty &&
+          (users.first.shopSetupComplete ||
+              users.first.shopName.trim().isNotEmpty);
+    } catch (e) {
+      debugPrint('Post-login routing check failed: $e');
     }
 
     if (!mounted) return;
     Navigator.pushReplacementNamed(
       context,
-      hasProfile ? RouteName.mainScreen : RouteName.profileEdit,
+      setupComplete ? RouteName.mainScreen : RouteName.profileEdit,
     );
   }
 

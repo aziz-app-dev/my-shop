@@ -10,10 +10,26 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../res/components/app_icon.dart';
 import '../../view_models/providers/profile_provider.dart';
+import '../../view_models/providers/reminder_provider.dart';
 import '../../view_models/providers/settings_provider.dart';
 
 // Riverpod provider for selected index
 final selectedIndexProvider = StateProvider<int>((ref) => 0);
+
+/// Index of the Home page in the nav/page lists. Used by the mobile system-back
+/// handler to return to Home (navigation is index-based, not a route stack).
+const int kHomeIndex = 0;
+
+/// Key on the mobile shell Scaffold that owns the navigation drawer, so any
+/// page can open the drawer without the key being threaded through.
+final GlobalKey<ScaffoldState> rootScaffoldKey = GlobalKey<ScaffoldState>();
+
+/// Open the app's navigation drawer (mobile). Every page's hamburger uses this.
+void openAppDrawer() => rootScaffoldKey.currentState?.openDrawer();
+
+/// Switch the shell back to the Home tab (used by the mobile system-back).
+void navigateHome(WidgetRef ref) =>
+    ref.read(selectedIndexProvider.notifier).state = kHomeIndex;
 
 class MainScrenn extends ConsumerStatefulWidget {
   const MainScrenn({super.key});
@@ -27,6 +43,43 @@ class _MainScrennState extends ConsumerState<MainScrenn> {
   void initState() {
     super.initState();
     ref.read(profileProvider.notifier).loadUserData();
+  }
+
+  /// Overlays a small red dot on the Reminders nav icon when there is at least
+  /// one active payment reminder. No-op for every other nav item.
+  Widget _withReminderDot(
+    WidgetRef ref,
+    NavigationItem item,
+    Widget iconWidget,
+  ) {
+    if (item.label != 'Reminders') return iconWidget;
+    final hasReminders = ref.watch(
+      reminderProvider.select((s) => s.reminders.isNotEmpty),
+    );
+    if (!hasReminders) return iconWidget;
+    final Color bgColor =
+        Theme.of(context).brightness == Brightness.dark
+            ? (AppColors.dBottomNavBarColor ?? Colors.black)
+            : Colors.white;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        iconWidget,
+        Positioned(
+          right: -2.spMin,
+          top: -2.spMin,
+          child: Container(
+            width: 9.spMin,
+            height: 9.spMin,
+            decoration: BoxDecoration(
+              color: Colors.redAccent,
+              shape: BoxShape.circle,
+              border: Border.all(color: bgColor, width: 1.5),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget buildDesktopDrawer(WidgetRef ref) {
@@ -70,16 +123,20 @@ class _MainScrennState extends ConsumerState<MainScrenn> {
                   ),
                   child: Row(
                     children: [
-                      AppIcon(
-                        defaultIcon:
-                            selectedIndex == index
-                                ? item.activeIcon
-                                : item.icon,
-                        win11IconPath: item.activeWind11Icon,
-                        color:
-                            selectedIndex == index
-                                ? activeIconColor
-                                : inactiveIconColor,
+                      _withReminderDot(
+                        ref,
+                        item,
+                        AppIcon(
+                          defaultIcon:
+                              selectedIndex == index
+                                  ? item.activeIcon
+                                  : item.icon,
+                          win11IconPath: item.activeWind11Icon,
+                          color:
+                              selectedIndex == index
+                                  ? activeIconColor
+                                  : inactiveIconColor,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Text(
@@ -126,10 +183,15 @@ class _MainScrennState extends ConsumerState<MainScrenn> {
                     : Colors.transparent,
             borderRadius: BorderRadius.circular(10.r),
           ),
-          child: AppIcon(
-            defaultIcon: selectedIndex == index ? item.activeIcon : item.icon,
-            win11IconPath: item.activeWind11Icon,
-            color: selectedIndex == index ? activeIconColor : inactiveIconColor,
+          child: _withReminderDot(
+            ref,
+            item,
+            AppIcon(
+              defaultIcon: selectedIndex == index ? item.activeIcon : item.icon,
+              win11IconPath: item.activeWind11Icon,
+              color:
+                  selectedIndex == index ? activeIconColor : inactiveIconColor,
+            ),
           ),
         ),
       ),
@@ -187,16 +249,20 @@ class _MainScrennState extends ConsumerState<MainScrenn> {
                         ),
                         child: Row(
                           children: [
-                            AppIcon(
-                              defaultIcon:
-                                  selectedIndex == index
-                                      ? item.activeIcon
-                                      : item.icon,
-                              win11IconPath: item.activeWind11Icon,
-                              color:
-                                  selectedIndex == index
-                                      ? activeIconColor
-                                      : inactiveIconColor,
+                            _withReminderDot(
+                              ref,
+                              item,
+                              AppIcon(
+                                defaultIcon:
+                                    selectedIndex == index
+                                        ? item.activeIcon
+                                        : item.icon,
+                                win11IconPath: item.activeWind11Icon,
+                                color:
+                                    selectedIndex == index
+                                        ? activeIconColor
+                                        : inactiveIconColor,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Text(item.label),
@@ -365,7 +431,8 @@ class _MainScrennState extends ConsumerState<MainScrenn> {
     );
     final navItems = navItemsFor(showRepairs: showRepairs);
 
-    final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
+    // Use the global root key so any page's hamburger can open this drawer.
+    final scaffoldKey = rootScaffoldKey;
     final pageList = pages(scaffoldKey, showRepairs: showRepairs);
     // Guard against an out-of-range index when the Repairs module is toggled
     // off while it (or a later page) was selected.
@@ -428,11 +495,19 @@ class _MainScrennState extends ConsumerState<MainScrenn> {
         ),
       );
     } else {
-      return Scaffold(
-        key: scaffoldKey,
-        drawer: buildMobileDrawer(ref), // Always enable the drawer
-        body: pageList[safeIndex], // Pass scaffoldKey
-        bottomNavigationBar: buildMobileBottomNavBar(ref, navItems),
+      // Mobile: no bottom nav. The hamburger (on Home) opens the full drawer;
+      // every sub-page shows a back arrow → Home. System/gesture back also
+      // returns to Home first, only exiting the app from Home.
+      return PopScope(
+        canPop: safeIndex == kHomeIndex,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) navigateHome(ref);
+        },
+        child: Scaffold(
+          key: scaffoldKey,
+          drawer: buildMobileDrawer(ref), // Always enable the drawer
+          body: pageList[safeIndex],
+        ),
       );
     }
   }

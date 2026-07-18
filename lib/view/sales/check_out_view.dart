@@ -7,6 +7,7 @@ import 'package:desktopapp/res/components/app_button.dart';
 import 'package:desktopapp/res/components/app_flushbar.dart';
 import 'package:desktopapp/res/components/app_text_widgrt.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -424,7 +425,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
           ),
         ),
         if (isWalkIn) ...[
-          SizedBox(height: 4.h),
+          SizedBox(height: 4.spMin),
           mdText(
             text: isTestBill
                 ? 'Test bill - PDF only, no data saved'
@@ -648,6 +649,12 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
               : customerFormState.fieldConfigs['phoneNumber']!.hintText,
       label: customerFormState.fieldConfigs['phoneNumber']!.title,
       keyboardType: TextInputType.phone,
+      // Only digits and a dash are typable (e.g. "0300-1234567"); nothing else
+      // reaches the field, and the total length is capped.
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'[0-9-]')),
+        LengthLimitingTextInputFormatter(16),
+      ],
       prefixIcon: Icon(
         Icons.phone,
         color:
@@ -667,10 +674,14 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
                       .fieldConfigs['phoneNumber']!
                       .validatorText;
                 }
-                if (value != null &&
-                    value.isNotEmpty &&
-                    !RegExp(r'^\d{10,15}$').hasMatch(value)) {
-                  return 'Enter a valid phone number (10-15 digits)';
+                if (value != null && value.isNotEmpty) {
+                  // Allow an optional dash after the code (e.g. "0300-1234567").
+                  final digitsOnly = value.replaceAll('-', '');
+                  if (!RegExp(r'^[0-9]+(-[0-9]+)*$').hasMatch(value) ||
+                      digitsOnly.length < 7 ||
+                      digitsOnly.length > 15) {
+                    return 'Enter a valid phone number (7-15 digits)';
+                  }
                 }
                 return null;
               },
@@ -845,7 +856,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
             return null;
           },
         ),
-        SizedBox(height: 8.h),
+        SizedBox(height: 8.spMin),
         Consumer(
           builder: (context, ref, child) {
             final currentSalesState = ref.watch(salesProvider);
@@ -875,7 +886,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
                   ],
                 ),
                 if (currentSalesState.paidAmount > 0) ...[
-                  SizedBox(height: 4.h),
+                  SizedBox(height: 4.spMin),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -917,27 +928,27 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
             isTestBill: isTestBill,
             filteredCustomers: filteredCustomers,
           ),
-          SizedBox(height: 16.h),
+          SizedBox(height: 16.spMin),
         ],
         if (customerFormState.fieldConfigs['address']!.isShow) ...[
           _buildAddressField(customerFormState, isWalkIn),
-          SizedBox(height: 16.h),
+          SizedBox(height: 16.spMin),
         ],
         if (customerFormState.fieldConfigs['phoneNumber']!.isShow) ...[
           _buildPhoneField(customerFormState, isWalkIn),
-          SizedBox(height: 24.h),
+          SizedBox(height: 24.spMin),
         ],
         if (customerFormState.fieldConfigs['paymentStatus']!.isShow) ...[
           _buildPaymentStatusField(customerFormState, salesState),
-          SizedBox(height: 24.h),
+          SizedBox(height: 24.spMin),
         ],
         if (customerFormState.fieldConfigs['paymentMethod']!.isShow) ...[
           _buildPaymentMethodField(customerFormState, salesState),
-          SizedBox(height: 24.h),
+          SizedBox(height: 24.spMin),
         ],
         if (customerFormState.fieldConfigs['discount']!.isShow) ...[
           _buildDiscountField(customerFormState),
-          SizedBox(height: 24.h),
+          SizedBox(height: 24.spMin),
         ],
         if (customerFormState.fieldConfigs['paidAmount']!.isShow &&
             !salesState.isPaid) ...[
@@ -946,7 +957,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
             salesState,
             totalAfterDiscount,
           ),
-          SizedBox(height: 32.h),
+          SizedBox(height: 32.spMin),
         ],
         AppButton().primaryButton(
           text: isTestBill ? "Generate Test Bill" : "Save & Complete Sale",
@@ -1058,15 +1069,15 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
                 ),
               if (customerFormState.fieldConfigs['name']!.isShow &&
                   customerFormState.fieldConfigs['phoneNumber']!.isShow)
-                SizedBox(width: 16.w),
+                SizedBox(width: 16.spMin),
               if (customerFormState.fieldConfigs['phoneNumber']!.isShow)
                 Expanded(child: _buildPhoneField(customerFormState, isWalkIn)),
             ],
           ),
-        SizedBox(height: 16.h),
+        SizedBox(height: 16.spMin),
         if (customerFormState.fieldConfigs['address']!.isShow) ...[
           _buildAddressField(customerFormState, isWalkIn),
-          SizedBox(height: 24.h),
+          SizedBox(height: 24.spMin),
         ],
         if (customerFormState.fieldConfigs['paymentStatus']!.isShow ||
             customerFormState.fieldConfigs['paymentMethod']!.isShow)
@@ -1081,7 +1092,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
                 ),
               if (customerFormState.fieldConfigs['paymentStatus']!.isShow &&
                   customerFormState.fieldConfigs['paymentMethod']!.isShow)
-                SizedBox(width: 16.w),
+                SizedBox(width: 16.spMin),
               if (customerFormState.fieldConfigs['paymentMethod']!.isShow)
                 Expanded(
                   child: _buildPaymentMethodField(
@@ -1091,10 +1102,10 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
                 ),
             ],
           ),
-        SizedBox(height: 24.h),
+        SizedBox(height: 24.spMin),
         if (customerFormState.fieldConfigs['discount']!.isShow) ...[
           _buildDiscountField(customerFormState),
-          SizedBox(height: 24.h),
+          SizedBox(height: 24.spMin),
         ],
         if (customerFormState.fieldConfigs['paidAmount']!.isShow &&
             !salesState.isPaid) ...[
@@ -1103,7 +1114,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
             salesState,
             totalAfterDiscount,
           ),
-          SizedBox(height: 32.h),
+          SizedBox(height: 32.spMin),
         ],
         AppButton().primaryButton(
           text: isTestBill ? "Generate Test Bill" : "Save & Complete Sale",
@@ -1227,7 +1238,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
                       : TablerIcons.user,
                   size: 18.spMin,
                 ),
-                SizedBox(width: 4.w),
+                SizedBox(width: 4.spMin),
                 smText(
                   text: checkoutState.isTestBill
                       ? 'Test Bill'
@@ -1249,7 +1260,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
                 child: Row(
                   children: [
                     Icon(TablerIcons.user, size: 18.spMin),
-                    SizedBox(width: 8.w),
+                    SizedBox(width: 8.spMin),
                     const Text('Customer'),
                     if (!checkoutState.isWalkIn && !checkoutState.isTestBill)
                       Padding(
@@ -1264,7 +1275,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
                 child: Row(
                   children: [
                     Icon(TablerIcons.walk, size: 18.spMin),
-                    SizedBox(width: 8.w),
+                    SizedBox(width: 8.spMin),
                     const Text('Walk-in'),
                     if (checkoutState.isWalkIn)
                       Padding(
@@ -1279,7 +1290,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
                 child: Row(
                   children: [
                     Icon(TablerIcons.test_pipe, size: 18.spMin),
-                    SizedBox(width: 8.w),
+                    SizedBox(width: 8.spMin),
                     const Text('Test Bill'),
                     if (checkoutState.isTestBill)
                       Padding(

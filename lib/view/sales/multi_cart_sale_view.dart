@@ -15,7 +15,9 @@ import '../../models/coustomer_model.dart';
 import '../../models/items_model.dart';
 import '../../res/components/app_flushbar.dart';
 import '../../res/components/app_text_widgrt.dart';
+import '../../utils/app_sizes.dart';
 import '../../utils/payment_calculator.dart';
+import '../main/main_view.dart';
 import '../../view_models/providers/bills_provider.dart';
 import '../../view_models/providers/customer_prvider.dart';
 import '../../view_models/providers/multi_cart_provider.dart';
@@ -24,6 +26,7 @@ import '../../view_models/providers/settings_provider.dart';
 import '../../view_models/services/database/database_services.dart'
     hide databaseServiceProvider, hiveServiceProvider;
 import '../../view_models/states/multi_cart_state.dart';
+import '../bills/bills_details.dart';
 import '../bills/widgets/pdf_genrater_widget.dart';
 import '../bills/widgets/thermal_print_widget.dart';
 import 'check_out_view.dart';
@@ -191,16 +194,23 @@ class _MultiCartSalesScreenState extends ConsumerState<MultiCartSalesScreen>
     await _saveSale(bill, customer);
     if (!mounted) return;
 
-    await _handleSaleAction(bill);
+    // Remove the completed cart, then show the invoice/bill view. Auto-save &
+    // auto-print (per settings) are handled inside BillDetailScreen.
+    ref.read(multiCartProvider.notifier).clearActiveCart();
+    await _openBillView(bill);
+  }
 
-    // Remove completed cart
-    if (mounted) {
-      ref.read(multiCartProvider.notifier).clearActiveCart();
-      AppFlushbar.success(
-        context,
-        message: 'Sale completed for ${customer.name}',
-      );
-    }
+  /// Opens the invoice/bill view for a freshly-completed sale. [justCreated]
+  /// lets the bill view honour the "save on complete" and "auto-print on
+  /// complete" settings once.
+  Future<void> _openBillView(Bill bill) async {
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BillDetailScreen(bill: bill, justCreated: true),
+      ),
+    );
   }
 
   Future<Customer> _saveOrUpdateCustomer(
@@ -635,6 +645,20 @@ class _MultiCartSalesScreenState extends ConsumerState<MultiCartSalesScreen>
               color: headerColor,
               child: Row(
                 children: [
+                  // Mobile: hamburger opens the drawer (this screen has no app bar).
+                  if (AppSizes.isMobile(context))
+                    IconButton(
+                      icon: Icon(
+                        Icons.menu,
+                        size: 22.spMin,
+                        color:
+                            Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.dIconColor
+                                : AppColors.lIconColor,
+                      ),
+                      tooltip: 'Menu',
+                      onPressed: openAppDrawer,
+                    ),
                   IconButton(
                     icon: Icon(
                       TablerIcons.plus,

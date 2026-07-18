@@ -1,20 +1,21 @@
-import 'package:desktopapp/utils/app_sizes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../../res/assets/image_assets.dart';
+import '../../../res/colors/app_color.dart';
 import '../../../res/components/app_icon.dart';
 import '../../../res/components/text_field_widget.dart';
 import '../../../view_models/providers/bills_provider.dart';
 
 class SearchBarWidget extends ConsumerWidget {
-  final VoidCallback onFilterToggle;
-  final bool isFilterVisible;
+  final VoidCallback onFilterTap;
+  final bool hasActiveFilter;
 
   const SearchBarWidget({
     super.key,
-    required this.onFilterToggle,
-    required this.isFilterVisible,
+    required this.onFilterTap,
+    required this.hasActiveFilter,
   });
 
   @override
@@ -52,20 +53,23 @@ class SearchBarWidget extends ConsumerWidget {
                   billsNotifier.filterAndSortBills();
                 },
               ),
-            // IconButton(
-            //   padding: EdgeInsets.zero,
-            //   icon: Icon(
-            //     TablerIcons.filter_cog,
-            //     size: 18.spMin,
-            //     color:
-            //         isFilterVisible
-            //             ? AppColors.primary
-            //             : (Theme.of(context).brightness == Brightness.dark
-            //                 ? AppColors.dIconColor
-            //                 : AppColors.lIconColor),
-            //   ),
-            //   onPressed: onFilterToggle,
-            // ),
+            IconButton(
+              padding: EdgeInsets.zero,
+              tooltip: 'Filters',
+              icon: Icon(
+                hasActiveFilter
+                    ? TablerIcons.filter_filled
+                    : TablerIcons.filter,
+                size: 20.spMin,
+                color: hasActiveFilter
+                    ? AppColors.primary
+                    : (Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.dIconColor
+                        : AppColors.lIconColor),
+              ),
+              onPressed: onFilterTap,
+            ),
+            SizedBox(width: 4.spMin),
           ],
         ),
         onChange: (value) {

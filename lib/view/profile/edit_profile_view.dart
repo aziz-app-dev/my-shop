@@ -1,5 +1,6 @@
 import 'package:desktopapp/res/colors/app_color.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
@@ -501,6 +502,14 @@ class _EditProfileState extends ConsumerState<EditProfile> {
                                     size: 18.spMin,
                                   ),
                                   keyboardType: TextInputType.phone,
+                                  inputFormatters: [
+                                    // Digits only, optional leading '+',
+                                    // capped at 15 characters.
+                                    FilteringTextInputFormatter.allow(
+                                      RegExp(r'[0-9+]'),
+                                    ),
+                                    LengthLimitingTextInputFormatter(15),
+                                  ],
                                   enabled: true,
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
@@ -1224,6 +1233,14 @@ class _EditProfileState extends ConsumerState<EditProfile> {
                               size: 18.spMin,
                             ),
                             keyboardType: TextInputType.phone,
+                            inputFormatters: [
+                              // Digits only, optional leading '+',
+                              // capped at 15 characters.
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'[0-9+]'),
+                              ),
+                              LengthLimitingTextInputFormatter(15),
+                            ],
                             enabled: true,
                             validator: (value) {
                               if (value == null || value.isEmpty) {

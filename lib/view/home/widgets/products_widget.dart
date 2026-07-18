@@ -4,7 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../models/items_model.dart';
 import '../../../models/brand_model.dart';
-import '../../../res/components/product_card.dart';
+import 'home_product_card.dart';
 
 Widget buildProductGrid(
   BuildContext context,
@@ -41,7 +41,7 @@ Widget buildProductGrid(
         ),
         itemCount: products.length,
         itemBuilder: (context, index) {
-          return ProductCard(product: products[index], brands: brands);
+          return HomeProductCard(product: products[index], brands: brands);
         },
       );
     },

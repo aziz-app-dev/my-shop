@@ -34,7 +34,11 @@ class HomePage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBarWidget.customAppBar(
         context: context,
-        automaticallyImplyLeading: false,
+        // Home is the nav hub on mobile: show the hamburger to open the drawer.
+        automaticallyImplyLeading: AppSizes.isMobile(context),
+        backIcon: Icons.menu,
+        winBackIcon: ImageAssets.win11Menu,
+        leadingOnTap: openDrawer,
         title: 'Home',
         actions: [
           // Padding(
@@ -84,8 +88,9 @@ class HomePage extends ConsumerWidget {
       ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          FloatingActionButton(
+          FloatingActionButton.extended(
             heroTag: 'productFab',
             onPressed: () {
               // Capture notifier before async gap to avoid "ref" after unmount
@@ -99,14 +104,21 @@ class HomePage extends ConsumerWidget {
                 notifier.refreshProducts();
               });
             },
-            child: AppIcon(
+            icon: AppIcon(
               win11IconPath: ImageAssets.win11OpenBox,
               defaultIcon: Icons.inventory_2,
             ),
+            label: Text(
+              'Add Product',
+              style: TextStyle(
+                fontSize: 13.spMin,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           if (showShoppingList) ...[
-            const SizedBox(height: 12),
-            FloatingActionButton(
+            SizedBox(height: 12.spMin),
+            FloatingActionButton.extended(
               heroTag: 'shoppingListFab',
               onPressed: () {
                 Navigator.push(
@@ -116,9 +128,16 @@ class HomePage extends ConsumerWidget {
                   ),
                 );
               },
-              child: AppIcon(
+              icon: AppIcon(
                 defaultIcon: Icons.shopping_bag,
                 win11IconPath: ImageAssets.win11List,
+              ),
+              label: Text(
+                'Shopping List',
+                style: TextStyle(
+                  fontSize: 13.spMin,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],

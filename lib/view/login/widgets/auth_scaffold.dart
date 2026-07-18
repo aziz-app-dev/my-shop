@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../res/assets/image_assets.dart';
 import '../../../res/colors/app_color.dart';
 import '../../../utils/app_sizes.dart';
 
@@ -109,16 +110,25 @@ class _AuthScaffoldState extends State<AuthScaffold>
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
+                                color: Colors.black.withValues(alpha: 0.2),
                                 blurRadius: 20,
                                 offset: const Offset(0, 8),
                               ),
                             ],
                           ),
-                          child: Icon(
-                            Icons.storefront,
-                            size: 44.spMin,
-                            color: AppColors.primary,
+                          padding: EdgeInsets.all(8.spMin),
+                          child: ClipOval(
+                            child: Image.asset(
+                              ImageAssets.appLogo,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                              errorBuilder: (context, error, stackTrace) => Icon(
+                                Icons.storefront,
+                                size: 44.spMin,
+                                color: AppColors.primary,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -138,7 +148,7 @@ class _AuthScaffoldState extends State<AuthScaffold>
                             borderRadius: BorderRadius.circular(20.r),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.15),
+                                color: Colors.black.withValues(alpha: 0.15),
                                 blurRadius: 30,
                                 offset: const Offset(0, 12),
                               ),

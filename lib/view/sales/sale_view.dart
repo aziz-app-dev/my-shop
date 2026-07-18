@@ -11,10 +11,13 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:open_file/open_file.dart';
 import '../../models/bills_model.dart';
 import '../../models/coustomer_model.dart';
+import '../../res/assets/image_assets.dart';
 import '../../res/components/app_bar_widget.dart';
 import '../../res/components/app_flushbar.dart';
 import '../../models/items_model.dart';
+import '../../utils/app_sizes.dart';
 import '../../utils/payment_calculator.dart';
+import '../main/main_view.dart';
 import '../../view_models/providers/bills_provider.dart';
 import '../../view_models/providers/customer_prvider.dart';
 import '../../view_models/providers/sales_provider.dart'
@@ -23,6 +26,7 @@ import '../../view_models/providers/settings_provider.dart'
     hide hiveServiceProvider;
 import '../../view_models/services/database/database_services.dart';
 import '../../view_models/states/sales_state.dart';
+import '../bills/bills_details.dart';
 import '../bills/widgets/pdf_genrater_widget.dart';
 import '../bills/widgets/thermal_print_widget.dart';
 import 'check_out_view.dart';
@@ -127,10 +131,23 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     await _saveSale(bill, customer);
     if (!mounted) return;
 
-    await _handleSaleAction(bill);
-    if (mounted) {
-      ref.read(salesProvider.notifier).resetCart();
-    }
+    // Sale saved: clear the cart, then show the invoice/bill view. Auto-save &
+    // auto-print (per settings) are handled inside BillDetailScreen.
+    ref.read(salesProvider.notifier).resetCart();
+    await _openBillView(bill);
+  }
+
+  /// Opens the invoice/bill view for a freshly-completed sale. Passing
+  /// [justCreated] lets the bill view honour the "save on complete" and
+  /// "auto-print on complete" settings once.
+  Future<void> _openBillView(Bill bill) async {
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BillDetailScreen(bill: bill, justCreated: true),
+      ),
+    );
   }
 
   /// Process checkout result from MobileCartPage
@@ -181,10 +198,10 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     await _saveSale(bill, customer);
     if (!mounted) return;
 
-    await _handleSaleAction(bill);
-    if (mounted) {
-      ref.read(salesProvider.notifier).resetCart();
-    }
+    // Sale saved: clear the cart, then show the invoice/bill view. Auto-save &
+    // auto-print (per settings) are handled inside BillDetailScreen.
+    ref.read(salesProvider.notifier).resetCart();
+    await _openBillView(bill);
   }
 
   // Future<Customer> _saveOrUpdateCustomer(
@@ -597,10 +614,14 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         return Scaffold(
           appBar: AppBarWidget.customAppBar(
             context: context,
-            automaticallyImplyLeading: false,
+            automaticallyImplyLeading: AppSizes.isMobile(context),
+            backIcon: Icons.menu,
+            winBackIcon: ImageAssets.win11Menu,
+            leadingOnTap: openAppDrawer,
             title: 'Sales',
             actions: [],
           ),
+
           body: Padding(
             padding: EdgeInsets.all(0.h),
             child: Flex(

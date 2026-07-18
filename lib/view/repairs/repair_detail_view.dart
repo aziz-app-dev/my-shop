@@ -1,12 +1,16 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+import 'package:open_file/open_file.dart';
+import 'package:printing/printing.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/repair_model.dart';
+import '../../models/user/user_model.dart';
 import '../../res/assets/image_assets.dart';
 import '../../res/colors/app_color.dart';
 import '../../res/components/app_bar_widget.dart';
@@ -14,7 +18,9 @@ import '../../res/components/app_flushbar.dart';
 import '../../res/components/app_icon.dart';
 import '../../utils/app_sizes.dart';
 import '../../view_models/providers/repair_provider.dart';
+import '../../view_models/services/database/database_services.dart' as dbsvc;
 import 'create_repair_view.dart';
+import 'widgets/repair_slip_pdf.dart';
 
 /// Full-screen detail view for a single repair job (used on mobile, pushed as
 /// a route). On larger screens the same content renders inline via
@@ -50,35 +56,170 @@ class RepairDetailView extends ConsumerWidget {
       appBar: AppBarWidget.customAppBar(
         title: 'Repair Details',
         context: context,
-        actions: [
-          IconButton(
-            tooltip: 'Edit',
-            onPressed: () => openRepairEditor(context, repair),
-            icon: AppIcon(
-              defaultIcon: TablerIcons.edit,
-              win11IconPath: ImageAssets.win11EditPencil,
-              size: 18.spMin,
-            ),
-          ),
-          IconButton(
-            tooltip: 'Delete',
-            onPressed:
-                () => confirmDeleteRepair(
-                  context,
-                  ref,
-                  repair,
-                  popScreenAfter: true,
-                ),
-            icon: Icon(
-              TablerIcons.trash,
-              size: 18.spMin,
-              color: AppColors.error,
-            ),
+        actions: [RepairActionsMenu(repair: repair, popAfterDelete: true)],
+      ),
+      body: RepairDetailBody(repair: repair),
+    );
+  }
+}
+
+/// Overflow (⋮) menu for a repair: Edit, Mark complete / Reopen, and Delete.
+/// Replaces the separate edit/delete icons and the bottom mark-complete button.
+/// Menu is dark with white labels/icons; only the delete icon is red.
+class RepairActionsMenu extends ConsumerWidget {
+  final Repair repair;
+
+  /// When true (full-screen detail), deleting also pops the screen.
+  final bool popAfterDelete;
+
+  const RepairActionsMenu({
+    super.key,
+    required this.repair,
+    this.popAfterDelete = false,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final completed = repair.isCompleted;
+    return PopupMenuButton<String>(
+      tooltip: 'More',
+      color: AppColors.grey900,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.spMin),
+      ),
+      icon: AppIcon(
+        defaultIcon: Icons.more_vert,
+        win11IconPath: ImageAssets.win11MenuVertical,
+        size: 20.spMin,
+      ),
+      onSelected: (value) {
+        switch (value) {
+          case 'edit':
+            openRepairEditor(context, repair);
+            break;
+          case 'toggle':
+            ref.read(repairProvider.notifier).toggleCompleted(repair.id);
+            if (!completed) {
+              AppFlushbar.success(
+                context,
+                message: 'Repair completed 🎉 Ready for pickup',
+              );
+            }
+            break;
+          case 'save_slip':
+            _saveSlip(context, ref);
+            break;
+          case 'share_slip':
+            _shareSlip(context, ref);
+            break;
+          case 'delete':
+            confirmDeleteRepair(
+              context,
+              ref,
+              repair,
+              popScreenAfter: popAfterDelete,
+            );
+            break;
+        }
+      },
+      itemBuilder: (context) => [
+        _menuItem('edit', TablerIcons.edit, 'Edit'),
+        _menuItem(
+          'toggle',
+          completed ? TablerIcons.rotate : TablerIcons.circle_check,
+          completed ? 'Reopen repair' : 'Mark as completed',
+        ),
+        _menuItem('save_slip', TablerIcons.file_type_pdf, 'Save Slip (PDF)'),
+        _menuItem('share_slip', TablerIcons.share, 'Share Slip'),
+        _menuItem('delete', TablerIcons.trash, 'Delete',
+            iconColor: AppColors.error),
+      ],
+    );
+  }
+
+  /// Loads the shop header from the local profile and renders the repair-slip
+  /// PDF bytes. Shared by the save and share actions so both produce the same
+  /// document.
+  Future<Uint8List> _buildSlipBytes(WidgetRef ref) async {
+    User? user;
+    try {
+      final users = await ref.read(dbsvc.databaseServiceProvider).getUsers();
+      user = users.isNotEmpty ? users.first : null;
+    } catch (_) {
+      user = null;
+    }
+
+    Uint8List? logo;
+    final logoPath = user?.shopLogoPath;
+    if (logoPath != null && logoPath.isNotEmpty) {
+      final file = File(logoPath);
+      if (await file.exists()) logo = await file.readAsBytes();
+    }
+
+    final generator = RepairSlipPdfGenerator(
+      repair: repair,
+      shopName: user?.shopName ?? 'Your Shop',
+      ownerName: user?.ownerName,
+      shopPhone: user?.phoneNumber,
+      shopAddress: user?.shopAddress,
+      tagline: user?.shopTagline,
+      shopLogo: logo,
+    );
+    return generator.build();
+  }
+
+  String get _slipFileName =>
+      'repair_slip_${repair.id.length >= 8 ? repair.id.substring(0, 8) : repair.id}';
+
+  /// Builds the slip, saves it under `repair_slips/` and opens it.
+  Future<void> _saveSlip(BuildContext context, WidgetRef ref) async {
+    try {
+      final bytes = await _buildSlipBytes(ref);
+      final directoryPath = await dbsvc.HiveService().directoryPath;
+      final directory = Directory('$directoryPath/repair_slips');
+      if (!await directory.exists()) {
+        await directory.create(recursive: true);
+      }
+      final file = File('$directoryPath/repair_slips/$_slipFileName.pdf');
+      await file.writeAsBytes(bytes);
+      await OpenFile.open(file.path);
+    } catch (e) {
+      if (context.mounted) {
+        AppFlushbar.error(context, message: 'Could not save slip: $e');
+      }
+    }
+  }
+
+  /// Builds the slip and opens the system share sheet (email, WhatsApp, etc.).
+  Future<void> _shareSlip(BuildContext context, WidgetRef ref) async {
+    try {
+      final bytes = await _buildSlipBytes(ref);
+      await Printing.sharePdf(bytes: bytes, filename: '$_slipFileName.pdf');
+    } catch (e) {
+      if (context.mounted) {
+        AppFlushbar.error(context, message: 'Could not share slip: $e');
+      }
+    }
+  }
+
+  PopupMenuItem<String> _menuItem(
+    String value,
+    IconData icon,
+    String label, {
+    Color? iconColor,
+  }) {
+    return PopupMenuItem<String>(
+      value: value,
+      child: Row(
+        children: [
+          Icon(icon, size: 18.spMin, color: iconColor ?? Colors.white),
+          SizedBox(width: 10.spMin),
+          Text(
+            label,
+            style: TextStyle(color: Colors.white, fontSize: 13.spMin),
           ),
         ],
       ),
-      body: RepairDetailBody(repair: repair),
-      bottomNavigationBar: RepairStatusBar(repair: repair),
     );
   }
 }
@@ -95,7 +236,7 @@ class RepairDetailBody extends StatelessWidget {
   const RepairDetailBody({
     super.key,
     required this.repair,
-    this.bottomPadding = 24,
+    this.bottomPadding = 60,
   });
 
   @override
@@ -899,57 +1040,3 @@ class _TimelineSection extends StatelessWidget {
       '${d.month.toString().padLeft(2, '0')}/${d.year}';
 }
 
-// ---------------------------------------------------------------------------
-// Bottom status bar — primary CTA in the thumb zone
-// ---------------------------------------------------------------------------
-class RepairStatusBar extends ConsumerWidget {
-  final Repair repair;
-  const RepairStatusBar({super.key, required this.repair});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final completed = repair.isCompleted;
-    final color = completed ? AppColors.warning : AppColors.success;
-
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16.spMin, 8.spMin, 16.spMin, 10.spMin),
-        child: SizedBox(
-          height: 50.spMin,
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: color,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14.spMin),
-              ),
-            ),
-            onPressed: () {
-              ref.read(repairProvider.notifier).toggleCompleted(repair.id);
-              if (!completed) {
-                // Peak moment — celebrate finishing the job.
-                AppFlushbar.success(
-                  context,
-                  message: 'Repair completed 🎉 Ready for pickup',
-                );
-              }
-            },
-            icon: Icon(
-              completed ? TablerIcons.rotate : TablerIcons.circle_check,
-              color: Colors.white,
-              size: 20.spMin,
-            ),
-            label: Text(
-              completed ? 'Reopen Repair' : 'Mark as Completed',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 15.spMin,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

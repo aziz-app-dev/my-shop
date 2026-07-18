@@ -75,6 +75,8 @@ class CloudUserService {
       facebook: pickNullable(local.facebook, remote.facebook),
       twitter: pickNullable(local.twitter, remote.twitter),
       instagram: pickNullable(local.instagram, remote.instagram),
+      // Setup is complete if either copy says so.
+      shopSetupComplete: local.shopSetupComplete || remote.shopSetupComplete,
     );
   }
 }

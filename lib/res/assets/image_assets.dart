@@ -2,6 +2,10 @@ class ImageAssets {
   static const String splashScreen = 'assets/images/splash_screen.jpg';
   static const String messageIcon = 'assets/icons/message.svg';
 
+  /// The app's own logo (the same image used to generate the launcher icon).
+  /// Used on the splash and auth screens instead of a generic Flutter icon.
+  static const String appLogo = 'assets/my-shop-1024.png';
+
   // Windows 11 Style Icons
   static const String _win11Path = 'assets/win_11';
 

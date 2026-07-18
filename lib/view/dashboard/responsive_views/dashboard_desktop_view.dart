@@ -8,7 +8,9 @@ import '../widgets/comparison_chart.dart';
 import '../widgets/customer_bar_chart.dart';
 import '../widgets/dashboard_app_bar.dart';
 import '../widgets/expense_pie_chart.dart';
+import '../widgets/forecast_card.dart';
 import '../widgets/payment_status_chart.dart';
+import '../widgets/reminders_alert_banner.dart';
 import '../widgets/sales_line_chart.dart';
 import '../widgets/summary_cards.dart';
 import '../widgets/trend_charts.dart';
@@ -39,8 +41,10 @@ class DashboardDesktopView extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       toggleRow(ref),
+                      SizedBox(height: 16.h),
+                      const RemindersAlertBanner(),
                       // Summary Cards Row
-                      SizedBox(height: 20.h),
+                      SizedBox(height: 4.h),
                       buildDesktopSummaryCards(context, dashboardState),
                       SizedBox(height: 30.h),
 
@@ -104,6 +108,10 @@ class DashboardDesktopView extends ConsumerWidget {
                         SizedBox(width: 16.spMin),
                         buildMonthlyBreakdownChart(context, dashboardState),
                       ],
+                      SizedBox(height: 20.h),
+
+                      // AI finance forecast
+                      const ForecastCard(),
                       SizedBox(height: 20.h),
 
                       // Top Selling Items Chart

@@ -11,10 +11,12 @@ import '../../res/components/app_icon.dart';
 import '../../res/components/app_text_widgrt.dart';
 import '../../res/components/empty_widget.dart';
 import '../../res/components/text_field_widget.dart';
+import '../../utils/app_sizes.dart';
 import '../../view_models/providers/customer_prvider.dart';
 import '../../view_models/states/customer_states.dart';
 import '../bills/widgets/data_table_widgets.dart';
 import '../home/rapper.dart';
+import '../main/main_view.dart';
 import 'customers_details_view.dart';
 
 class CustomerListScreen extends ConsumerWidget {
@@ -595,7 +597,10 @@ class CustomerListScreen extends ConsumerWidget {
         appBar: AppBarWidget.customAppBar(
           title: 'Customers',
           context: context,
-          automaticallyImplyLeading: false,
+          automaticallyImplyLeading: AppSizes.isMobile(context),
+          backIcon: Icons.menu,
+          winBackIcon: ImageAssets.win11Menu,
+          leadingOnTap: openAppDrawer,
         ),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -607,7 +612,10 @@ class CustomerListScreen extends ConsumerWidget {
         appBar: AppBarWidget.customAppBar(
           title: 'Customers',
           context: context,
-          automaticallyImplyLeading: false,
+          automaticallyImplyLeading: AppSizes.isMobile(context),
+          backIcon: Icons.menu,
+          winBackIcon: ImageAssets.win11Menu,
+          leadingOnTap: openAppDrawer,
         ),
         body: Center(child: mdText(text: 'Error: ${customersState.error}')),
       );
@@ -619,7 +627,10 @@ class CustomerListScreen extends ConsumerWidget {
         appBar: AppBarWidget.customAppBar(
           title: 'Customers',
           context: context,
-          automaticallyImplyLeading: false,
+          automaticallyImplyLeading: AppSizes.isMobile(context),
+          backIcon: Icons.menu,
+          winBackIcon: ImageAssets.win11Menu,
+          leadingOnTap: openAppDrawer,
           actions: [
             IconButton(
               icon: AppIcon(
@@ -639,7 +650,10 @@ class CustomerListScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBarWidget.customAppBar(
         title: 'Customers',
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading: AppSizes.isMobile(context),
+        backIcon: Icons.menu,
+        winBackIcon: ImageAssets.win11Menu,
+        leadingOnTap: openAppDrawer,
         context: context,
         actions: [
           IconButton(

@@ -540,42 +540,58 @@ class _ProductsSectionWithSearchState
                                   ? Colors.white70
                                   : AppColors.lIconColor,
                         ),
-                        suffixIcon:
-                            searchState.searchQuery.isNotEmpty
-                                ? IconButton(
-                                  icon: Icon(TablerIcons.x, size: 20.spMin),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    ref
-                                        .read(
-                                          multiCartProductSearchProvider
-                                              .notifier,
-                                        )
-                                        .clearSearch();
-                                  },
-                                )
-                                : null,
+                        // Clear + Filter live INSIDE the search field now (no
+                        // separate filter button beside it).
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (searchState.searchQuery.isNotEmpty)
+                              IconButton(
+                                padding: EdgeInsets.zero,
+                                visualDensity: VisualDensity.compact,
+                                tooltip: 'Clear',
+                                icon: Icon(TablerIcons.x, size: 20.spMin),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  ref
+                                      .read(
+                                        multiCartProductSearchProvider.notifier,
+                                      )
+                                      .clearSearch();
+                                },
+                              ),
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              visualDensity: VisualDensity.compact,
+                              tooltip: 'Filters',
+                              icon: Icon(
+                                TablerIcons.filter,
+                                size: 20.spMin,
+                                color:
+                                    (searchState.selectedBrand != null ||
+                                            searchState.selectedCategory != null)
+                                        ? AppColors.primary
+                                        : (Theme.of(context).brightness ==
+                                                Brightness.dark
+                                            ? Colors.white70
+                                            : AppColors.lIconColor),
+                              ),
+                              onPressed:
+                                  () => _showFilterDialog(
+                                    context,
+                                    brands,
+                                    categories,
+                                  ),
+                            ),
+                            SizedBox(width: 4.spMin),
+                          ],
+                        ),
                         onChange: (value) {
                           ref
                               .read(multiCartProductSearchProvider.notifier)
                               .updateSearchQuery(value!);
                           return null;
                         },
-                      ),
-                    ),
-                    // Filter button — opens a popup to pick brand / category.
-                    SizedBox(width: 8.spMin),
-                    _buildActionButton(
-                      tooltip: 'Filters',
-                      showBadge:
-                          searchState.selectedBrand != null ||
-                          searchState.selectedCategory != null,
-                      onTap:
-                          () => _showFilterDialog(context, brands, categories),
-                      icon: AppIcon(
-                        defaultIcon: TablerIcons.filter,
-                        size: 18.spMin,
-                        color: Colors.white,
                       ),
                     ),
                     // Barcode Scanner Button — mobile only (no camera scanner
