@@ -31,8 +31,8 @@ class ScreenManagementSection extends ConsumerWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       child: AppExpansionTile(
         initiallyExpanded: false,
-        tilePadding: EdgeInsets.symmetric(horizontal: 16.w),
-        childrenPadding: EdgeInsets.all(10.h),
+        tilePadding: EdgeInsets.symmetric(horizontal: 16.spMin),
+        childrenPadding: EdgeInsets.all(10.spMin),
         title: mdTextBold(text: 'Screen Management'),
         children: [
           // Home Page Settings
@@ -49,7 +49,7 @@ class ScreenManagementSection extends ConsumerWidget {
             'Home Page Settings',
             'Manage home page sections, banners & order',
             Colors.orange,
-            TablerIcons.home,
+            TablerIcons.window,
             ImageAssets.win11Home,
           ),
 
@@ -120,13 +120,13 @@ class _ProductFormFieldsPage extends ConsumerWidget {
         context: context,
       ),
       body: ListView(
-        padding: EdgeInsets.all(16.w),
+        padding: EdgeInsets.all(16.spMin),
         children: [
           Text(
             'Configure which fields to show in the product form',
             style: TextStyle(fontSize: 14.spMin, color: Colors.grey),
           ),
-          SizedBox(height: 16.h),
+          SizedBox(height: 16.spMin),
           ...productFormState.fieldConfigs.entries
               .where((entry) => !['isBackup', 'warranty'].contains(entry.key))
               .map(
@@ -274,21 +274,21 @@ class _CustomerFormFieldsPageState
         children: [
           Expanded(
             child: ListView(
-              padding: EdgeInsets.all(16.w),
+              padding: EdgeInsets.all(16.spMin),
               children: [
                 Text(
                   'Configure which fields to show in the checkout form',
                   style: TextStyle(fontSize: 14.spMin, color: Colors.grey),
                 ),
                 if (_hasChanges) ...[
-                  SizedBox(height: 8.h),
+                  SizedBox(height: 8.spMin),
                   Container(
                     padding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 8.h,
+                      horizontal: 12.spMin,
+                      vertical: 8.spMin,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.1),
+                      color: Colors.orange.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8.r),
                       border: Border.all(color: Colors.orange),
                     ),
@@ -301,7 +301,7 @@ class _CustomerFormFieldsPageState
                           size: 16.spMin,
                         ),
 
-                        SizedBox(width: 8.w),
+                        SizedBox(width: 8.spMin),
                         Expanded(
                           child: Text(
                             'You have unsaved changes',
@@ -316,7 +316,7 @@ class _CustomerFormFieldsPageState
                     ),
                   ),
                 ],
-                SizedBox(height: 16.h),
+                SizedBox(height: 16.spMin),
                 ..._tempFieldConfigs.entries.map(
                   (entry) => _FieldConfigTile(
                     fieldName: entry.key,
@@ -338,7 +338,7 @@ class _CustomerFormFieldsPageState
                     },
                   ),
                 ),
-                SizedBox(height: 80.h), // Space for floating button
+                SizedBox(height: 80.spMin), // Space for floating button
               ],
             ),
           ),
@@ -352,8 +352,8 @@ class _CustomerFormFieldsPageState
                 icon:
                     _isSaving
                         ? SizedBox(
-                          width: 20.w,
-                          height: 20.h,
+                          width: 20.spMin,
+                          height: 20.spMin,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor: AlwaysStoppedAnimation<Color>(
@@ -427,15 +427,18 @@ class _FieldConfigTileState extends State<_FieldConfigTile> {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: EdgeInsets.only(bottom: 8.h),
+      margin: EdgeInsets.only(bottom: 8.spMin),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
       color:
           Theme.of(context).brightness == Brightness.dark
               ? Colors.grey.shade900
               : Colors.grey.shade50,
       child: AppExpansionTile(
-        tilePadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
-        childrenPadding: EdgeInsets.all(12.w),
+        tilePadding: EdgeInsets.symmetric(
+          horizontal: 12.spMin,
+          vertical: 4.spMin,
+        ),
+        childrenPadding: EdgeInsets.all(12.spMin),
         title: Row(
           children: [
             AppIcon(
@@ -444,14 +447,17 @@ class _FieldConfigTileState extends State<_FieldConfigTile> {
               size: 16.spMin,
               color: AppColors.primary,
             ),
-            SizedBox(width: 12.w),
+            SizedBox(width: 12.spMin),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     widget.fieldConfig.title,
-                    style: TextStyle(fontSize: 14.spMin, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      fontSize: 14.spMin,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   Text(
                     'Field: ${widget.fieldName}',
@@ -483,7 +489,7 @@ class _FieldConfigTileState extends State<_FieldConfigTile> {
               ),
             ],
           ),
-          SizedBox(height: 8.h),
+          SizedBox(height: 8.spMin),
           CustomTextField(
             label: "Title",
             hintText: "Title",
@@ -493,7 +499,7 @@ class _FieldConfigTileState extends State<_FieldConfigTile> {
               return null;
             },
           ),
-          SizedBox(height: 15.h),
+          SizedBox(height: 15.spMin),
 
           CustomTextField(
             label: "Hint text",
@@ -505,7 +511,7 @@ class _FieldConfigTileState extends State<_FieldConfigTile> {
             },
           ),
 
-          SizedBox(height: 15.h),
+          SizedBox(height: 15.spMin),
 
           CustomTextField(
             label: "Validation Error",

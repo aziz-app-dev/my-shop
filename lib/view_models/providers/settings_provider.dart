@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../services/database/database_services.dart';
-import 'package:riverpod/legacy.dart';
 
 // Print format options
 enum PrintFormat {
@@ -81,7 +81,6 @@ class SettingsState {
   final double cardElevation;
   final double appBarElevation;
   final double productCardElevation;
-  final bool isAppLockEnabled;
   final ThemeMode themeMode;
   final bool useMultiCart; // Multi-cart option
   final IconStyle iconStyle; // Icon style preference
@@ -123,6 +122,7 @@ class SettingsState {
   final List<String> bannerImagePaths;
   final bool bannerAutoScroll;
   final int bannerScrollDuration; // in seconds
+  final double sectionSpacing; // Gap between sections
   final bool showBrandsSection;
   final bool showCategoriesSection;
   final bool showTopSellingSection;
@@ -140,7 +140,8 @@ class SettingsState {
     this.isPrintEnabled = false,
     this.printFormat = PrintFormat.pdf, // Default to PDF
     this.billDesign = BillDesign.classic, // Default to classic design
-    this.thermalDesign = ThermalDesign.classic, // Default to classic thermal design
+    this.thermalDesign =
+        ThermalDesign.classic, // Default to classic thermal design
     this.isPDFSave = false,
     this.isPaid = false,
     this.showPaidStamp = false,
@@ -159,7 +160,6 @@ class SettingsState {
     this.cardElevation = 4.0,
     this.appBarElevation = 4.0,
     this.productCardElevation = 4.0,
-    this.isAppLockEnabled = false,
     this.themeMode = ThemeMode.light,
     this.useMultiCart = false, // Default to single cart
     this.iconStyle = IconStyle.defaultStyle, // Default to Material icons
@@ -170,6 +170,7 @@ class SettingsState {
     this.bannerImagePaths = const [],
     this.bannerAutoScroll = true,
     this.bannerScrollDuration = 5, // 5 seconds default
+    this.sectionSpacing = 24.0, // Default gap between sections
     this.showBrandsSection = true,
     this.showCategoriesSection = true,
     this.showTopSellingSection = true,
@@ -215,7 +216,6 @@ class SettingsState {
     double? cardElevation,
     double? appBarElevation,
     double? productCardElevation,
-    bool? isAppLockEnabled,
     ThemeMode? themeMode,
     bool? useMultiCart,
     IconStyle? iconStyle,
@@ -250,10 +250,12 @@ class SettingsState {
       paidStampText: paidStampText ?? this.paidStampText,
       paidStampSignature: paidStampSignature ?? this.paidStampSignature,
       showDateOnStamp: showDateOnStamp ?? this.showDateOnStamp,
-      showBackgroundWatermark: showBackgroundWatermark ?? this.showBackgroundWatermark,
+      showBackgroundWatermark:
+          showBackgroundWatermark ?? this.showBackgroundWatermark,
       watermarkOpacity: watermarkOpacity ?? this.watermarkOpacity,
       selectedBankIndex: selectedBankIndex ?? this.selectedBankIndex,
-      showBankDetailsOnBill: showBankDetailsOnBill ?? this.showBankDetailsOnBill,
+      showBankDetailsOnBill:
+          showBankDetailsOnBill ?? this.showBankDetailsOnBill,
       isAutoPrintOnSale: isAutoPrintOnSale ?? this.isAutoPrintOnSale,
       directoryPath: directoryPath ?? this.directoryPath,
       isShowTagLine: isShowTagLine ?? this.isShowTagLine,
@@ -263,7 +265,6 @@ class SettingsState {
       cardElevation: cardElevation ?? this.cardElevation,
       appBarElevation: appBarElevation ?? this.appBarElevation,
       productCardElevation: productCardElevation ?? this.productCardElevation,
-      isAppLockEnabled: isAppLockEnabled ?? this.isAppLockEnabled,
       themeMode: themeMode ?? this.themeMode,
       useMultiCart: useMultiCart ?? this.useMultiCart,
       iconStyle: iconStyle ?? this.iconStyle,
@@ -275,6 +276,7 @@ class SettingsState {
       bannerImagePaths: bannerImagePaths ?? this.bannerImagePaths,
       bannerAutoScroll: bannerAutoScroll ?? this.bannerAutoScroll,
       bannerScrollDuration: bannerScrollDuration ?? this.bannerScrollDuration,
+      sectionSpacing: sectionSpacing ?? this.sectionSpacing,
       showBrandsSection: showBrandsSection ?? this.showBrandsSection,
       showCategoriesSection:
           showCategoriesSection ?? this.showCategoriesSection,
@@ -319,7 +321,6 @@ class SettingsState {
       'cardElevation': cardElevation,
       'appBarElevation': appBarElevation,
       'productCardElevation': productCardElevation,
-      'isAppLockEnabled': isAppLockEnabled,
       'themeMode': themeMode.toString(),
       'useMultiCart': useMultiCart,
       'iconStyle': iconStyle.name,
@@ -330,6 +331,7 @@ class SettingsState {
       'bannerImagePaths': bannerImagePaths,
       'bannerAutoScroll': bannerAutoScroll,
       'bannerScrollDuration': bannerScrollDuration,
+      'sectionSpacing': sectionSpacing,
       'showBrandsSection': showBrandsSection,
       'showCategoriesSection': showCategoriesSection,
       'showTopSellingSection': showTopSellingSection,
@@ -413,7 +415,6 @@ class SettingsState {
       appBarElevation: (map['appBarElevation'] as num?)?.toDouble() ?? 4.0,
       productCardElevation:
           (map['productCardElevation'] as num?)?.toDouble() ?? 4.0,
-      isAppLockEnabled: map['isAppLockEnabled'] ?? false,
       themeMode:
           map['themeMode'] == 'ThemeMode.dark'
               ? ThemeMode.dark
@@ -438,6 +439,7 @@ class SettingsState {
               : const [],
       bannerAutoScroll: map['bannerAutoScroll'] ?? true,
       bannerScrollDuration: map['bannerScrollDuration'] ?? 5,
+      sectionSpacing: (map['sectionSpacing'] as num?)?.toDouble() ?? 24.0,
       showBrandsSection: map['showBrandsSection'] ?? true,
       showCategoriesSection: map['showCategoriesSection'] ?? true,
       showTopSellingSection: map['showTopSellingSection'] ?? true,
@@ -597,11 +599,6 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     _saveSettings();
   }
 
-  void setAppLockEnabled(bool value) {
-    state = state.copyWith(isAppLockEnabled: value);
-    _saveSettings();
-  }
-
   void setThemeMode(ThemeMode mode) {
     state = state.copyWith(themeMode: mode);
     _saveSettings();
@@ -755,6 +752,11 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     state = state.copyWith(lowStockItemsCount: value);
     _saveSettings();
   }
+
+  // void setSectionSpacing(double value) {
+  //   state = state.copyWith(sectionSpacing: value);
+  //   _saveSettings();
+  // }
 }
 
 final hiveServiceProvider = Provider<HiveService>((ref) => HiveService());

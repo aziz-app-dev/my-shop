@@ -8,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
-import 'package:local_auth/local_auth.dart';
 import 'package:thermal_printer/thermal_printer.dart';
 import '../../res/assets/image_assets.dart';
 import '../../res/colors/app_color.dart';
@@ -71,118 +70,6 @@ class SettingsPage extends ConsumerWidget {
     }
   }
 
-  Future<void> _enableAppLock(BuildContext context, WidgetRef ref) async {
-    final localAuth = LocalAuthentication();
-    // Check for biometrics and device support (Windows Hello, etc.)
-    final bool canAuthenticateWithBiometrics =
-        await localAuth.canCheckBiometrics;
-    final bool canAuthenticate =
-        canAuthenticateWithBiometrics || await localAuth.isDeviceSupported();
-    bool authenticated = false;
-
-    if (canAuthenticate) {
-      try {
-        authenticated = await localAuth.authenticate(
-          localizedReason: 'Authenticate to enable app lock',
-          // persistAcrossBackgrounding keeps auth dialog when app backgrounds
-        );
-      } catch (e) {
-        debugPrint('Authentication error: $e');
-        // If biometric auth fails, show PIN dialog as fallback
-        authenticated = false;
-      }
-    }
-
-    // If device doesn't support authentication or auth failed, show PIN setup
-    if (!canAuthenticate || (!authenticated && canAuthenticate)) {
-      final TextEditingController pinController = TextEditingController();
-      final TextEditingController confirmPinController =
-          TextEditingController();
-      bool pinsMatch = true;
-
-      authenticated =
-          await showDialog<bool>(
-            context: context,
-            builder:
-                (ctx) => StatefulBuilder(
-                  builder:
-                      (context, setState) => AlertDialog(
-                        title: mdTextBold(text: 'Set App Lock PIN'),
-                        content: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            TextField(
-                              controller: pinController,
-                              decoration: InputDecoration(
-                                labelText: 'Enter PIN (4 digits)',
-                                errorText:
-                                    pinController.text.length != 4 &&
-                                            pinController.text.isNotEmpty
-                                        ? 'PIN must be 4 digits'
-                                        : null,
-                              ),
-                              keyboardType: TextInputType.number,
-                              maxLength: 4,
-                              obscureText: true,
-                            ),
-                            TextField(
-                              controller: confirmPinController,
-                              decoration: InputDecoration(
-                                labelText: 'Confirm PIN',
-                                errorText:
-                                    !pinsMatch ? 'PINs do not match' : null,
-                              ),
-                              keyboardType: TextInputType.number,
-                              maxLength: 4,
-                              obscureText: true,
-                              onChanged: (value) {
-                                setState(() {
-                                  pinsMatch =
-                                      pinController.text ==
-                                      confirmPinController.text;
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
-                            child: Text(
-                              'Cancel',
-                              style: TextStyle(fontSize: 14.spMin),
-                            ),
-                          ),
-                          ElevatedButton(
-                            onPressed: () {
-                              if (pinController.text.length == 4 &&
-                                  pinController.text ==
-                                      confirmPinController.text) {
-                                Navigator.pop(ctx, true);
-                              } else {
-                                setState(() {
-                                  pinsMatch = false;
-                                });
-                              }
-                            },
-                            child: Text(
-                              'Set PIN',
-                              style: TextStyle(fontSize: 14.spMin),
-                            ),
-                          ),
-                        ],
-                      ),
-                ),
-          ) ??
-          false;
-    }
-
-    if (authenticated) {
-      ref.read(settingsProvider.notifier).setAppLockEnabled(true);
-      AppFlushbar.success(context, message: 'App Lock enabled successfully');
-    }
-  }
-
   void _showPrinterScanDialog(BuildContext context) {
     final printerManager = PrinterManager.instance;
     final printers = <PrinterDevice>[];
@@ -215,20 +102,20 @@ class SettingsPage extends ConsumerWidget {
                   style: TextStyle(fontSize: 16.spMin),
                 ),
                 content: SizedBox(
-                  width: 300.w,
-                  height: 200.h,
+                  width: 300.spMin,
+                  height: 200.spMin,
                   child:
                       printers.isEmpty
                           ? Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               CircularProgressIndicator(),
-                              SizedBox(height: 16.h),
+                              SizedBox(height: 16.spMin),
                               Text(
                                 'Scanning for USB printers...',
                                 style: TextStyle(fontSize: 14.spMin),
                               ),
-                              SizedBox(height: 8.h),
+                              SizedBox(height: 8.spMin),
                               Text(
                                 'Make sure your printer is connected via USB',
                                 style: TextStyle(
@@ -346,26 +233,11 @@ class SettingsPage extends ConsumerWidget {
               ),
               child: AppExpansionTile(
                 initiallyExpanded: false,
-                tilePadding: EdgeInsets.symmetric(horizontal: 16.w),
-                childrenPadding: EdgeInsets.all(16.h),
+                tilePadding: EdgeInsets.symmetric(horizontal: 16.spMin),
+                childrenPadding: EdgeInsets.all(16.spMin),
                 title: mdTextBold(text: 'General Settings'),
                 children: [
                   // ✅ Reusable Switch Tile Widget Pattern
-                  _smallSwitchTile(
-                    context: context,
-                    title: 'Enable App Lock',
-                    value: settingsState.isAppLockEnabled,
-                    onChanged: (val) async {
-                      if (val) {
-                        await _enableAppLock(context, ref);
-                      } else {
-                        ref
-                            .read(settingsProvider.notifier)
-                            .setAppLockEnabled(false);
-                        AppFlushbar.info(context, message: 'App Lock disabled');
-                      }
-                    },
-                  ),
                   _smallSwitchTile(
                     context: context,
                     title: 'Enable Print Bills',
@@ -387,9 +259,9 @@ class SettingsPage extends ConsumerWidget {
                   if (settingsState.isPrintEnabled) ...[
                     Padding(
                       padding: EdgeInsets.only(
-                        left: 16.w,
-                        right: 16.w,
-                        bottom: 8.h,
+                        left: 16.spMin,
+                        right: 16.spMin,
+                        bottom: 8.spMin,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -461,9 +333,9 @@ class SettingsPage extends ConsumerWidget {
                           ),
                           if (settingsState.printFormat ==
                               PrintFormat.thermal) ...[
-                            SizedBox(height: 8.h),
+                            SizedBox(height: 8.spMin),
                             Divider(),
-                            SizedBox(height: 8.h),
+                            SizedBox(height: 8.spMin),
                             Text(
                               'Thermal Printer Setup',
                               style: TextStyle(
@@ -471,7 +343,7 @@ class SettingsPage extends ConsumerWidget {
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                            SizedBox(height: 8.h),
+                            SizedBox(height: 8.spMin),
                             Text(
                               'Connect a USB thermal printer and scan for available devices. You can select a printer from the sales screen or bill details.',
                               style: TextStyle(
@@ -479,7 +351,7 @@ class SettingsPage extends ConsumerWidget {
                                 color: Colors.grey,
                               ),
                             ),
-                            SizedBox(height: 12.h),
+                            SizedBox(height: 12.spMin),
                             OutlinedButton.icon(
                               onPressed: () => _showPrinterScanDialog(context),
                               icon: AppIcon(
@@ -493,9 +365,9 @@ class SettingsPage extends ConsumerWidget {
                                 style: TextStyle(fontSize: 12.spMin),
                               ),
                             ),
-                            SizedBox(height: 16.h),
+                            SizedBox(height: 16.spMin),
                             Divider(),
-                            SizedBox(height: 8.h),
+                            SizedBox(height: 8.spMin),
                             Text(
                               'Thermal Receipt Design',
                               style: TextStyle(
@@ -503,14 +375,14 @@ class SettingsPage extends ConsumerWidget {
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                            SizedBox(height: 8.h),
+                            SizedBox(height: 8.spMin),
                             Row(
                               children:
                                   ThermalDesign.values.map((design) {
                                     final isSelected =
                                         settingsState.thermalDesign == design;
                                     return Padding(
-                                      padding: EdgeInsets.only(right: 12.w),
+                                      padding: EdgeInsets.only(right: 12.spMin),
                                       child: InkWell(
                                         onTap: () {
                                           ref
@@ -526,7 +398,7 @@ class SettingsPage extends ConsumerWidget {
                                           8.r,
                                         ),
                                         child: Container(
-                                          width: 90.w,
+                                          width: 90.spMin,
                                           padding: EdgeInsets.all(12.r),
                                           decoration: BoxDecoration(
                                             border: Border.all(
@@ -555,7 +427,7 @@ class SettingsPage extends ConsumerWidget {
                                                         ? AppColors.primary
                                                         : Colors.grey,
                                               ),
-                                              SizedBox(height: 6.h),
+                                              SizedBox(height: 6.spMin),
                                               Text(
                                                 _getThermalDesignName(design),
                                                 style: TextStyle(
@@ -612,7 +484,7 @@ class SettingsPage extends ConsumerWidget {
                 ],
               ),
             ),
-            SizedBox(height: 16.h),
+            SizedBox(height: 16.spMin),
             // Modules Section — show/hide optional features
             Card(
               shape: RoundedRectangleBorder(
@@ -620,8 +492,8 @@ class SettingsPage extends ConsumerWidget {
               ),
               child: AppExpansionTile(
                 initiallyExpanded: false,
-                tilePadding: EdgeInsets.symmetric(horizontal: 16.w),
-                childrenPadding: EdgeInsets.all(16.h),
+                tilePadding: EdgeInsets.symmetric(horizontal: 16.spMin),
+                childrenPadding: EdgeInsets.all(16.spMin),
                 title: mdTextBold(text: 'Modules'),
                 children: [
                   _smallSwitchTile(
@@ -652,7 +524,7 @@ class SettingsPage extends ConsumerWidget {
                 ],
               ),
             ),
-            SizedBox(height: 16.h),
+            SizedBox(height: 16.spMin),
             // Bill Settings Section
             Card(
               shape: RoundedRectangleBorder(
@@ -660,16 +532,16 @@ class SettingsPage extends ConsumerWidget {
               ),
               child: AppExpansionTile(
                 initiallyExpanded: false,
-                tilePadding: EdgeInsets.symmetric(horizontal: 16.w),
-                childrenPadding: EdgeInsets.all(16.h),
+                tilePadding: EdgeInsets.symmetric(horizontal: 16.spMin),
+                childrenPadding: EdgeInsets.all(16.spMin),
                 title: mdTextBold(text: 'Bill Settings'),
                 children: [
                   // Bill Design Selection
                   Padding(
                     padding: EdgeInsets.only(
-                      left: 8.w,
-                      right: 8.w,
-                      bottom: 8.h,
+                      left: 8.spMin,
+                      right: 8.spMin,
+                      bottom: 8.spMin,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -681,7 +553,7 @@ class SettingsPage extends ConsumerWidget {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        SizedBox(height: 4.h),
+                        SizedBox(height: 4.spMin),
                         Text(
                           'Choose the design for your PDF bills',
                           style: TextStyle(
@@ -689,10 +561,10 @@ class SettingsPage extends ConsumerWidget {
                             color: Colors.grey,
                           ),
                         ),
-                        SizedBox(height: 12.h),
+                        SizedBox(height: 12.spMin),
                         Wrap(
-                          spacing: 12.w,
-                          runSpacing: 12.h,
+                          spacing: 12.spMin,
+                          runSpacing: 12.spMin,
                           children:
                               BillDesign.values.map((design) {
                                 final isSelected =
@@ -710,7 +582,7 @@ class SettingsPage extends ConsumerWidget {
                                   },
                                   borderRadius: BorderRadius.circular(8.r),
                                   child: Container(
-                                    width: 80.w,
+                                    width: 80.spMin,
                                     padding: EdgeInsets.all(12.r),
                                     decoration: BoxDecoration(
                                       border: Border.all(
@@ -750,7 +622,7 @@ class SettingsPage extends ConsumerWidget {
                                         //           ? AppColors.primary
                                         //           : Colors.grey,
                                         // ),
-                                        SizedBox(height: 6.h),
+                                        SizedBox(height: 6.spMin),
                                         Text(
                                           _getBillDesignName(design),
                                           style: TextStyle(
@@ -775,7 +647,7 @@ class SettingsPage extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  Divider(height: 24.h),
+                  Divider(height: 24.spMin),
                   // Paid Stamp Settings
                   _smallSwitchTile(
                     context: context,
@@ -798,7 +670,7 @@ class SettingsPage extends ConsumerWidget {
                   ),
                   if (settingsState.showPaidStamp) ...[
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8.w),
+                      padding: EdgeInsets.symmetric(horizontal: 8.spMin),
                       child: ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text(
@@ -828,7 +700,7 @@ class SettingsPage extends ConsumerWidget {
                       ),
                     ),
                   ],
-                  Divider(height: 24.h),
+                  Divider(height: 24.spMin),
                   // Background Watermark Settings
                   _smallSwitchTile(
                     context: context,
@@ -851,7 +723,7 @@ class SettingsPage extends ConsumerWidget {
                   ),
                   if (settingsState.showBackgroundWatermark) ...[
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8.w),
+                      padding: EdgeInsets.symmetric(horizontal: 8.spMin),
                       child: ListTile(
                         contentPadding: EdgeInsets.zero,
                         leading: AppIcon(
@@ -889,7 +761,7 @@ class SettingsPage extends ConsumerWidget {
                       ),
                     ),
                   ],
-                  Divider(height: 24.h),
+                  Divider(height: 24.spMin),
                   // Bank Details on Bills
                   _smallSwitchTile(
                     context: context,
@@ -911,7 +783,7 @@ class SettingsPage extends ConsumerWidget {
                   ),
                   if (settingsState.showBankDetailsOnBill) ...[
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8.w),
+                      padding: EdgeInsets.symmetric(horizontal: 8.spMin),
                       child: ListTile(
                         contentPadding: EdgeInsets.zero,
                         leading: AppIcon(
@@ -934,8 +806,8 @@ class SettingsPage extends ConsumerWidget {
                         ),
                         trailing: Container(
                           padding: EdgeInsets.symmetric(
-                            horizontal: 12.w,
-                            vertical: 6.h,
+                            horizontal: 12.spMin,
+                            vertical: 6.spMin,
                           ),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withOpacity(0.1),
@@ -954,9 +826,9 @@ class SettingsPage extends ConsumerWidget {
                     ),
                     Padding(
                       padding: EdgeInsets.only(
-                        left: 8.w,
-                        right: 8.w,
-                        bottom: 8.h,
+                        left: 8.spMin,
+                        right: 8.spMin,
+                        bottom: 8.spMin,
                       ),
                       child: Text(
                         'Add or manage bank accounts in your profile settings. The selected bank\'s QR code, account number, and bank name will appear on bills.',
@@ -971,7 +843,7 @@ class SettingsPage extends ConsumerWidget {
                 ],
               ),
             ),
-            SizedBox(height: 16.h),
+            SizedBox(height: 16.spMin),
             // Theme Settings ExpansionTile
             Card(
               shape: RoundedRectangleBorder(
@@ -979,9 +851,10 @@ class SettingsPage extends ConsumerWidget {
               ),
               child: AppExpansionTile(
                 initiallyExpanded: false,
-                tilePadding: EdgeInsets.symmetric(horizontal: 16.w),
-                childrenPadding: EdgeInsets.all(16.h),
+                tilePadding: EdgeInsets.symmetric(horizontal: 16.spMin),
+                childrenPadding: EdgeInsets.all(16.spMin),
                 title: mdTextBold(text: 'Theme'),
+
                 children: [
                   RadioListTile<ThemeMode>(
                     title: smText(text: 'Light'),
@@ -992,7 +865,7 @@ class SettingsPage extends ConsumerWidget {
                         ref.read(settingsProvider.notifier).setThemeMode(value);
                       }
                     },
-                    contentPadding: EdgeInsets.symmetric(horizontal: 8.w),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8.spMin),
                   ),
                   RadioListTile<ThemeMode>(
                     title: smText(text: 'Dark'),
@@ -1003,7 +876,7 @@ class SettingsPage extends ConsumerWidget {
                         ref.read(settingsProvider.notifier).setThemeMode(value);
                       }
                     },
-                    contentPadding: EdgeInsets.symmetric(horizontal: 8.w),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8.spMin),
                   ),
                   RadioListTile<ThemeMode>(
                     title: smText(text: 'system'),
@@ -1014,17 +887,14 @@ class SettingsPage extends ConsumerWidget {
                         ref.read(settingsProvider.notifier).setThemeMode(value);
                       }
                     },
-                    contentPadding: EdgeInsets.symmetric(horizontal: 8.w),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8.spMin),
                   ),
-                  Divider(height: 24.h),
-                  Align(
-                    alignment: AlignmentGeometry.center,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16.w),
-                      child: smTextBold(text: 'Icon Style'),
-                    ),
+                  Divider(height: 24.spMin),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.spMin),
+                    child: smTextBold(text: 'Icon Style'),
                   ),
-                  SizedBox(height: 8.h),
+                  SizedBox(height: 8.spMin),
                   RadioListTile<IconStyle>(
                     title: smText(text: 'Default'),
                     value: IconStyle.defaultStyle,
@@ -1034,7 +904,7 @@ class SettingsPage extends ConsumerWidget {
                         ref.read(settingsProvider.notifier).setIconStyle(value);
                       }
                     },
-                    contentPadding: EdgeInsets.symmetric(horizontal: 8.w),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8.spMin),
                   ),
                   RadioListTile<IconStyle>(
                     title: smText(text: 'Windows 11'),
@@ -1045,22 +915,21 @@ class SettingsPage extends ConsumerWidget {
                         ref.read(settingsProvider.notifier).setIconStyle(value);
                       }
                     },
-                    contentPadding: EdgeInsets.symmetric(horizontal: 8.w),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8.spMin),
                   ),
-                  Divider(height: 24.h),
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16.w),
-                      child: smTextBold(text: 'App Color'),
-                    ),
-                  ),
-                  SizedBox(height: 12.h),
+                  Divider(height: 24.spMin),
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    padding: EdgeInsets.symmetric(horizontal: 16.spMin),
+                    child: smTextBold(text: 'App Color'),
+                  ),
+                  SizedBox(height: 12.spMin),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.spMin),
                     child: Wrap(
-                      spacing: 12.w,
-                      runSpacing: 12.h,
+                      alignment: WrapAlignment.start,
+                      crossAxisAlignment: WrapCrossAlignment.start,
+                      spacing: 12.spMin,
+                      runSpacing: 12.spMin,
                       children:
                           AppColorOption.colors.map((colorOption) {
                             final isSelected =
@@ -1077,8 +946,8 @@ class SettingsPage extends ConsumerWidget {
                                 );
                               },
                               child: Container(
-                                width: 40.w,
-                                height: 40.w,
+                                width: 50.spMin,
+                                height: 50.spMin,
                                 decoration: BoxDecoration(
                                   color: colorOption.color,
                                   shape: BoxShape.circle,
@@ -1114,48 +983,48 @@ class SettingsPage extends ConsumerWidget {
                           }).toList(),
                     ),
                   ),
-                  SizedBox(height: 16.h),
+                  SizedBox(height: 16.spMin),
                   // Color shades preview
                   Align(
                     alignment: AlignmentDirectional.centerStart,
                     child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      padding: EdgeInsets.symmetric(horizontal: 16.spMin),
                       child: smText(text: 'Color Shades Preview'),
                     ),
                   ),
-                  SizedBox(height: 8.h),
+                  SizedBox(height: 8.spMin),
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    padding: EdgeInsets.symmetric(horizontal: 16.spMin),
                     child: Row(
                       children: [
                         // Dark shades
                         _colorShadeBox(settingsState.primaryDark2, 'Dark 2'),
-                        SizedBox(width: 4.w),
+                        SizedBox(width: 4.spMin),
                         _colorShadeBox(settingsState.primaryDark1, 'Dark 1'),
-                        SizedBox(width: 4.w),
+                        SizedBox(width: 4.spMin),
                         // Primary
                         _colorShadeBox(
                           settingsState.primaryColor,
                           'Primary',
                           isMain: true,
                         ),
-                        SizedBox(width: 4.w),
+                        SizedBox(width: 4.spMin),
                         // Light shades
                         _colorShadeBox(settingsState.primaryLight1, 'Light 1'),
-                        SizedBox(width: 4.w),
+                        SizedBox(width: 4.spMin),
                         _colorShadeBox(settingsState.primaryLight2, 'Light 2'),
-                        SizedBox(width: 4.w),
+                        SizedBox(width: 4.spMin),
                         _colorShadeBox(settingsState.primaryLight3, 'Light 3'),
-                        SizedBox(width: 4.w),
+                        SizedBox(width: 4.spMin),
                         _colorShadeBox(settingsState.primaryLight4, 'Light 4'),
                       ],
                     ),
                   ),
-                  SizedBox(height: 8.h),
+                  SizedBox(height: 8.spMin),
                 ],
               ),
             ),
-            SizedBox(height: 16.h),
+            SizedBox(height: 16.spMin),
             // Paths ExpansionTile
             Card(
               shape: RoundedRectangleBorder(
@@ -1163,8 +1032,8 @@ class SettingsPage extends ConsumerWidget {
               ),
               child: AppExpansionTile(
                 initiallyExpanded: false,
-                tilePadding: EdgeInsets.symmetric(horizontal: 16.w),
-                childrenPadding: EdgeInsets.all(16.h),
+                tilePadding: EdgeInsets.symmetric(horizontal: 16.spMin),
+                childrenPadding: EdgeInsets.all(16.spMin),
                 title: mdTextBold(text: 'Paths'),
                 children: [
                   ListTile(
@@ -1187,10 +1056,10 @@ class SettingsPage extends ConsumerWidget {
                 ],
               ),
             ),
-            SizedBox(height: 16.h),
+            SizedBox(height: 16.spMin),
             // Screen Management ExpansionTile
             ScreenManagementSection(ref: ref),
-            SizedBox(height: 16.h),
+            SizedBox(height: 16.spMin),
             // Desktop Side Bar ExpansionTile
             Card(
               shape: RoundedRectangleBorder(
@@ -1198,8 +1067,8 @@ class SettingsPage extends ConsumerWidget {
               ),
               child: AppExpansionTile(
                 initiallyExpanded: false,
-                tilePadding: EdgeInsets.symmetric(horizontal: 16.w),
-                childrenPadding: EdgeInsets.all(16.h),
+                tilePadding: EdgeInsets.symmetric(horizontal: 16.spMin),
+                childrenPadding: EdgeInsets.all(16.spMin),
                 title: mdTextBold(text: 'Desktop Side Bar'),
                 children: [
                   CheckboxListTile(
@@ -1208,7 +1077,7 @@ class SettingsPage extends ConsumerWidget {
                     onChanged: (val) {
                       ref.read(settingsProvider.notifier).setShowUserCard(val!);
                     },
-                    contentPadding: EdgeInsets.symmetric(horizontal: 8.w),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8.spMin),
                     controlAffinity: ListTileControlAffinity.leading,
                   ),
                   AnimatedCrossFade(
@@ -1228,7 +1097,9 @@ class SettingsPage extends ConsumerWidget {
                                 .read(settingsProvider.notifier)
                                 .setShowTagLine(val!);
                           },
-                          contentPadding: EdgeInsets.symmetric(horizontal: 8.w),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 8.spMin,
+                          ),
                           controlAffinity: ListTileControlAffinity.leading,
                         ),
                         CheckboxListTile(
@@ -1241,7 +1112,9 @@ class SettingsPage extends ConsumerWidget {
                                 .read(settingsProvider.notifier)
                                 .setTagLineInsteadOfCEOName(val!);
                           },
-                          contentPadding: EdgeInsets.symmetric(horizontal: 8.w),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 8.spMin,
+                          ),
                           controlAffinity: ListTileControlAffinity.leading,
                         ),
                       ],
@@ -1250,7 +1123,7 @@ class SettingsPage extends ConsumerWidget {
                 ],
               ),
             ),
-            SizedBox(height: 16.h),
+            SizedBox(height: 16.spMin),
             // Elevations ExpansionTile
             Card(
               shape: RoundedRectangleBorder(
@@ -1258,8 +1131,8 @@ class SettingsPage extends ConsumerWidget {
               ),
               child: AppExpansionTile(
                 initiallyExpanded: false,
-                tilePadding: EdgeInsets.symmetric(horizontal: 16.w),
-                childrenPadding: EdgeInsets.all(16.h),
+                tilePadding: EdgeInsets.symmetric(horizontal: 16.spMin),
+                childrenPadding: EdgeInsets.all(16.spMin),
                 title: mdTextBold(text: 'Elevations'),
                 children: [
                   ListTile(
@@ -1285,7 +1158,7 @@ class SettingsPage extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 8.w),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8.spMin),
                   ),
                   ListTile(
                     title: smTextBold(text: 'AppBar Elevation'),
@@ -1312,7 +1185,7 @@ class SettingsPage extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 8.w),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8.spMin),
                   ),
                   ListTile(
                     title: smTextBold(text: 'Product Card Elevation'),
@@ -1338,7 +1211,7 @@ class SettingsPage extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 8.w),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8.spMin),
                   ),
                 ],
               ),
@@ -1357,7 +1230,7 @@ class SettingsPage extends ConsumerWidget {
     required Function(bool) onChanged,
   }) {
     return ListTile(
-      contentPadding: EdgeInsets.symmetric(horizontal: 8.w),
+      contentPadding: EdgeInsets.symmetric(horizontal: 8.spMin),
       title: Text(
         title,
         style: TextStyle(
@@ -1476,7 +1349,7 @@ class SettingsPage extends ConsumerWidget {
                             color: Colors.grey,
                           ),
                         ),
-                        SizedBox(height: 16.h),
+                        SizedBox(height: 16.spMin),
                         TextField(
                           controller: textController,
                           decoration: InputDecoration(
@@ -1487,7 +1360,7 @@ class SettingsPage extends ConsumerWidget {
                             ),
                           ),
                         ),
-                        SizedBox(height: 12.h),
+                        SizedBox(height: 12.spMin),
                         TextField(
                           controller: signatureController,
                           decoration: InputDecoration(
@@ -1498,7 +1371,7 @@ class SettingsPage extends ConsumerWidget {
                             ),
                           ),
                         ),
-                        SizedBox(height: 12.h),
+                        SizedBox(height: 12.spMin),
                         CheckboxListTile(
                           contentPadding: EdgeInsets.zero,
                           title: Text(
@@ -1577,7 +1450,7 @@ class SettingsPage extends ConsumerWidget {
                             color: Colors.grey,
                           ),
                         ),
-                        SizedBox(height: 16.h),
+                        SizedBox(height: 16.spMin),
                         Text(
                           'Opacity: ${(opacity * 100).toInt()}%',
                           style: TextStyle(fontSize: 12.spMin),
@@ -1594,10 +1467,10 @@ class SettingsPage extends ConsumerWidget {
                             });
                           },
                         ),
-                        SizedBox(height: 8.h),
+                        SizedBox(height: 8.spMin),
                         Container(
                           width: double.infinity,
-                          height: 100.h,
+                          height: 100.spMin,
                           decoration: BoxDecoration(
                             border: Border.all(color: Colors.grey.shade300),
                             borderRadius: BorderRadius.circular(8.r),
@@ -1646,7 +1519,7 @@ class SettingsPage extends ConsumerWidget {
                             ],
                           ),
                         ),
-                        SizedBox(height: 8.h),
+                        SizedBox(height: 8.spMin),
                         Text(
                           'Uses "paid stamp.png" from assets folder',
                           style: TextStyle(
@@ -1690,7 +1563,7 @@ class SettingsPage extends ConsumerWidget {
       child: Tooltip(
         message: label,
         child: Container(
-          height: isMain ? 36.h : 30.h,
+          height: isMain ? 36.spMin : 30.spMin,
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(4.r),

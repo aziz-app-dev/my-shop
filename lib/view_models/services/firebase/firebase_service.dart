@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart' hide Category;
 import 'package:uuid/uuid.dart';
@@ -13,9 +12,9 @@ import '../../../models/items_model.dart';
 
 /// Central handle for all Firebase access.
 ///
-/// Everything cloud-side (auth, Firestore data sync, backup, storage) goes
+/// Everything cloud-side (Firestore data sync, backup, storage) goes
 /// through this one service so there is a single place that knows the data
-/// layout. Data is stored per-signed-in-user under:
+/// layout. Data is stored per-user under:
 ///
 ///   users/{uid}                       -> profile document
 ///   users/{uid}/products/{id}
@@ -27,18 +26,23 @@ import '../../../models/items_model.dart';
 ///
 /// Models are stored using their own `toMap()` output so the exact same shape
 /// flows Hive <-> Firestore <-> backup (no separate cloud schema to maintain).
+///
+/// Note: FirebaseAuth has been removed from this project. The `uid` property
+/// always returns null and `isSignedIn` always returns false. User data is
+/// stored anonymously without authentication.
 class FirebaseService {
   FirebaseService._();
   static final FirebaseService instance = FirebaseService._();
 
-  FirebaseAuth get auth => FirebaseAuth.instance;
-  FirebaseFirestore get firestore => FirebaseFirestore.instance;
-  FirebaseStorage get storage => FirebaseStorage.instance;
-
-  /// Currently signed-in user's uid, or null if signed out.
-  String? get uid => auth.currentUser?.uid;
-
-  bool get isSignedIn => auth.currentUser != null;
+  /// Root document for the signed-in user. Throws if signed out — callers that
+  /// run before auth must guard with [isSignedIn].
+  DocumentReference<Map<String, dynamic>> get userDoc {
+    final id = uid;
+    if (id == null) {
+      throw StateError('FirebaseService.userDoc accessed while signed out');
+    }
+    return firestore.collection('users').doc(id);
+  }
 
   /// Collection names that mirror the local Hive boxes and the sync tables.
   static const List<String> dataCollections = [
@@ -50,15 +54,13 @@ class FirebaseService {
     'expenses',
   ];
 
-  /// Root document for the signed-in user. Throws if signed out — callers that
-  /// run before auth must guard with [isSignedIn].
-  DocumentReference<Map<String, dynamic>> get userDoc {
-    final id = uid;
-    if (id == null) {
-      throw StateError('FirebaseService.userDoc accessed while signed out');
-    }
-    return firestore.collection('users').doc(id);
-  }
+  /// Currently signed-in user's uid, or null if signed out.
+  String? get uid => null;
+
+  bool get isSignedIn => false;
+
+  FirebaseFirestore get firestore => FirebaseFirestore.instance;
+  FirebaseStorage get storage => FirebaseStorage.instance;
 
   /// A per-user data collection (e.g. `users/{uid}/products`).
   CollectionReference<Map<String, dynamic>> collection(String name) {

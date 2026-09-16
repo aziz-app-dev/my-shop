@@ -6,6 +6,7 @@ import '../../res/assets/image_assets.dart';
 import '../../res/components/app_icon.dart';
 import '../../res/components/product_card.dart';
 import '../../res/components/app_bar_widget.dart';
+import '../../utils/app_sizes.dart';
 import '../../view_models/providers/home_page_provider.dart';
 
 // Top Selling Products Page
@@ -44,15 +45,23 @@ class TopSellingProductsView extends ConsumerWidget {
         int crossAxisCount;
         double childAspectRatio;
 
-        if (constraints.maxWidth < 600) {
+        // Use AppSizes utilities for consistent responsive breakpoints
+        if (AppSizes.isMobile(context)) {
+          // Small mobile: < 600px
           crossAxisCount = 2;
           childAspectRatio = 0.75;
-        } else if (constraints.maxWidth < 1100) {
+        } else if (AppSizes.isTablet(context)) {
+          // Small tablet: 600-1100px
           crossAxisCount = 3;
           childAspectRatio = 0.85;
-        } else {
+        } else if (AppSizes.isDesktop(context)) {
+          // Small desktop: 1100-1400px
           crossAxisCount = 4;
           childAspectRatio = 0.9;
+        } else {
+          // Large desktop: 1400px+
+          crossAxisCount = 5;
+          childAspectRatio = 1.0;
         }
 
         return GridView.builder(
@@ -146,24 +155,32 @@ class LatestItemsView extends ConsumerWidget {
         int crossAxisCount;
         double childAspectRatio;
 
-        if (constraints.maxWidth < 600) {
-          crossAxisCount = 2;
-          childAspectRatio = 0.75;
-        } else if (constraints.maxWidth < 1100) {
+        // Use AppSizes utilities for consistent responsive breakpoints
+        if (AppSizes.isMobile(context)) {
+          // Small mobile: < 600px
           crossAxisCount = 3;
+          childAspectRatio = 0.75;
+        } else if (AppSizes.isTablet(context)) {
+          // Small tablet: 600-1100px
+          crossAxisCount = 5;
           childAspectRatio = 0.85;
+        } else if (AppSizes.isDesktop(context)) {
+          // Small desktop: 1100-1400px
+          crossAxisCount = 8;
+          childAspectRatio = 0.8;
         } else {
-          crossAxisCount = 4;
-          childAspectRatio = 0.9;
+          // Large desktop: 1400px+
+          crossAxisCount = 5;
+          childAspectRatio = 1.0;
         }
 
         return GridView.builder(
-          padding: EdgeInsets.all(16.w),
+          padding: EdgeInsets.all(20.spMin),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
             childAspectRatio: childAspectRatio,
-            crossAxisSpacing: 12.w,
-            mainAxisSpacing: 12.h,
+            crossAxisSpacing: 12.spMin,
+            mainAxisSpacing: 12.spMin,
           ),
           itemCount: products.length,
           itemBuilder: (context, index) {
@@ -248,15 +265,23 @@ class LatestServicesView extends ConsumerWidget {
         int crossAxisCount;
         double childAspectRatio;
 
-        if (constraints.maxWidth < 600) {
+        // Use AppSizes utilities for consistent responsive breakpoints
+        if (AppSizes.isMobile(context)) {
+          // Small mobile: < 600px
           crossAxisCount = 2;
           childAspectRatio = 0.75;
-        } else if (constraints.maxWidth < 1100) {
+        } else if (AppSizes.isTablet(context)) {
+          // Small tablet: 600-1100px
           crossAxisCount = 3;
           childAspectRatio = 0.85;
-        } else {
+        } else if (AppSizes.isDesktop(context)) {
+          // Small desktop: 1100-1400px
           crossAxisCount = 4;
           childAspectRatio = 0.9;
+        } else {
+          // Large desktop: 1400px+
+          crossAxisCount = 5;
+          childAspectRatio = 1.0;
         }
 
         return GridView.builder(
@@ -350,15 +375,23 @@ class LowStockItemsView extends ConsumerWidget {
         int crossAxisCount;
         double childAspectRatio;
 
-        if (constraints.maxWidth < 600) {
+        // Use AppSizes utilities for consistent responsive breakpoints
+        if (AppSizes.isMobile(context)) {
+          // Small mobile: < 600px
           crossAxisCount = 2;
           childAspectRatio = 0.75;
-        } else if (constraints.maxWidth < 1100) {
+        } else if (AppSizes.isTablet(context)) {
+          // Small tablet: 600-1100px
           crossAxisCount = 3;
           childAspectRatio = 0.85;
-        } else {
+        } else if (AppSizes.isDesktop(context)) {
+          // Small desktop: 1100-1400px
           crossAxisCount = 4;
           childAspectRatio = 0.9;
+        } else {
+          // Large desktop: 1400px+
+          crossAxisCount = 5;
+          childAspectRatio = 1.0;
         }
 
         return GridView.builder(

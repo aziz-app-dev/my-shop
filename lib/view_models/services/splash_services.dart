@@ -6,7 +6,6 @@ import 'package:desktopapp/res/components/app_text_widgrt.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:local_auth/local_auth.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,94 +14,10 @@ import '../../routes/routes_name.dart';
 import '../providers/settings_provider.dart';
 import 'cloud_user/cloud_user_service.dart';
 import 'database/database_services.dart';
-import 'firebase/firebase_auth_service.dart';
 
 class SplashServices {
-  Future<bool> _authenticate(BuildContext context) async {
-    final localAuth = LocalAuthentication();
-    // Check for biometrics and device support (Windows Hello, etc.)
-    final bool canAuthenticateWithBiometrics =
-        await localAuth.canCheckBiometrics;
-    final bool canAuthenticate =
-        canAuthenticateWithBiometrics || await localAuth.isDeviceSupported();
-    bool authenticated = false;
-
-    if (canAuthenticate) {
-      try {
-        authenticated = await localAuth.authenticate(
-          localizedReason: 'Authenticate to access the app',
-        );
-      } catch (e) {
-        debugPrint('Authentication error: $e');
-      }
-    }
-
-    // If device doesn't support authentication or auth failed, show PIN dialog
-    if (!canAuthenticate || (!authenticated && canAuthenticate)) {
-      // Fallback to PIN
-      final TextEditingController pinController = TextEditingController();
-      bool isPinCorrect = true;
-
-      authenticated =
-          await showDialog<bool>(
-            context: context,
-            barrierDismissible: false,
-            builder:
-                (ctx) => StatefulBuilder(
-                  builder:
-                      (context, setState) => AlertDialog(
-                        title: mdText(text: 'Enter App Lock PIN'),
-                        content: TextField(
-                          controller: pinController,
-                          decoration: InputDecoration(
-                            labelText: 'Enter PIN (4 digits)',
-                            errorText: !isPinCorrect ? 'Incorrect PIN' : null,
-                          ),
-                          keyboardType: TextInputType.number,
-                          maxLength: 4,
-                          obscureText: true,
-                        ),
-                        actions: [
-                          ElevatedButton(
-                            onPressed: () {
-                              if (pinController.text == '1234') {
-                                Navigator.pop(ctx, true);
-                              } else {
-                                setState(() {
-                                  isPinCorrect = false;
-                                });
-                              }
-                            },
-                            child: Text(
-                              'Unlock',
-                              style: TextStyle(fontSize: 14.spMin),
-                            ),
-                          ),
-                        ],
-                      ),
-                ),
-          ) ??
-          false;
-    }
-
-    return authenticated;
-  }
-
   void isLogin(WidgetRef ref, BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final settingsState = ref.read(settingsProvider);
-
-      if (settingsState.isAppLockEnabled) {
-        final isAuthenticated = await _authenticate(context);
-
-        if (!context.mounted) return;
-
-        if (!isAuthenticated) {
-          Navigator.of(context).pop(); // close the app or splash
-          return;
-        }
-      }
-
       // Check for first-time setup
       final isFirstInstall = await _checkFirstInstall();
 
@@ -127,21 +42,9 @@ class SplashServices {
         }
       }
 
-      // Not signed in with Firebase? Go to the login screen.
-      if (!FirebaseAuthService().isSignedIn) {
-        Timer(const Duration(seconds: 1), () {
-          if (context.mounted) {
-            Navigator.pushReplacementNamed(context, RouteName.loginView);
-          }
-        });
-        return;
-      }
-
-      // Signed in. Has the shop setup been completed locally?
+      // Shop setup complete? Navigate accordingly.
       bool setupComplete = await _isShopSetupComplete();
 
-      // Not complete locally? Try to pull the profile from the cloud
-      // (re-install / new device for an already-set-up shop), then re-check.
       if (!setupComplete) {
         final restored = await _tryRestoreProfileFromCloud();
         if (restored) setupComplete = await _isShopSetupComplete();
@@ -151,10 +54,8 @@ class SplashServices {
       Timer(const Duration(seconds: 1), () {
         if (context.mounted) {
           if (!setupComplete) {
-            // Signed in but shop setup not finished — go to Shop Setup.
             Navigator.pushReplacementNamed(context, RouteName.profileEdit);
           } else {
-            // Shop setup complete (local or restored from cloud), go to home.
             Navigator.pushReplacementNamed(context, RouteName.mainScreen);
           }
         }

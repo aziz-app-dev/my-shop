@@ -15,7 +15,4 @@ class PlatformUtils {
 
   /// Returns true if thermal printing is supported
   static bool get supportsThermalPrinting => !kIsWeb && (isAndroid || isWindows);
-
-  /// Returns true if local authentication (biometrics) is supported
-  static bool get supportsLocalAuth => !kIsWeb && (isAndroid || isIOS);
 }

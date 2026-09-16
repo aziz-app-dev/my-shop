@@ -153,10 +153,13 @@ class ProductCard extends StatelessWidget {
                         (context) => ProductDetailsScreen(product: product),
                   ),
                 );
-                if (result is Map && result['success'] == true && context.mounted) {
+                if (result is Map &&
+                    result['success'] == true &&
+                    context.mounted) {
                   AppFlushbar.success(
                     context,
-                    message: result['message'] ?? 'Product updated successfully!',
+                    message:
+                        result['message'] ?? 'Product updated successfully!',
                     duration: const Duration(seconds: 2),
                   );
                 }
@@ -243,7 +246,10 @@ class ProductCard extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: EdgeInsets.symmetric(vertical: 2.h, horizontal: 4.w),
+                padding: EdgeInsets.symmetric(
+                  vertical: 2.h,
+                  horizontal: 8.spMin,
+                ),
                 child: Column(
                   spacing: 2.h,
                   mainAxisAlignment: MainAxisAlignment.start,

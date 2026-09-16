@@ -65,30 +65,35 @@ class CategoryProductsView extends ConsumerWidget {
           int crossAxisCount;
           double childAspectRatio;
 
+          // Use AppSizes utilities for consistent responsive breakpoints
           if (AppSizes.isMobile(context)) {
-            // Mobile
+            // Small mobile: < 600px
             crossAxisCount = 3;
-            childAspectRatio = 0.99.spMin;
+            childAspectRatio = 0.75;
           } else if (AppSizes.isTablet(context)) {
-            // Tablet
+            // Small tablet: 600-1100px
             crossAxisCount = 5;
-            childAspectRatio = 0.99.spMin;
+            childAspectRatio = 0.85;
+          } else if (AppSizes.isDesktop(context)) {
+            // Small desktop: 1100-1400px
+            crossAxisCount = 8;
+            childAspectRatio = 0.8;
           } else {
-            // Desktop
-            crossAxisCount = 7;
-            childAspectRatio = 0.9.spMin;
+            // Large desktop: 1400px+
+            crossAxisCount = 5;
+            childAspectRatio = 1.0;
           }
 
           return GridView.builder(
             padding: EdgeInsets.symmetric(
-              horizontal: AppSizes.md.h,
-              vertical: AppSizes.md.h,
+              horizontal: AppSizes.md.spMin,
+              vertical: AppSizes.md.spMin,
             ),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: crossAxisCount,
               childAspectRatio: childAspectRatio,
-              crossAxisSpacing: 12.w,
-              mainAxisSpacing: 12.h,
+              crossAxisSpacing: 12.spMin,
+              mainAxisSpacing: 12.spMin,
             ),
             itemCount: products.length,
             itemBuilder: (context, index) {

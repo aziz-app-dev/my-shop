@@ -58,7 +58,7 @@ class _BrandProductsViewState extends ConsumerState<BrandProductsView> {
                     AppIcon(
                       defaultIcon: Icons.error_outline,
                       win11IconPath: ImageAssets.win11LowRisk,
-                      size: 64,
+                      size: 64.spMin,
                       color: Colors.red,
                     ),
                     SizedBox(height: 16.h),
@@ -126,8 +126,8 @@ class _BrandProductsViewState extends ConsumerState<BrandProductsView> {
                             )
                           else
                             Container(
-                              width: 55.h,
-                              height: 55.h,
+                              width: 65.spMin,
+                              height: 65.spMin,
                               decoration: BoxDecoration(
                                 color: AppColors.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(12.r),
@@ -209,46 +209,27 @@ class _BrandProductsViewState extends ConsumerState<BrandProductsView> {
                       )
                       : SliverPadding(
                         padding: EdgeInsets.all(16.w),
-                        sliver: SliverLayoutBuilder(
-                          builder: (context, constraints) {
-                            int crossAxisCount;
-                            double childAspectRatio;
-
-                            if (constraints.crossAxisExtent < 600) {
-                              // Mobile
-                              crossAxisCount = 2;
-                              childAspectRatio = 0.75;
-                            } else if (constraints.crossAxisExtent < 1100) {
-                              // Tablet
-                              crossAxisCount = 3;
-                              childAspectRatio = 0.85;
-                            } else {
-                              // Desktop
-                              crossAxisCount = 4;
-                              childAspectRatio = 0.9;
-                            }
-
-                            return SliverGrid(
-                              delegate: SliverChildBuilderDelegate(
-                                (context, index) {
-                                  return ProductCard(
-                                    product:
-                                        brandProductsState
-                                            .filteredProducts[index],
-                                  );
-                                },
-                                childCount:
-                                    brandProductsState.filteredProducts.length,
+                        sliver: SliverGrid(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              return ProductCard(
+                                product:
+                                    brandProductsState.filteredProducts[index],
+                              );
+                            },
+                            childCount:
+                                brandProductsState.filteredProducts.length,
+                          ),
+                          gridDelegate:
+                              SliverGridDelegateWithMaxCrossAxisExtent(
+                                maxCrossAxisExtent:
+                                    AppSizes.isMobile(context)
+                                        ? 130.spMin
+                                        : 170.spMin,
+                                childAspectRatio: 0.72,
+                                crossAxisSpacing: 12.spMin,
+                                mainAxisSpacing: 12.spMin,
                               ),
-                              gridDelegate:
-                                  SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: crossAxisCount,
-                                    childAspectRatio: childAspectRatio,
-                                    crossAxisSpacing: 12.w,
-                                    mainAxisSpacing: 12.h,
-                                  ),
-                            );
-                          },
                         ),
                       ),
                 ],

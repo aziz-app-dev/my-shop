@@ -24,8 +24,8 @@ class DataManagementPage extends ConsumerWidget {
       ),
       body: ListView(
         padding: EdgeInsets.symmetric(
-          horizontal: AppSizes.md.h,
-          vertical: AppSizes.sm.h,
+          horizontal: 16.spMin,
+          vertical: 8.spMin,
         ),
         children: [
           // Manage Brands
@@ -47,7 +47,7 @@ class DataManagementPage extends ConsumerWidget {
               ImageAssets.win11Brand,
             ),
           ),
-          SizedBox(height: 12.h),
+          SizedBox(height: 12.spMin),
           // Manage Categories
           Card(
             child: customTileWidget(

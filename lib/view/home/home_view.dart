@@ -1,6 +1,7 @@
 import 'package:desktopapp/res/components/app_bar_widget.dart';
 import 'package:desktopapp/utils/app_sizes.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../res/assets/image_assets.dart';
@@ -10,6 +11,7 @@ import '../../res/components/empty_widget.dart';
 import '../../view_models/providers/home_page_provider.dart';
 import '../../view_models/providers/settings_provider.dart';
 import '../add_product/slection_card_view.dart';
+import '../add_product/add_product_view.dart';
 import '../shopping_list/shopping_list_view.dart';
 import 'rapper.dart';
 import 'section_products_view.dart';
@@ -19,153 +21,214 @@ import 'widgets/cat_widget.dart';
 import 'widgets/header_wiget.dart';
 import 'widgets/products_widget.dart';
 
-class HomePage extends ConsumerWidget {
+class HomePage extends ConsumerStatefulWidget {
   final VoidCallback openDrawer;
 
   const HomePage({super.key, required this.openDrawer});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  HomePageState createState() => HomePageState();
+}
+
+class HomePageState extends ConsumerState<HomePage> {
+  @override
+  Widget build(BuildContext context) {
     final homeState = ref.watch(homePageProvider);
     final showShoppingList = ref.watch(
       settingsProvider.select((s) => s.showShoppingListModule),
     );
 
-    return Scaffold(
-      appBar: AppBarWidget.customAppBar(
-        context: context,
-        // Home is the nav hub on mobile: show the hamburger to open the drawer.
-        automaticallyImplyLeading: AppSizes.isMobile(context),
-        backIcon: Icons.menu,
-        winBackIcon: ImageAssets.win11Menu,
-        leadingOnTap: openDrawer,
-        title: 'Home',
-        actions: [
-          // Padding(
-          //   padding: EdgeInsets.only(right: 8.w),
-          //   child: Row(
-          //     spacing: 4.w,
-          //     mainAxisSize: MainAxisSize.min,
-          //     children: [
-          //       AppButton().primaryButton(
-          //         padding: EdgeInsets.symmetric(horizontal: 4.w),
+    // Global keyboard shortcuts for desktop.
+    // Ctrl+N: New item (navigate to add product screen).
+    // Ctrl+S: Save current item.
+    // Ctrl+P: Print (following existing pattern in other desktop views).
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyN, control: true):
+            _newItem,
+        const SingleActivator(LogicalKeyboardKey.keyS, control: true):
+            _saveItem,
+        const SingleActivator(LogicalKeyboardKey.keyP, control: true):
+            _printCurrentBill,
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
+          appBar: AppBarWidget.customAppBar(
+            context: context,
+            // Home is the nav hub on mobile: show the hamburger to open the drawer.
+            automaticallyImplyLeading: AppSizes.isMobile(context),
+            backIcon: Icons.menu,
+            winBackIcon: ImageAssets.win11Menu,
+            leadingOnTap: widget.openDrawer,
+            title: 'Home',
+            actions: [
+              // Padding(
+              //   padding: EdgeInsets.only(right: 8.w),
+              //   child: Row(
+              //     spacing: 4.w,
+              //     mainAxisSize: MainAxisSize.min,
+              //     children: [
+              //       AppButton().primaryButton(
+              //         padding: EdgeInsets.symmetric(horizontal: 4.w),
 
-          //         text: "Add Products",
-          //         onPressed: () {
-          //           Navigator.push(
-          //             context,
-          //             MaterialPageRoute(
-          //               builder:
-          //                   (context) => const ProductTypeSelectionScreen(),
-          //             ),
-          //           ).then((value) {
-          //             ref.read(homePageProvider.notifier).refreshProducts();
-          //           });
-          //         },
-          //         width: 100.h,
-          //         height: 28.h,
-          //         fontSize: 11.spMin,
-          //       ),
-          //       AppButton().primaryButton(
-          //         padding: EdgeInsets.symmetric(horizontal: 4.h),
-          //         text: "Shopping List",
-          //         onPressed: () {
-          //           Navigator.push(
-          //             context,
-          //             MaterialPageRoute(
-          //               builder: (context) => const ShoppingListView(),
-          //             ),
-          //           );
-          //         },
-          //         width: 100.h,
-          //         height: 28.h,
-          //         fontSize: 11.spMin,
-          //       ),
-          //     ],
-          //   ),
-          // ),
-        ],
-      ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: 'productFab',
-            onPressed: () {
-              // Capture notifier before async gap to avoid "ref" after unmount
-              final notifier = ref.read(homePageProvider.notifier);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ProductTypeSelectionScreen(),
-                ),
-              ).then((value) {
-                notifier.refreshProducts();
-              });
-            },
-            icon: AppIcon(
-              win11IconPath: ImageAssets.win11OpenBox,
-              defaultIcon: Icons.inventory_2,
-            ),
-            label: Text(
-              'Add Product',
-              style: TextStyle(
-                fontSize: 13.spMin,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+              //         text: "Add Products",
+              //         onPressed: () {
+              //           Navigator.push(
+              //             context,
+              //             MaterialPageRoute(
+              //               builder:
+              //                   (context) => const ProductTypeSelectionScreen(),
+              //             ),
+              //           ).then((value) {
+              //             ref.read(homePageProvider.notifier).refreshProducts();
+              //           });
+              //         },
+              //         width: 100.h,
+              //         height: 28.h,
+              //         fontSize: 11.spMin,
+              //       ),
+              //       AppButton().primaryButton(
+              //         padding: EdgeInsets.symmetric(horizontal: 4.h),
+              //         text: "Shopping List",
+              //         onPressed: () {
+              //           Navigator.push(
+              //             context,
+              //             MaterialPageRoute(
+              //               builder: (context) => const ShoppingListView(),
+              //           );
+              //         },
+              //         width: 100.h,
+              //         height: 28.h,
+              //         fontSize: 11.spMin,
+              //       ),
+              //     ],
+              //   ),
+              // ),
+            ],
           ),
-          if (showShoppingList) ...[
-            SizedBox(height: 12.spMin),
-            FloatingActionButton.extended(
-              heroTag: 'shoppingListFab',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ShoppingListView(),
+          floatingActionButton: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              FloatingActionButton.extended(
+                heroTag: 'productFab',
+                onPressed: () {
+                  // Capture notifier before async gap to avoid "ref" after unmount
+                  final notifier = ref.read(homePageProvider.notifier);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ProductTypeSelectionScreen(),
+                    ),
+                  ).then((value) {
+                    notifier.refreshProducts();
+                  });
+                },
+                icon: AppIcon(
+                  win11IconPath: ImageAssets.win11OpenBox,
+                  defaultIcon: Icons.inventory_2,
+                ),
+                label: Text(
+                  'Add Product',
+                  style: TextStyle(
+                    fontSize: 13.spMin,
+                    fontWeight: FontWeight.w600,
                   ),
-                );
-              },
-              icon: AppIcon(
-                defaultIcon: Icons.shopping_bag,
-                win11IconPath: ImageAssets.win11List,
-              ),
-              label: Text(
-                'Shopping List',
-                style: TextStyle(
-                  fontSize: 13.spMin,
-                  fontWeight: FontWeight.w600,
                 ),
               ),
-            ),
-          ],
-        ],
+              if (showShoppingList) ...[
+                SizedBox(height: 12.spMin),
+                FloatingActionButton.extended(
+                  heroTag: 'shoppingListFab',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ShoppingListView(),
+                      ),
+                    );
+                  },
+                  icon: AppIcon(
+                    defaultIcon: Icons.shopping_bag,
+                    win11IconPath: ImageAssets.win11List,
+                  ),
+                  label: Text(
+                    'Shopping List',
+                    style: TextStyle(
+                      fontSize: 13.spMin,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          body:
+              homeState.isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : homeState.error != null
+                  ? Center(child: Text('Error: ${homeState.error}'))
+                  : homeState.products.isEmpty
+                  ? Center(
+                    child: EmptyWidget1(message: "No products available"),
+                    // Text('No products available')
+                  )
+                  : ResponsiveWrapper(
+                    mobile: _buildSectionedView(context, ref),
+                    tablet: _buildSectionedView(context, ref),
+                    desktop: _buildSectionedView(context, ref),
+                  ),
+        ),
       ),
-      body:
-          homeState.isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : homeState.error != null
-              ? Center(child: Text('Error: ${homeState.error}'))
-              : homeState.products.isEmpty
-              ? Center(
-                child: EmptyWidget1(message: "No products available"),
-                // Text('No products available')
-              )
-              : ResponsiveWrapper(
-                mobile: _buildSectionedView(context, homeState, ref),
-                tablet: _buildSectionedView(context, homeState, ref),
-                desktop: _buildSectionedView(context, homeState, ref),
-              ),
     );
+  }
+
+  /// Opens the product type selection screen to add a new item/service.
+  void _newItem() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ProductTypeSelectionScreen(),
+      ),
+    ).then((value) {
+      if (mounted) {
+        ref.read(homePageProvider.notifier).refreshProducts();
+      }
+    });
+  }
+
+  /// Saves the current/item being edited.
+  /// From the home screen, saving navigates to the add product form.
+  void _saveItem() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AddProductScreen(),
+      ),
+    ).then((value) {
+      if (mounted) {
+        ref.read(homePageProvider.notifier).refreshProducts();
+      }
+    });
+  }
+
+  Future<void> _printCurrentBill() async {
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const ShoppingListView(),
+        ),
+      );
+    }
   }
 
   Widget _buildSectionedView(
     BuildContext context,
-    dynamic homeState,
     WidgetRef ref,
   ) {
+    final homeState = ref.watch(homePageProvider);
     final settings = ref.watch(settingsProvider);
 
     // Build sections based on order
@@ -182,7 +245,7 @@ class HomePage extends ConsumerWidget {
                 autoScroll: settings.bannerAutoScroll,
                 scrollDuration: settings.bannerScrollDuration,
               ),
-              SizedBox(height: 24.h),
+              SizedBox(height: settings.sectionSpacing.h),
             ]);
           }
           break;
@@ -200,7 +263,7 @@ class HomePage extends ConsumerWidget {
               ),
               SizedBox(height: 12.h),
               buildBrandsCarousel(context, homeState.brands, ref),
-              SizedBox(height: 24.h),
+              SizedBox(height: settings.sectionSpacing.h),
             ]);
           }
           break;
@@ -218,7 +281,7 @@ class HomePage extends ConsumerWidget {
               ),
               SizedBox(height: 12.h),
               buildCategoriesCarousel(context, homeState.categories, ref),
-              SizedBox(height: 24.h),
+              SizedBox(height: settings.sectionSpacing.h),
             ]);
           }
           break;
@@ -247,7 +310,7 @@ class HomePage extends ConsumerWidget {
               ),
               SizedBox(height: 12.h),
               buildProductGrid(context, products, brands: homeState.brands),
-              SizedBox(height: 24.h),
+              SizedBox(height: settings.sectionSpacing.h),
             ]);
           }
           break;
@@ -274,7 +337,7 @@ class HomePage extends ConsumerWidget {
               ),
               SizedBox(height: 12.h),
               buildProductGrid(context, products, brands: homeState.brands),
-              SizedBox(height: 24.h),
+              SizedBox(height: settings.sectionSpacing.h),
             ]);
           }
           break;
@@ -303,7 +366,7 @@ class HomePage extends ConsumerWidget {
               ),
               SizedBox(height: 12.h),
               buildProductGrid(context, products, brands: homeState.brands),
-              SizedBox(height: 24.h),
+              SizedBox(height: settings.sectionSpacing.h),
             ]);
           }
           break;
@@ -350,5 +413,4 @@ class HomePage extends ConsumerWidget {
       ),
     );
   }
-
 }

@@ -10,7 +10,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:intl/intl.dart';
-import 'package:local_auth/local_auth.dart';
 import 'package:open_file/open_file.dart';
 import 'package:printing/printing.dart';
 import '../../models/bills_model.dart';
@@ -522,80 +521,6 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
     });
   }
 
-  // Function to handle biometric authentication
-  Future<bool> _authenticate(BuildContext context) async {
-    final localAuth = LocalAuthentication();
-    // Check for biometrics and device support (Windows Hello, etc.)
-    final bool canAuthenticateWithBiometrics =
-        await localAuth.canCheckBiometrics;
-    final bool canAuthenticate =
-        canAuthenticateWithBiometrics || await localAuth.isDeviceSupported();
-    bool authenticated = false;
-
-    if (canAuthenticate) {
-      try {
-        authenticated = await localAuth.authenticate(
-          localizedReason: 'Authenticate to edit or delete the bill',
-        );
-      } catch (e) {
-        debugPrint('Authentication error: $e');
-      }
-    }
-
-    // If device doesn't support authentication or auth failed, show PIN dialog
-    if (!canAuthenticate || (!authenticated && canAuthenticate)) {
-      // Fallback to PIN
-      final TextEditingController pinController = TextEditingController();
-      bool isPinCorrect = true;
-
-      authenticated =
-          await showDialog<bool>(
-            context: context,
-            barrierDismissible: false,
-            builder:
-                (ctx) => StatefulBuilder(
-                  builder:
-                      (context, setState) => AlertDialog(
-                        title: Text(
-                          'Enter PIN to Authenticate',
-                          style: TextStyle(fontSize: 18.spMin),
-                        ),
-                        content: TextField(
-                          controller: pinController,
-                          decoration: InputDecoration(
-                            labelText: 'Enter PIN (4 digits)',
-                            errorText: !isPinCorrect ? 'Incorrect PIN' : null,
-                          ),
-                          keyboardType: TextInputType.number,
-                          maxLength: 4,
-                          obscureText: true,
-                        ),
-                        actions: [
-                          ElevatedButton(
-                            onPressed: () {
-                              if (pinController.text == '1234') {
-                                Navigator.pop(ctx, true);
-                              } else {
-                                setState(() {
-                                  isPinCorrect = false;
-                                });
-                              }
-                            },
-                            child: Text(
-                              'Unlock',
-                              style: TextStyle(fontSize: 14.spMin),
-                            ),
-                          ),
-                        ],
-                      ),
-                ),
-          ) ??
-          false;
-    }
-
-    return authenticated;
-  }
-
   Widget _buildHeader() {
     final state = ref.watch(billDetailProvider(widget.bill));
 
@@ -1079,21 +1004,14 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
               ),
             ],
             onChanged: (value) async {
-              if (value == 'edit') {
-                // Require biometric authentication for editing
-                final authenticated = await _authenticate(context);
-                if (authenticated) {
+if (value == 'edit') {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => EditBillScreen(bill: widget.bill),
                     ),
                   );
-                }
-              } else if (value == 'delete') {
-                // Require biometric authentication for deleting
-                final authenticated = await _authenticate(context);
-                if (authenticated) {
+                } else if (value == 'delete') {
                   final confirm = await showDialog<bool>(
                     context: context,
                     builder:
@@ -1117,10 +1035,7 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                   if (confirm == true) {
                     await _deleteBill();
                   }
-                } else {
-                  AppFlushbar.error(context, message: 'Authentication failed');
-                }
-              } else if (value == 'save_pdf') {
+} else if (value == 'save_pdf') {
                 await _generateAndSavePDF(widget.bill, shopName);
               } else if (value == 'share') {
                 await _shareInvoicePdf(widget.bill, shopName);
