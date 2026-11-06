@@ -4,6 +4,7 @@ import 'package:desktopapp/utils/app_sizes.dart';
 import 'package:desktopapp/view/main/infoCard.dart';
 import 'package:desktopapp/view/main/screens.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -12,6 +13,8 @@ import '../../res/components/app_icon.dart';
 import '../../view_models/providers/profile_provider.dart';
 import '../../view_models/providers/reminder_provider.dart';
 import '../../view_models/providers/settings_provider.dart';
+import '../../view_models/services/keyboard/app_keyboard_service.dart';
+import '../about/about_view.dart';
 
 // Riverpod provider for selected index
 final selectedIndexProvider = StateProvider<int>((ref) => 0);
@@ -39,10 +42,62 @@ class MainScrenn extends ConsumerStatefulWidget {
 }
 
 class _MainScrennState extends ConsumerState<MainScrenn> {
+  /// App-wide navigation scope. Registered for the whole app lifetime so the
+  /// F-key navigation works no matter where the focus is (see
+  /// [AppKeyboardScope] — window-level dispatch, not focus-dependent).
+  /// Page-specific scopes (e.g. Sales' F1–F9 add-to-cart) register later, so
+  /// they win over these bindings while their page is on screen.
+  late final AppKeyboardScope _navKeys = AppKeyboardScope(
+    'main-nav',
+    _handleNavKey,
+  );
+
   @override
   void initState() {
     super.initState();
     ref.read(profileProvider.notifier).loadUserData();
+    AppKeyboardScope.register(_navKeys);
+  }
+
+  @override
+  void dispose() {
+    AppKeyboardScope.unregister(_navKeys);
+    super.dispose();
+  }
+
+  bool _handleNavKey(KeyEvent event) {
+    final showRepairs = ref.read(settingsProvider).showRepairsModule;
+    final itemCount = navItemsFor(showRepairs: showRepairs).length;
+
+    const fKeys = [
+      LogicalKeyboardKey.f1,
+      LogicalKeyboardKey.f2,
+      LogicalKeyboardKey.f3,
+      LogicalKeyboardKey.f4,
+      LogicalKeyboardKey.f5,
+      LogicalKeyboardKey.f6,
+      LogicalKeyboardKey.f7,
+      LogicalKeyboardKey.f8,
+      LogicalKeyboardKey.f9,
+      LogicalKeyboardKey.f10,
+    ];
+    for (var i = 0; i < fKeys.length && i < itemCount; i++) {
+      if (AppKeyboardScope.didPress(event, fKeys[i])) {
+        ref.read(selectedIndexProvider.notifier).state = i;
+        return true;
+      }
+    }
+    // 11th section only exists when the Repairs module is enabled.
+    if (itemCount > 10 &&
+        AppKeyboardScope.didPress(event, LogicalKeyboardKey.f12)) {
+      ref.read(selectedIndexProvider.notifier).state = 10;
+      return true;
+    }
+    if (AppKeyboardScope.didPress(event, LogicalKeyboardKey.f11)) {
+      _showShortcutsHelp(context);
+      return true;
+    }
+    return false;
   }
 
   /// Overlays a small red dot on the Reminders nav icon when there is at least
@@ -79,6 +134,171 @@ class _MainScrennState extends ConsumerState<MainScrenn> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Modal listing every shortcut, generated from the live nav item list so it
+  /// always matches the enabled modules (e.g. Repairs on/off).
+  void _showShortcutsHelp(BuildContext context) {
+    final showRepairs = ref.read(
+      settingsProvider.select((s) => s.showRepairsModule),
+    );
+    final navItems = navItemsFor(showRepairs: showRepairs);
+
+    Widget keyChip(String label) => Container(
+      width: 34.spMin,
+      height: 26.spMin,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(6.r),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 11.spMin,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+
+    final rows = <Widget>[];
+    for (var i = 0; i < navItems.length; i++) {
+      rows.add(
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: 4.h),
+          child: Row(
+            children: [
+              keyChip(i < 10 ? 'F${i + 1}' : 'F12'),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Text(
+                  navItems[i].label,
+                  style: TextStyle(fontSize: 13.spMin),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (!context.mounted) return;
+    showDialog(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: Text(
+              'Keyboard Shortcuts',
+              style: TextStyle(fontSize: 18.spMin),
+            ),
+            content: SizedBox(
+              width: 300.spMin,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ...rows,
+                    const Divider(),
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 4.h),
+                      child: Row(
+                        children: [
+                          keyChip('F11'),
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child: Text(
+                              'Show this shortcuts help',
+                              style: TextStyle(fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(),
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 4.h),
+                      child: Text(
+                        'Purchases (Local Purchase Agreements)',
+                        style: TextStyle(
+                          fontSize: 12.spMin,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    ...[
+                      ('Ctrl + N', 'New purchase agreement'),
+                      ('Ctrl + S', 'Save the agreement you are editing'),
+                      ('Ctrl + P', 'Print the agreement'),
+                    ].map(
+                      (e) => Padding(
+                        padding: EdgeInsets.symmetric(vertical: 3.h),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 6.w,
+                                vertical: 3.h,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(6.r),
+                              ),
+                              child: Text(
+                                e.$1,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10.spMin,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 12.w),
+                            Expanded(
+                              child: Text(
+                                e.$2,
+                                style: TextStyle(fontSize: 12.spMin),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const Divider(),
+                    Padding(
+                      padding: EdgeInsets.only(top: 8.h),
+                      child: Text(
+                        'On the Sales screen, F1–F9 (or number keys 1–9) add the '
+                        'matching item to the cart.',
+                        style: TextStyle(
+                          fontSize: 12.spMin,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AboutView()),
+                  );
+                },
+                child: const Text('Full guide'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
     );
   }
 
@@ -425,6 +645,10 @@ class _MainScrennState extends ConsumerState<MainScrenn> {
 
   @override
   Widget build(BuildContext context) {
+    return _buildShell(context);
+  }
+
+  Widget _buildShell(BuildContext context) {
     final selectedIndex = ref.watch(selectedIndexProvider);
     final showRepairs = ref.watch(
       settingsProvider.select((s) => s.showRepairsModule),
@@ -475,9 +699,7 @@ class _MainScrennState extends ConsumerState<MainScrenn> {
                 ),
               ),
               VerticalDivider(),
-              Expanded(
-                child: pageList[safeIndex],
-              ), // Pass scaffoldKey
+              Expanded(child: pageList[safeIndex]), // Pass scaffoldKey
             ],
           ),
         ),
@@ -488,9 +710,7 @@ class _MainScrennState extends ConsumerState<MainScrenn> {
           children: [
             buildDesktopDrawer(ref),
             VerticalDivider(),
-            Expanded(
-              child: pageList[safeIndex],
-            ), // Pass scaffoldKey
+            Expanded(child: pageList[safeIndex]), // Pass scaffoldKey
           ],
         ),
       );

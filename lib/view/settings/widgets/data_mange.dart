@@ -6,7 +6,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../res/colors/app_color.dart';
 import '../../../res/components/app_bar_widget.dart';
-import '../../../utils/app_sizes.dart';
 import '../../brands/brand_management_view.dart';
 import '../../profile/category_management_view.dart';
 import 'custom_tile.dart';

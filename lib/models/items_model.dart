@@ -158,6 +158,7 @@ class Product {
   final String? brand;
   final String? category;
   final String? barcode;
+  final int? reorderLevel;
   final Map<String, FieldConfig> fieldConfigs;
 
   Product({
@@ -177,6 +178,7 @@ class Product {
     this.brand,
     this.category,
     this.barcode,
+    this.reorderLevel,
     Map<String, FieldConfig>? fieldConfigs,
   }) : fieldConfigs =
            fieldConfigs ??
@@ -262,6 +264,7 @@ class Product {
       brand: map['brand'] as String?,
       category: map['category'] as String?,
       barcode: map['barcode'] as String?,
+      reorderLevel: map['reorderLevel'] as int?,
       fieldConfigs: defaultConfigs,
     );
   }
@@ -284,6 +287,7 @@ class Product {
       'brand': brand,
       'category': category,
       'barcode': barcode,
+      'reorderLevel': reorderLevel,
       'fieldConfigs': fieldConfigs.map(
         (key, value) => MapEntry(key, value.toMap()),
       ),

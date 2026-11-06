@@ -200,11 +200,8 @@ class HomePageSettingsPage extends ConsumerWidget {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: settingsState.sectionOrder.length,
-            onReorder: (oldIndex, newIndex) {
+            onReorderItem: (oldIndex, newIndex) {
               final newOrder = List<String>.from(settingsState.sectionOrder);
-              if (newIndex > oldIndex) {
-                newIndex -= 1;
-              }
               final item = newOrder.removeAt(oldIndex);
               newOrder.insert(newIndex, item);
               settingsNotifier.setSectionOrder(newOrder);
@@ -356,7 +353,7 @@ class HomePageSettingsPage extends ConsumerWidget {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: settingsState.bannerImagePaths.length,
-                      onReorder: (oldIndex, newIndex) {
+                      onReorderItem: (oldIndex, newIndex) {
                         settingsNotifier.reorderBannerImages(
                           oldIndex,
                           newIndex,

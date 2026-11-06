@@ -16,6 +16,7 @@ import '../../res/components/app_text_widgrt.dart';
 import '../../view_models/providers/shopping_list_provider.dart';
 import '../../view_models/providers/settings_provider.dart';
 import '../../view_models/services/database/database_services.dart';
+import '../../view_models/services/keyboard/app_keyboard_service.dart';
 import '../../view_models/states/shopping_list_state.dart';
 import '../product_details/product_details_view.dart';
 import 'shopping_list_search_view.dart';
@@ -29,28 +30,44 @@ class ShoppingListView extends ConsumerStatefulWidget {
 }
 
 class _ShoppingListViewState extends ConsumerState<ShoppingListView> {
+  /// Ctrl+P prints the current shopping list. Handled by the window-level
+  /// keyboard dispatcher (see [AppKeyboardScope]) — focus-independent.
+  late final AppKeyboardScope _keys = AppKeyboardScope(
+    'shopping-list',
+    _handleKey,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    AppKeyboardScope.register(_keys);
+  }
+
+  @override
+  void dispose() {
+    AppKeyboardScope.unregister(_keys);
+    super.dispose();
+  }
+
+  bool _handleKey(KeyEvent event) {
+    if (AppKeyboardScope.didPress(event, LogicalKeyboardKey.keyP, ctrl: true)) {
+      _printShoppingList();
+      return true;
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final shoppingListState = ref.watch(shoppingListProvider);
     final shoppingListNotifier = ref.read(shoppingListProvider.notifier);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Ctrl+P prints the current shopping list. autofocus so the shortcut is
-    // active as soon as the page opens on desktop.
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.keyP, control: true):
-            _printShoppingList,
-      },
-      child: Focus(
-        autofocus: true,
-        child: _buildScaffold(
-          context,
-          shoppingListState,
-          shoppingListNotifier,
-          isDark,
-        ),
-      ),
+    return _buildScaffold(
+      context,
+      shoppingListState,
+      shoppingListNotifier,
+      isDark,
     );
   }
 
@@ -456,7 +473,10 @@ class _ShoppingListViewState extends ConsumerState<ShoppingListView> {
 
     if (shoppingListState.items.isEmpty) {
       if (mounted) {
-        AppFlushbar.warning(context, message: 'Nothing to print — list is empty');
+        AppFlushbar.warning(
+          context,
+          message: 'Nothing to print — list is empty',
+        );
       }
       return;
     }
@@ -510,9 +530,9 @@ class _ShoppingListViewState extends ConsumerState<ShoppingListView> {
       // Load user data directly from database
       final dbService = DatabaseService();
       final users = await dbService.getUsers();
-      final String shopName = users.isNotEmpty ? users.first.shopName : 'My Shop';
-      final String? ownerName =
-          users.isNotEmpty ? users.first.ownerName : null;
+      final String shopName =
+          users.isNotEmpty ? users.first.shopName : 'My Shop';
+      final String? ownerName = users.isNotEmpty ? users.first.ownerName : null;
 
       // Generate PDF
       final pdfGenerator = ShoppingListPDFGenerator(

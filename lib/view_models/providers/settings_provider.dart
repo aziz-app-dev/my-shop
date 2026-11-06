@@ -23,6 +23,15 @@ enum ThermalDesign {
   minimal, // Simple text-based receipt
 }
 
+/// Default terms & conditions printed on a local purchase agreement.
+/// Editable by the user in Settings → Purchase Agreement.
+const List<String> kDefaultPurchaseTerms = [
+  'The seller confirms ownership of all items listed above.',
+  'Items are sold as-is; no returns after agreement is signed.',
+  'The shop reserves the right to inspect items before final payment.',
+  'Any dispute shall be resolved under local jurisdiction.',
+];
+
 // Icon style options
 enum IconStyle {
   defaultStyle, // Flutter default icons (Material icons)
@@ -136,6 +145,10 @@ class SettingsState {
   final int lowStockItemsCount;
   final List<String> sectionOrder;
 
+  /// Terms & conditions used for NEW local purchase agreements. Configured in
+  /// Settings → Purchase Agreement; not shown on the agreement form.
+  final List<String> purchaseTerms;
+
   SettingsState({
     this.isPrintEnabled = false,
     this.printFormat = PrintFormat.pdf, // Default to PDF
@@ -191,6 +204,7 @@ class SettingsState {
       'latestServices',
       'lowStock',
     ],
+    this.purchaseTerms = kDefaultPurchaseTerms,
   });
 
   SettingsState copyWith({
@@ -238,6 +252,7 @@ class SettingsState {
     int? latestServicesCount,
     int? lowStockItemsCount,
     List<String>? sectionOrder,
+    List<String>? purchaseTerms,
   }) {
     return SettingsState(
       isPrintEnabled: isPrintEnabled ?? this.isPrintEnabled,
@@ -276,7 +291,7 @@ class SettingsState {
       bannerImagePaths: bannerImagePaths ?? this.bannerImagePaths,
       bannerAutoScroll: bannerAutoScroll ?? this.bannerAutoScroll,
       bannerScrollDuration: bannerScrollDuration ?? this.bannerScrollDuration,
-      sectionSpacing: sectionSpacing ?? this.sectionSpacing,
+      sectionSpacing: sectionSpacing,
       showBrandsSection: showBrandsSection ?? this.showBrandsSection,
       showCategoriesSection:
           showCategoriesSection ?? this.showCategoriesSection,
@@ -294,6 +309,7 @@ class SettingsState {
       latestServicesCount: latestServicesCount ?? this.latestServicesCount,
       lowStockItemsCount: lowStockItemsCount ?? this.lowStockItemsCount,
       sectionOrder: sectionOrder ?? this.sectionOrder,
+      purchaseTerms: purchaseTerms ?? this.purchaseTerms,
     );
   }
 
@@ -344,6 +360,7 @@ class SettingsState {
       'latestServicesCount': latestServicesCount,
       'lowStockItemsCount': lowStockItemsCount,
       'sectionOrder': sectionOrder,
+      'purchaseTerms': purchaseTerms,
     };
   }
 
@@ -452,6 +469,10 @@ class SettingsState {
       latestServicesCount: map['latestServicesCount'] ?? 6,
       lowStockItemsCount: map['lowStockItemsCount'] ?? 6,
       sectionOrder: sectionOrder,
+      purchaseTerms:
+          map['purchaseTerms'] != null
+              ? List<String>.from(map['purchaseTerms'])
+              : kDefaultPurchaseTerms,
     );
   }
 }
@@ -630,6 +651,17 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     _saveSettings();
   }
 
+  /// Replaces the terms & conditions used on new purchase agreements.
+  /// Empty entries are dropped; if nothing is left the defaults are restored.
+  void setPurchaseTerms(List<String> terms) {
+    final cleaned =
+        terms.map((t) => t.trim()).where((t) => t.isNotEmpty).toList();
+    state = state.copyWith(
+      purchaseTerms: cleaned.isEmpty ? kDefaultPurchaseTerms : cleaned,
+    );
+    _saveSettings();
+  }
+
   // Home Page Section Settings Methods
   void setShowBannerSection(bool value) {
     state = state.copyWith(showBannerSection: value);
@@ -650,11 +682,10 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     _saveSettings();
   }
 
+  /// [newIndex] is expected to already be normalised for the removed item
+  /// (i.e. as provided by `ReorderableListView.onReorderItem`).
   void reorderBannerImages(int oldIndex, int newIndex) {
     final newBanners = List<String>.from(state.bannerImagePaths);
-    if (newIndex > oldIndex) {
-      newIndex -= 1;
-    }
     final item = newBanners.removeAt(oldIndex);
     newBanners.insert(newIndex, item);
     state = state.copyWith(bannerImagePaths: newBanners);

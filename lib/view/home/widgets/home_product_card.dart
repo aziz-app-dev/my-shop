@@ -25,13 +25,24 @@ class HomeProductCard extends ConsumerWidget {
   final Product product;
   final List<Brand>? brands;
 
-  const HomeProductCard({super.key, required this.product, this.brands});
+  /// When true, a SINGLE tap opens the details screen (used by the home
+  /// search results so typing a query → tapping a result → details feels
+  /// natural). Section grids keep their existing two-click behaviour.
+  final bool singleTapOpensDetails;
+
+  const HomeProductCard({
+    super.key,
+    required this.product,
+    this.brands,
+    this.singleTapOpensDetails = false,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ProductCard(
       product: product,
       brands: brands,
+      onTap: singleTapOpensDetails ? () => _openDetails(context) : null,
       onSecondaryTapDown:
           (details) => _showContextMenu(context, ref, details.globalPosition),
     );
@@ -42,8 +53,7 @@ class HomeProductCard extends ConsumerWidget {
     WidgetRef ref,
     Offset position,
   ) async {
-    final overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
 
     final selected = await showMenu<String>(
       context: context,

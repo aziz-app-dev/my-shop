@@ -4,6 +4,8 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:desktopapp/res/assets/image_assets.dart';
 import 'package:flutter/services.dart' show rootBundle, LogicalKeyboardKey;
+
+import '../../view_models/services/keyboard/app_keyboard_service.dart';
 import 'package:desktopapp/res/colors/app_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,6 +30,7 @@ import 'widgets/thermal_print_widget.dart';
 import '../../view_models/providers/add_prduct_provider.dart';
 import '../../view_models/providers/bill_detail_provider.dart';
 import '../../view_models/providers/settings_provider.dart';
+import '../../utils/app_sizes.dart';
 
 class BillDetailScreen extends ConsumerStatefulWidget {
   final Bill bill;
@@ -37,10 +40,16 @@ class BillDetailScreen extends ConsumerStatefulWidget {
   /// on open.
   final bool justCreated;
 
+  /// When true the system print dialog is shown as soon as the bill opens
+  /// (without waiting for a tap). Used when the bill is launched from the
+  /// Invoices list via Ctrl+P so the user can print without opening it first.
+  final bool autoPrint;
+
   const BillDetailScreen({
     super.key,
     required this.bill,
     this.justCreated = false,
+    this.autoPrint = false,
   });
 
   @override
@@ -49,6 +58,11 @@ class BillDetailScreen extends ConsumerStatefulWidget {
 
 class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
   late HiveService _hiveService;
+
+  /// Guards the bottom action-bar buttons so a slow PDF/print/share call can't
+  /// be triggered twice (e.g. double-tap). Reset in a `finally` so it always
+  /// releases, even when the underlying call throws.
+  bool _isActionInProgress = false;
 
   Future<void> _initializeSettings() async {
     await _hiveService.init();
@@ -76,7 +90,8 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
     final bool autoPrint =
         settingsState.isPrintEnabled || settingsState.isAutoPrintOnSale;
     final bool autoSave =
-        settingsState.isPDFSave || (settingsState.isPrintEnabled && isPdfFormat);
+        settingsState.isPDFSave ||
+        (settingsState.isPrintEnabled && isPdfFormat);
 
     if (autoSave && isPdfFormat) {
       try {
@@ -102,7 +117,30 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
     _hiveService = HiveService();
     _initializeSettings();
     _loadDefaultLogo();
+    // Ctrl+P prints the bill — handled by the window-level keyboard dispatcher
+    // (see [AppKeyboardScope]) while the bill screen is open.
+    AppKeyboardScope.register(_keys);
+    if (widget.autoPrint) {
+      // Pop the system print dialog as soon as the bill is on screen — used
+      // when the bill is launched from the Invoices list via Ctrl+P.
+      _printCurrentBill();
+    }
   }
+
+  @override
+  void dispose() {
+    AppKeyboardScope.unregister(_keys);
+    super.dispose();
+  }
+
+  /// Ctrl+P shortcut scope for the bill detail screen.
+  late final AppKeyboardScope _keys = AppKeyboardScope('bill-detail', (event) {
+    if (AppKeyboardScope.didPress(event, LogicalKeyboardKey.keyP, ctrl: true)) {
+      _printCurrentBill();
+      return true;
+    }
+    return false;
+  });
 
   Future<void> _loadDefaultLogo() async {
     try {
@@ -217,7 +255,8 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
     }
 
     // Load social media icons from assets (for modern & invoice design)
-    final needsIcons = settingsState.billDesign == BillDesign.modern ||
+    final needsIcons =
+        settingsState.billDesign == BillDesign.modern ||
         settingsState.billDesign == BillDesign.invoice;
     if (needsIcons) {
       try {
@@ -231,27 +270,31 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
         // Social media icons
         if (socialMediaHandles != null && socialMediaHandles.isNotEmpty) {
           if (socialMediaHandles.containsKey('facebook')) {
-            final data = settingsState.billDesign == BillDesign.invoice
-                ? await rootBundle.load('assets/win_11/facebook-48.png')
-                : await rootBundle.load('assets/icons8-facebook-96.png');
+            final data =
+                settingsState.billDesign == BillDesign.invoice
+                    ? await rootBundle.load('assets/win_11/facebook-48.png')
+                    : await rootBundle.load('assets/icons8-facebook-96.png');
             facebookIcon = data.buffer.asUint8List();
           }
           if (socialMediaHandles.containsKey('instagram')) {
-            final data = settingsState.billDesign == BillDesign.invoice
-                ? await rootBundle.load('assets/win_11/instagram-48.png')
-                : await rootBundle.load('assets/instagram-.png');
+            final data =
+                settingsState.billDesign == BillDesign.invoice
+                    ? await rootBundle.load('assets/win_11/instagram-48.png')
+                    : await rootBundle.load('assets/instagram-.png');
             instagramIcon = data.buffer.asUint8List();
           }
           if (socialMediaHandles.containsKey('twitter')) {
-            final data = settingsState.billDesign == BillDesign.invoice
-                ? await rootBundle.load('assets/win_11/x-48.png')
-                : await rootBundle.load('assets/x.png');
+            final data =
+                settingsState.billDesign == BillDesign.invoice
+                    ? await rootBundle.load('assets/win_11/x-48.png')
+                    : await rootBundle.load('assets/x.png');
             twitterIcon = data.buffer.asUint8List();
           }
           if (socialMediaHandles.containsKey('whatsapp')) {
-            final data = settingsState.billDesign == BillDesign.invoice
-                ? await rootBundle.load('assets/win_11/whatsapp-48.png')
-                : await rootBundle.load('assets/whatsapp.png');
+            final data =
+                settingsState.billDesign == BillDesign.invoice
+                    ? await rootBundle.load('assets/win_11/whatsapp-48.png')
+                    : await rootBundle.load('assets/whatsapp.png');
             whatsappIcon = data.buffer.asUint8List();
           }
         }
@@ -701,7 +744,10 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
 
   Widget _tableHeader(bool isDark) {
     return Container(
-      color: isDark ? AppColors.primary.withValues(alpha: 0.22) : AppColors.primary,
+      color:
+          isDark
+              ? AppColors.primary.withValues(alpha: 0.22)
+              : AppColors.primary,
       padding: EdgeInsets.symmetric(horizontal: 14.spMin, vertical: 12.spMin),
       child: Row(
         children: [
@@ -885,23 +931,148 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
     );
   }
 
+  /// Prominent, one-tap Print / Save / Share bar for touch devices. On
+  /// desktop the AppBar "more" menu is the primary entry point; on phones and
+  /// tablets these three actions are the whole point of the screen, so they get
+  /// a persistent, thumb-friendly bar instead of being hidden in a dropdown.
+  Widget _buildMobileActionBar(String shopName) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return SafeArea(
+      child: Container(
+        padding: EdgeInsets.fromLTRB(12.w, 10.h, 12.w, 10.h),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.grey900 : Colors.white,
+          border: Border(
+            top: BorderSide(
+              color:
+                  isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : AppColors.border,
+            ),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: _actionButton(
+                icon: Icons.print_outlined,
+                label: 'Print',
+                primary: true,
+                onPressed:
+                    _isActionInProgress
+                        ? null
+                        : () async {
+                          await _runAction(() => _printCurrentBill());
+                        },
+              ),
+            ),
+            SizedBox(width: 10.w),
+            Expanded(
+              child: _actionButton(
+                icon: Icons.picture_as_pdf,
+                label: 'Save PDF',
+                onPressed:
+                    _isActionInProgress
+                        ? null
+                        : () async {
+                          await _runAction(
+                            () => _generateAndSavePDF(widget.bill, shopName),
+                          );
+                        },
+              ),
+            ),
+            SizedBox(width: 10.w),
+            Expanded(
+              child: _actionButton(
+                icon: Icons.share,
+                label: 'Share',
+                onPressed:
+                    _isActionInProgress
+                        ? null
+                        : () async {
+                          await _runAction(
+                            () => _shareInvoicePdf(widget.bill, shopName),
+                          );
+                        },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Runs an action-bar callback while showing a local in-progress guard so the
+  /// same button can't be fired twice during a slow PDF/print/share call.
+  Future<void> _runAction(Future<void> Function() action) async {
+    if (_isActionInProgress) return;
+    setState(() => _isActionInProgress = true);
+    try {
+      await action();
+    } finally {
+      if (mounted) setState(() => _isActionInProgress = false);
+    }
+  }
+
+  /// Compact, equally-sized action button used in the mobile bottom bar. The
+  /// primary (Print) variant is filled; Save/Share are outlined so the three
+  /// actions read as a clear hierarchy.
+  Widget _actionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback? onPressed,
+    bool primary = false,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (primary) {
+      return ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 18.spMin),
+        label: Text(
+          label,
+          style: TextStyle(fontSize: 14.spMin, fontWeight: FontWeight.bold),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(vertical: 12.h),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10.r),
+          ),
+        ),
+      );
+    }
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18.spMin),
+      label: Text(
+        label,
+        style: TextStyle(fontSize: 14.spMin, fontWeight: FontWeight.bold),
+      ),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: isDark ? Colors.white : AppColors.primary,
+        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.5)),
+        padding: EdgeInsets.symmetric(vertical: 12.h),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10.r),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileState = ref.read(profileProvider);
     final shopName = profileState.shopName ?? 'Your Shop';
 
-    // Ctrl+P prints the bill (thermal or PDF dialog per settings). autofocus so
-    // the shortcut is active as soon as the bill view opens on desktop.
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.keyP, control: true):
-            _printCurrentBill,
-      },
-      child: Focus(
-        autofocus: true,
-        child: _buildScaffold(context, shopName),
-      ),
-    );
+    return _buildScaffold(context, shopName);
   }
 
   Widget _buildScaffold(BuildContext context, String shopName) {
@@ -1004,38 +1175,38 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
               ),
             ],
             onChanged: (value) async {
-if (value == 'edit') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => EditBillScreen(bill: widget.bill),
-                    ),
-                  );
-                } else if (value == 'delete') {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder:
-                        (context) => AlertDialog(
-                          title: mdTextBold(text: 'Delete Bill'),
-                          content: mdText(
-                            text: 'Are you sure you want to delete this bill?',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: smText(text: 'Cancel'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              child: smText(text: 'Delete', color: Colors.red),
-                            ),
-                          ],
+              if (value == 'edit') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EditBillScreen(bill: widget.bill),
+                  ),
+                );
+              } else if (value == 'delete') {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder:
+                      (context) => AlertDialog(
+                        title: mdTextBold(text: 'Delete Bill'),
+                        content: mdText(
+                          text: 'Are you sure you want to delete this bill?',
                         ),
-                  );
-                  if (confirm == true) {
-                    await _deleteBill();
-                  }
-} else if (value == 'save_pdf') {
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: smText(text: 'Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: smText(text: 'Delete', color: Colors.red),
+                          ),
+                        ],
+                      ),
+                );
+                if (confirm == true) {
+                  await _deleteBill();
+                }
+              } else if (value == 'save_pdf') {
                 await _generateAndSavePDF(widget.bill, shopName);
               } else if (value == 'share') {
                 await _shareInvoicePdf(widget.bill, shopName);
@@ -1053,6 +1224,10 @@ if (value == 'edit') {
         tablet: _buildMobileView(),
         desktop: _buildDesktopView(),
       ),
+      // On touch devices the print/save/share actions live in this persistent
+      // bar; desktop keeps them in the AppBar "more" menu instead.
+      bottomNavigationBar:
+          AppSizes.isDesktop(context) ? null : _buildMobileActionBar(shopName),
     );
   }
 }

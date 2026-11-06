@@ -14,6 +14,7 @@ import '../bills/bills_view.dart';
 import '../customers/customer_list_view.dart';
 import '../expances/expanses_view.dart';
 import '../reminders/reminders_view.dart';
+import '../local_purchase/local_purchase_list_view.dart';
 import '../repairs/repair_view.dart';
 import '../sales/sale_view.dart';
 
@@ -103,6 +104,12 @@ const List<NavigationItem> desktopNavItems = [
     activeWind11Icon: ImageAssets.win11Accounting,
   ),
   NavigationItem(
+    icon: TablerIcons.shopping_cart,
+    activeIcon: TablerIcons.shopping_cart,
+    label: 'Purchases',
+    activeWind11Icon: ImageAssets.win11Stock,
+  ),
+  NavigationItem(
     icon: TablerIcons.settings,
     activeIcon: TablerIcons.settings,
     label: 'Settings',
@@ -161,6 +168,7 @@ List<Widget> pages(
     ProfileView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
     ExpensesView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
     DashboradView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
+    LocalPurchaseListView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
     SettingsPage(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
   ];
   if (showRepairs) {

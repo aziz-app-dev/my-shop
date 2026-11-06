@@ -12,6 +12,10 @@ import '../main/main_view.dart';
 import 'widgets/bills_filter_bar.dart';
 import 'widgets/data_table_widgets.dart';
 import 'widgets/serch_bar_widget.dart';
+import 'package:flutter/services.dart' show LogicalKeyboardKey;
+import '../../res/components/app_flushbar.dart';
+import '../../view_models/services/keyboard/app_keyboard_service.dart';
+import 'bills_details.dart';
 
 class BillsScreen extends ConsumerStatefulWidget {
   const BillsScreen({super.key});
@@ -21,18 +25,72 @@ class BillsScreen extends ConsumerStatefulWidget {
 }
 
 class _BillsScreenState extends ConsumerState<BillsScreen> {
+  /// Ctrl+P scope handled by the window-level keyboard dispatcher while the
+  /// bills page is on screen (see [AppKeyboardScope] — focus-independent).
+  late final AppKeyboardScope _keys = AppKeyboardScope('bills', _handleKey);
+
   @override
   void initState() {
     super.initState();
+    AppKeyboardScope.register(_keys);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(billsProvider.notifier).fetchBills();
     });
   }
 
   @override
+  void dispose() {
+    AppKeyboardScope.unregister(_keys);
+    super.dispose();
+  }
+
+  bool _handleKey(KeyEvent event) {
+    if (AppKeyboardScope.didPress(event, LogicalKeyboardKey.keyP, ctrl: true)) {
+      _printSelectedBill(context);
+      return true;
+    }
+    return false;
+  }
+
+  /// Ctrl+P handler: prints the single selected bill. If none or several bills
+  /// are selected, it guides the user instead of failing silently. The print
+  /// itself is delegated to [BillDetailScreen] (autoPrint) so the list reuses
+  /// the exact same PDF/thermal pipeline as the detail screen.
+  Future<void> _printSelectedBill(BuildContext context) async {
+    final billsState = ref.read(billsProvider);
+    final selected =
+        billsState.allBills
+            .where((b) => billsState.selectedBills[b.id] == true)
+            .toList();
+
+    if (selected.length == 1) {
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder:
+              (context) =>
+                  BillDetailScreen(bill: selected.first, autoPrint: true),
+        ),
+      );
+    } else if (selected.isEmpty) {
+      AppFlushbar.info(
+        context,
+        message: 'Select a bill, then press Ctrl+P to print it.',
+      );
+    } else {
+      AppFlushbar.info(
+        context,
+        message: 'Select a single bill to print with Ctrl+P.',
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final billsState = ref.watch(billsProvider);
-    final hasActiveFilter = billsState.statusFilter != null ||
+    final hasActiveFilter =
+        billsState.statusFilter != null ||
         billsState.paymentMethodFilter != null ||
         billsState.dateRangeFilter != null;
     final billsNotifier = ref.read(billsProvider.notifier);

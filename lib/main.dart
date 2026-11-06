@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -13,6 +14,7 @@ import 'view_models/providers/sync_provider.dart';
 import 'view_models/services/database/database_services.dart';
 import 'view_models/services/image_cache/image_cache_service.dart';
 import 'view_models/services/notifications/notification_service.dart';
+import 'view_models/services/keyboard/app_keyboard_service.dart';
 import 'view_models/services/theme/theme_services.dart';
 
 Future<void> main() async {
@@ -38,6 +40,11 @@ Future<void> main() async {
   // Initialize local notifications for the payment reminder system. Wrapped
   // internally so an unsupported platform can't block startup.
   await NotificationService.instance.init();
+
+  // Global keyboard shortcuts: catch keys at the window level so they work
+  // app-wide (independent of which widget holds focus) and are consumed by
+  // this app — they never "leak" to other apps while the window is open.
+  HardwareKeyboard.instance.addHandler(AppKeyboardScope.handleKey);
 
   runApp(ProviderScope(child: MyApp()));
 }

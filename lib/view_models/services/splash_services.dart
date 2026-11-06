@@ -12,20 +12,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../res/components/app_flushbar.dart';
 import '../../routes/routes_name.dart';
 import '../providers/settings_provider.dart';
-import 'cloud_user/cloud_user_service.dart';
-import 'database/database_services.dart';
 
 class SplashServices {
-  void isLogin(WidgetRef ref, BuildContext context) {
+  /// Navigate directly to the main screen after the splash animation.
+  ///
+  /// Auth has been removed — the app no longer checks for login state, shop
+  /// setup completion, or cloud profile restore. The only first-run step
+  /// retained is the directory picker (desktop) / default-path assignment
+  /// (mobile) because Hive needs a storage location.
+  void navigateToMain(WidgetRef ref, BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // Check for first-time setup
+      // Check for first-time setup (directory picker only)
       final isFirstInstall = await _checkFirstInstall();
 
       if (isFirstInstall) {
-        // Show directory path picker dialog
         final directorySet = await _showDirectoryPickerDialog(context, ref);
         if (!directorySet) {
-          // User cancelled, show dialog again or exit
           if (context.mounted) {
             AppFlushbar.warning(
               context,
@@ -35,51 +37,20 @@ class SplashServices {
           // Retry after a delay
           Timer(const Duration(seconds: 1), () {
             if (context.mounted) {
-              isLogin(ref, context);
+              navigateToMain(ref, context);
             }
           });
           return;
         }
       }
 
-      // Shop setup complete? Navigate accordingly.
-      bool setupComplete = await _isShopSetupComplete();
-
-      if (!setupComplete) {
-        final restored = await _tryRestoreProfileFromCloud();
-        if (restored) setupComplete = await _isShopSetupComplete();
-      }
-
-      // Navigate after 1 sec
+      // Navigate directly to MainScreen after a brief delay
       Timer(const Duration(seconds: 1), () {
         if (context.mounted) {
-          if (!setupComplete) {
-            Navigator.pushReplacementNamed(context, RouteName.profileEdit);
-          } else {
-            Navigator.pushReplacementNamed(context, RouteName.mainScreen);
-          }
+          Navigator.pushReplacementNamed(context, RouteName.mainScreen);
         }
       });
     });
-  }
-
-  /// Fetch the shop profile from Firestore and, if present, persist it
-  /// locally so the rest of the app (which reads from Hive) sees it. Returns
-  /// true if a cloud profile was found and saved. Any error (offline, no table,
-  /// empty table) returns false so we safely fall back to account creation.
-  Future<bool> _tryRestoreProfileFromCloud() async {
-    try {
-      final cloudUser = await CloudUserService().getFirstUser();
-      if (cloudUser == null) return false;
-
-      final dbService = DatabaseService();
-      await dbService.initialize();
-      await dbService.saveUser(cloudUser);
-      return true;
-    } catch (e) {
-      debugPrint('Cloud profile restore skipped: $e');
-      return false;
-    }
   }
 
   /// Check if this is the first time the app is installed
@@ -88,23 +59,6 @@ class SplashServices {
     final prefs = await SharedPreferences.getInstance();
     final setupCompleted = prefs.getBool('firstSetupCompleted') ?? false;
     return !setupCompleted;
-  }
-
-  /// Whether the local user has completed the first-run shop setup. A profile
-  /// that already has a shop name counts as complete too, so an existing shop
-  /// (restored from the cloud on a new device, or saved before the
-  /// shopSetupComplete flag existed) doesn't get sent back through setup.
-  Future<bool> _isShopSetupComplete() async {
-    try {
-      final hiveService = HiveService();
-      final users = hiveService.getUsers();
-      return users.isNotEmpty &&
-          (users.first.shopSetupComplete ||
-              users.first.shopName.trim().isNotEmpty);
-    } catch (e) {
-      debugPrint('Error checking shop setup status: $e');
-      return false;
-    }
   }
 
   /// Show directory picker dialog for first-time setup

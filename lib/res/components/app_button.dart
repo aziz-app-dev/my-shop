@@ -113,6 +113,7 @@ class AppButton {
     double? fontSize,
     bool isLoading = false,
     FocusNode? focusNode,
+    EdgeInsetsGeometry? padding,
   }) {
     final theme = ref.watch(themeProvider);
     return SizedBox(
@@ -120,6 +121,7 @@ class AppButton {
       height: height ?? 40.spMin,
       child: ElevatedButton.icon(
         style: ElevatedButton.styleFrom(
+          padding: padding,
           backgroundColor: color ?? theme.primaryColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(borderRadius.r),

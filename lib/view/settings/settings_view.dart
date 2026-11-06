@@ -15,9 +15,12 @@ import '../../res/components/app_bar_widget.dart';
 import '../../res/components/app_flushbar.dart';
 import '../../res/components/app_expansion_tile.dart';
 import '../../res/components/app_icon.dart';
+import '../../res/components/text_field_widget.dart';
 import '../../utils/app_sizes.dart';
 import '../../view_models/providers/settings_provider.dart';
+import '../about/about_view.dart';
 import '../main/main_view.dart';
+import 'widgets/custom_tile.dart';
 import 'widgets/screens_mangement.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -1216,6 +1219,41 @@ class SettingsPage extends ConsumerWidget {
                 ],
               ),
             ),
+            SizedBox(height: 16.spMin),
+            const _PurchaseTermsCard(),
+            SizedBox(height: 16.spMin),
+            // About & Help — in-app documentation of every feature, button
+            // location and keyboard shortcut. Styled like the other settings
+            // cards (expansion card + app tile).
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              child: AppExpansionTile(
+                initiallyExpanded: false,
+                tilePadding: EdgeInsets.symmetric(horizontal: 16.spMin),
+                childrenPadding: EdgeInsets.all(10.spMin),
+                title: mdTextBold(text: 'About & Help'),
+                children: [
+                  customTileWidget(
+                    context,
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AboutView(),
+                      ),
+                    ),
+                    'About & Help',
+                    'What every feature does, where the buttons are and all '
+                        'the keyboard shortcuts.',
+                    AppColors.primary,
+                    Icons.info_outline,
+                    ImageAssets.win11Info,
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 8.spMin),
           ],
         ),
       ),
@@ -1570,6 +1608,82 @@ class SettingsPage extends ConsumerWidget {
             border: isMain ? Border.all(color: Colors.black, width: 2) : null,
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Edits the terms & conditions printed on every NEW local purchase agreement.
+/// One term per line — this replaces the old on-form terms editor.
+class _PurchaseTermsCard extends ConsumerStatefulWidget {
+  const _PurchaseTermsCard();
+
+  @override
+  ConsumerState<_PurchaseTermsCard> createState() => _PurchaseTermsCardState();
+}
+
+class _PurchaseTermsCardState extends ConsumerState<_PurchaseTermsCard> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: ref.read(settingsProvider).purchaseTerms.join('\n'),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final terms =
+        _controller.text
+            .split('\n')
+            .map((t) => t.trim())
+            .where((t) => t.isNotEmpty)
+            .toList();
+    ref.read(settingsProvider.notifier).setPurchaseTerms(terms);
+    AppFlushbar.success(context, message: 'Purchase agreement terms saved.');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+      child: AppExpansionTile(
+        initiallyExpanded: false,
+        tilePadding: EdgeInsets.symmetric(horizontal: 16.spMin),
+        childrenPadding: EdgeInsets.all(16.spMin),
+        title: mdTextBold(text: 'Purchase Agreement'),
+        children: [
+          smText(
+            text:
+                'Terms & conditions printed on every new local purchase '
+                'agreement. Write one term per line.',
+          ),
+          SizedBox(height: 12.h),
+          CustomTextField(
+            controller: _controller,
+            label: 'Terms & Conditions',
+            hintText: 'One term per line...',
+            maxLines: 6,
+          ),
+          SizedBox(height: 12.h),
+          Align(
+            alignment: Alignment.centerRight,
+            child: AppButton().primaryButton(
+              text: 'Save Terms',
+              onPressed: _save,
+              width: 140.spMin,
+              height: 36.spMin,
+              fontSize: 12.spMin,
+            ),
+          ),
+        ],
       ),
     );
   }

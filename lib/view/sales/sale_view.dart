@@ -379,6 +379,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           condition: product.condition,
           brand: product.brand,
           category: product.category,
+          barcode: product.barcode,
+          reorderLevel: product.reorderLevel,
           fieldConfigs: product.fieldConfigs,
         );
         if (mounted) {

@@ -10,6 +10,7 @@ Widget buildProductGrid(
   BuildContext context,
   List<Product> products, {
   List<Brand>? brands,
+  bool singleTapOpensDetails = false,
 }) {
   return LayoutBuilder(
     builder: (context, constraints) {
@@ -41,7 +42,11 @@ Widget buildProductGrid(
         ),
         itemCount: products.length,
         itemBuilder: (context, index) {
-          return HomeProductCard(product: products[index], brands: brands);
+          return HomeProductCard(
+            product: products[index],
+            brands: brands,
+            singleTapOpensDetails: singleTapOpensDetails,
+          );
         },
       );
     },

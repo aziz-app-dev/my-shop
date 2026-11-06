@@ -31,6 +31,56 @@ class ProductDetailsScreen extends ConsumerStatefulWidget {
 class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
   final DatabaseService _dbService = DatabaseService();
 
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: Text('Delete Product', style: TextStyle(fontSize: 18.spMin)),
+            content: Text(
+              'Are you sure you want to delete "${widget.product.name}"? '
+              'This action cannot be undone.',
+              style: TextStyle(fontSize: 14.spMin),
+            ),
+            actions: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(fontSize: 14.spMin),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: Text(
+                        'Delete',
+                        style: TextStyle(fontSize: 14.spMin, color: Colors.red),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    await ref
+        .read(productsNotifierProvider.notifier)
+        .deleteProduct(widget.product.id);
+
+    if (mounted) {
+      Navigator.pop(context, true); // Return to previous screen
+      AppFlushbar.success(context, message: 'Product deleted successfully');
+    }
+  }
+
   void _showStockDialog() {
     final TextEditingController controller = TextEditingController();
 
@@ -101,6 +151,8 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                           warranty: widget.product.warranty,
                           condition: widget.product.condition,
                           brand: widget.product.brand,
+                          barcode: widget.product.barcode,
+                          reorderLevel: widget.product.reorderLevel,
                           fieldConfigs: widget.product.fieldConfigs,
                         );
 
@@ -166,6 +218,8 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                 }
               } else if (value == 'stock') {
                 _showStockDialog();
+              } else if (value == 'delete') {
+                await _confirmDelete();
               }
             },
             itemBuilder:
@@ -205,6 +259,23 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                         ],
                       ),
                     ),
+                  PopupMenuItem<String>(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.delete_outline,
+                          size: 20.spMin,
+                          color: Colors.red,
+                        ),
+                        SizedBox(width: 12.w),
+                        Text(
+                          'Delete Product',
+                          style: TextStyle(fontSize: 14.spMin, color: Colors.red),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
           ),
           SizedBox(width: 8.w),

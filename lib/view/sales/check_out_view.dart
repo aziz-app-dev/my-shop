@@ -332,10 +332,6 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
       ref.read(customerFormProvider.notifier).updateName(randomBillId);
       ref.read(customerFormProvider.notifier).updateAddress('');
       ref.read(customerFormProvider.notifier).updatePhoneNumber('');
-      AppFlushbar.info(
-        context,
-        message: 'Walk-in: Generated bill ID $randomBillId',
-      );
     } else if (mode == 'test-bill') {
       ref.read(checkoutProvider.notifier).toggleTestBill(true);
       final randomTestId =
@@ -346,10 +342,6 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
       ref.read(customerFormProvider.notifier).updateName(randomTestId);
       ref.read(customerFormProvider.notifier).updateAddress('');
       ref.read(customerFormProvider.notifier).updatePhoneNumber('');
-      AppFlushbar.info(
-        context,
-        message: 'Test Bill: PDF only, no data will be saved',
-      );
     } else {
       // Customer mode
       ref.read(checkoutProvider.notifier).setCustomerMode();

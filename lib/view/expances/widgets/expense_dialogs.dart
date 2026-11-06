@@ -372,8 +372,6 @@ class ExpenseDialogs {
     WidgetRef ref,
     Expense expense,
   ) async {
-    final double width = MediaQuery.sizeOf(context).width;
-
     final result = await showDialog<bool>(
       context: context,
       builder:

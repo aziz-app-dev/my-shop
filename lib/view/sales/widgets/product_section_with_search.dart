@@ -2,6 +2,7 @@ import 'package:desktopapp/res/components/app_text_widgrt.dart';
 import 'package:desktopapp/res/components/empty_widget.dart';
 import 'package:desktopapp/res/components/text_field_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
@@ -13,7 +14,10 @@ import '../../../res/components/app_icon.dart';
 import '../../../utils/platform_utils.dart';
 import '../../../view_models/providers/sales_provider.dart';
 import '../../../view_models/providers/product_search_provider.dart';
+import '../../../view_models/services/keyboard/app_keyboard_service.dart';
 import '../../../res/components/product_card.dart';
+import '../../../res/components/app_flushbar.dart';
+import '../../product_details/product_details_view.dart';
 
 /// Shared height for the search field and the action buttons next to it, so
 /// they line up exactly across desktop / tablet / mobile. (Passed through
@@ -31,6 +35,7 @@ class ProductsSectionWithSearch extends ConsumerStatefulWidget {
 class _ProductsSectionWithSearchState
     extends ConsumerState<ProductsSectionWithSearch> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
 
   // Cache brand/category extraction so it only recomputes when the product
   // list itself changes — not on every search keystroke or rebuild.
@@ -45,9 +50,285 @@ class _ProductsSectionWithSearchState
     _cachedCategories = _getUniqueCategories(products);
   }
 
+  /// Adds the given [product] to the cart, or warns when it is out of stock.
+  /// Shared by the card tap handler and the F1–F9 / 1–9 keyboard shortcuts so
+  /// both paths behave identically.
+  void _handleProductTap(Product product) {
+    // Never hijack keys while the user is typing in the search box.
+    if (_searchFocusNode.hasFocus) return;
+
+    if (!product.isService && product.stock != null && product.stock! <= 0) {
+      if (!context.mounted) return;
+      showDialog(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: mdTextBold(text: 'Out of Stock'),
+              content: smText(
+                maxLines: 3,
+                text: '${product.name} is currently out of stock.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: mdTextBold(text: 'OK'),
+                ),
+              ],
+            ),
+      );
+    } else {
+      ref.read(salesProvider.notifier).addToCart(product);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${product.name} added to cart'),
+          duration: const Duration(seconds: 1),
+          backgroundColor: AppColors.primary,
+        ),
+      );
+    }
+  }
+
+  /// Dropdown menu on the card's caret button. Order matches the user's
+  /// request: 1) Sale — put the item in the cart, 2) Details, 3) Stock.
+  Future<void> _showProductMenu(
+    BuildContext context,
+    Product product,
+    Offset position,
+  ) async {
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+
+    final selected = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(
+        position & const Size(40, 40),
+        Offset.zero & overlay.size,
+      ),
+      items: [
+        PopupMenuItem<String>(
+          value: 'cart',
+          child: Row(
+            children: [
+              Icon(
+                TablerIcons.shopping_cart_plus,
+                size: 18.spMin,
+                color: AppColors.primary,
+              ),
+              SizedBox(width: 10.spMin),
+              Text('Sale — Add to Cart', style: TextStyle(fontSize: 13.spMin)),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'details',
+          child: Row(
+            children: [
+              Icon(
+                TablerIcons.info_circle,
+                size: 18.spMin,
+                color: AppColors.primary,
+              ),
+              SizedBox(width: 10.spMin),
+              Text('Details', style: TextStyle(fontSize: 13.spMin)),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'stock',
+          child: Row(
+            children: [
+              Icon(
+                TablerIcons.database,
+                size: 18.spMin,
+                color: AppColors.primary,
+              ),
+              SizedBox(width: 10.spMin),
+              Text('Stock', style: TextStyle(fontSize: 13.spMin)),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    if (!context.mounted) return;
+    switch (selected) {
+      case 'cart':
+        _handleProductTap(product);
+        break;
+      case 'details':
+        _openProductDetails(context, product);
+        break;
+      case 'stock':
+        _showStockDialog(context, product);
+        break;
+    }
+  }
+
+  /// Opens the product details screen (same navigation as double-tapping the
+  /// card elsewhere in the app).
+  Future<void> _openProductDetails(
+    BuildContext context,
+    Product product,
+  ) async {
+    final result = await Navigator.push<dynamic>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProductDetailsScreen(product: product),
+      ),
+    );
+    if (!context.mounted) return;
+    if (result is Map && result['success'] == true) {
+      AppFlushbar.success(
+        context,
+        message: result['message'] ?? 'Product updated successfully!',
+        duration: const Duration(seconds: 2),
+      );
+    }
+  }
+
+  /// Quick stock view: current quantity, reorder level and a coloured status
+  /// line. Services show a "no stock" line instead.
+  void _showStockDialog(BuildContext context, Product product) {
+    final isService = product.isService;
+    final stock = product.stock;
+    final reorderLevel = product.reorderLevel ?? 5;
+
+    final String statusText;
+    final Color statusColor;
+    if (isService) {
+      statusText = 'Service — stock not tracked';
+      statusColor = Colors.blue;
+    } else if (stock == null) {
+      statusText = 'No stock recorded';
+      statusColor = Colors.orange;
+    } else if (stock <= 0) {
+      statusText = 'Out of stock';
+      statusColor = Colors.red;
+    } else if (stock <= reorderLevel) {
+      statusText = 'Low stock (reorder at $reorderLevel)';
+      statusColor = Colors.orange;
+    } else {
+      statusText = 'In stock';
+      statusColor = Colors.green;
+    }
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: mdTextBold(text: product.name, maxLines: 2),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 8.h,
+              children: [
+                smText(
+                  text: isService ? 'Type: Service' : 'Type: Product',
+                  color:
+                      Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.grey300
+                          : AppColors.grey700,
+                ),
+                Text(
+                  statusText,
+                  style: TextStyle(
+                    fontSize: 14.spMin,
+                    fontWeight: FontWeight.bold,
+                    color: statusColor,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: mdTextBold(text: 'Close'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  /// Products currently shown (search result), updated on every build so the
+  /// keyboard handler always maps F1–F9 / 1–9 to the first nine *visible*
+  /// products.
+  List<Product>? _liveProducts;
+
+  /// Sales-screen shortcut scope (F1–F9, digits 1–9 and numpad 1–9 fire the
+  /// first nine shown products into the cart, the way other billing software
+  /// uses function keys). Handled by the window-level keyboard dispatcher
+  /// (see [AppKeyboardScope]) — focus-independent. Registered later than the
+  /// main-nav scope, so it wins over the F-key section navigation while this
+  /// page is on screen.
+  late final AppKeyboardScope _keys = AppKeyboardScope(
+    'sales-products',
+    _handleKey,
+  );
+
+  bool _handleKey(KeyEvent event) {
+    // Don't hijack typing: while a text field has focus (e.g. the search box)
+    // keys must reach it instead of firing products into the cart.
+    final focusWidget = FocusManager.instance.primaryFocus?.context?.widget;
+    if (focusWidget is EditableText) return false;
+
+    final products = _liveProducts;
+    if (products == null || products.isEmpty) return false;
+
+    const fKeys = [
+      LogicalKeyboardKey.f1,
+      LogicalKeyboardKey.f2,
+      LogicalKeyboardKey.f3,
+      LogicalKeyboardKey.f4,
+      LogicalKeyboardKey.f5,
+      LogicalKeyboardKey.f6,
+      LogicalKeyboardKey.f7,
+      LogicalKeyboardKey.f8,
+      LogicalKeyboardKey.f9,
+    ];
+    const digits = [
+      LogicalKeyboardKey.digit1,
+      LogicalKeyboardKey.digit2,
+      LogicalKeyboardKey.digit3,
+      LogicalKeyboardKey.digit4,
+      LogicalKeyboardKey.digit5,
+      LogicalKeyboardKey.digit6,
+      LogicalKeyboardKey.digit7,
+      LogicalKeyboardKey.digit8,
+      LogicalKeyboardKey.digit9,
+    ];
+    const numpad = [
+      LogicalKeyboardKey.numpad1,
+      LogicalKeyboardKey.numpad2,
+      LogicalKeyboardKey.numpad3,
+      LogicalKeyboardKey.numpad4,
+      LogicalKeyboardKey.numpad5,
+      LogicalKeyboardKey.numpad6,
+      LogicalKeyboardKey.numpad7,
+      LogicalKeyboardKey.numpad8,
+      LogicalKeyboardKey.numpad9,
+    ];
+
+    for (var i = 0; i < 9 && i < products.length; i++) {
+      if (AppKeyboardScope.didPress(event, fKeys[i]) ||
+          AppKeyboardScope.didPress(event, digits[i]) ||
+          AppKeyboardScope.didPress(event, numpad[i])) {
+        _handleProductTap(products[i]);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    AppKeyboardScope.register(_keys);
+  }
+
   @override
   void dispose() {
+    AppKeyboardScope.unregister(_keys);
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -505,13 +786,20 @@ class _ProductsSectionWithSearchState
           searchState.selectedCategory,
         );
 
+        _liveProducts = filteredProducts;
+
         return Column(
           children: [
             // Search Bar with Filter + Barcode Scanner. Buttons match the
             // field height via IntrinsicHeight (no fixed-height SizedBox that
             // would clip the text field and overflow).
             Padding(
-              padding: EdgeInsets.fromLTRB(16.spMin, 12.spMin, 16.spMin, 6.spMin),
+              padding: EdgeInsets.fromLTRB(
+                16.spMin,
+                12.spMin,
+                16.spMin,
+                6.spMin,
+              ),
               child: IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -520,6 +808,7 @@ class _ProductsSectionWithSearchState
                       child: CustomTextField(
                         hintText: 'Search products...',
                         controller: _searchController,
+                        focusNode: _searchFocusNode,
                         prefixIcon: Icon(
                           TablerIcons.search,
                           size: 20.spMin,
@@ -543,7 +832,8 @@ class _ProductsSectionWithSearchState
                                   _searchController.clear();
                                   ref
                                       .read(
-                                        singleCartProductSearchProvider.notifier,
+                                        singleCartProductSearchProvider
+                                            .notifier,
                                       )
                                       .clearSearch();
                                 },
@@ -557,7 +847,8 @@ class _ProductsSectionWithSearchState
                                 size: 20.spMin,
                                 color:
                                     (searchState.selectedBrand != null ||
-                                            searchState.selectedCategory != null)
+                                            searchState.selectedCategory !=
+                                                null)
                                         ? AppColors.primary
                                         : (Theme.of(context).brightness ==
                                                 Brightness.dark
@@ -650,50 +941,24 @@ class _ProductsSectionWithSearchState
                             padding: EdgeInsets.all(8.spMin),
                             gridDelegate:
                                 SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: maxCardWidth,
-                              childAspectRatio: 0.72,
-                              crossAxisSpacing: 8.spMin,
-                              mainAxisSpacing: 8.spMin,
-                            ),
+                                  maxCrossAxisExtent: maxCardWidth,
+                                  childAspectRatio: 0.72,
+                                  crossAxisSpacing: 8.spMin,
+                                  mainAxisSpacing: 8.spMin,
+                                ),
                             itemCount: filteredProducts.length,
                             itemBuilder: (context, index) {
                               final product = filteredProducts[index];
                               return ProductCard(
                                 product: product,
-                                onTap: () {
-                                  // Skip stock check for services (isService == true, stock == null)
-                                  if (!product.isService &&
-                                      product.stock != null &&
-                                      product.stock! <= 0) {
-                                    showDialog(
-                                      context: context,
-                                      builder:
-                                          (context) => AlertDialog(
-                                            title: mdTextBold(
-                                              text: 'Out of Stock',
-                                            ),
-                                            content: smText(
-                                              maxLines: 3,
-                                              text:
-                                                  '${product.name} is currently out of stock.',
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed:
-                                                    () =>
-                                                        Navigator.pop(context),
-                                                child: mdTextBold(text: 'OK'),
-                                              ),
-                                            ],
-                                          ),
-                                    );
-                                  } else {
-                                    // Use regular sales provider
-                                    ref
-                                        .read(salesProvider.notifier)
-                                        .addToCart(product);
-                                  }
-                                },
+                                shortcutKey: index < 9 ? 'F${index + 1}' : null,
+                                onTap: () => _handleProductTap(product),
+                                onMenuTapDown:
+                                    (details) => _showProductMenu(
+                                      context,
+                                      product,
+                                      details.globalPosition,
+                                    ),
                               );
                             },
                           );

@@ -39,9 +39,9 @@ final categoriesProvider = FutureProvider.autoDispose<List<Category>>((
 class AddProductScreen extends ConsumerStatefulWidget {
   final Product? product;
 
-  /// Whether this is a service. Pass `null` to let the user choose the type
-  /// on this same page (the two selection cards are shown first). When
-  /// editing an existing product the type is taken from the product.
+  /// Whether this is a service (defaults to `false` = item). The type is
+  /// chosen by the caller (separate Add Product / Add Services buttons) or
+  /// taken from the product when editing.
   final bool? isService;
   final String? initialName;
 
@@ -59,15 +59,8 @@ class AddProductScreen extends ConsumerStatefulWidget {
 class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  /// The currently selected type. Null until the user picks one (only
-  /// possible when [widget.isService] was not supplied and we're not editing).
-  bool? _isService;
-
-  /// True once a type has been chosen (or supplied) so the form can show.
-  bool get _hasType => _isService != null;
-
-  /// Type cannot be changed while editing an existing product.
-  bool get _typeLocked => widget.product != null;
+  /// The type of entry being created/edited (`true` = service, `false` = item).
+  bool _isService = false;
 
   // Declare controllers
   late TextEditingController _nameController;
@@ -76,6 +69,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   late TextEditingController _stockController;
   late TextEditingController _descriptionController;
   late TextEditingController _barcodeController;
+  late TextEditingController _reorderController;
 
   /// Check if running on mobile platform
   bool get _isMobilePlatform {
@@ -101,9 +95,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   @override
   void initState() {
     super.initState();
-    // Determine the initial type: explicit param > existing product >
-    // default to Item (isService = false) so the form is ready immediately.
+    // Determine the type: explicit param > existing product >
+    // default to Item (isService = false).
     _isService = widget.isService ?? widget.product?.isService ?? false;
+
+    // Keep the form provider in sync with the requested type for new entries.
+    if (widget.product == null) {
+      ref
+          .read(productFormProvider(widget.product).notifier)
+          .updateIsService(_isService);
+    }
 
     // Initialize controllers with initial values from formState
     final formState = ref.read(productFormProvider(widget.product));
@@ -118,6 +119,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _stockController = TextEditingController(text: formState.stock?.toString());
     _descriptionController = TextEditingController(text: formState.description);
     _barcodeController = TextEditingController(text: formState.barcode);
+    _reorderController = TextEditingController(
+      text: formState.reorderLevel?.toString(),
+    );
 
     // If initialName is provided, update the form state as well
     if (widget.initialName != null && widget.initialName!.isNotEmpty) {
@@ -141,6 +145,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       _stockController.text = formState.stock?.toString() ?? '';
       _descriptionController.text = formState.description ?? '';
       _barcodeController.text = formState.barcode ?? '';
+      _reorderController.text = formState.reorderLevel?.toString() ?? '';
     }
   }
 
@@ -153,132 +158,23 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _stockController.dispose();
     _descriptionController.dispose();
     _barcodeController.dispose();
+    _reorderController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final typeLabel = _isService == null ? 'Item' : (_isService! ? 'Service' : 'Item');
+    final typeLabel = _isService ? 'Service' : 'Item';
     return Scaffold(
       appBar: AppBarWidget.customAppBar(
         title:
-            widget.product == null
-                ? (_hasType ? 'Add New $typeLabel' : 'Add New Item/Service')
-                : 'Edit $typeLabel',
+            widget.product == null ? 'Add New $typeLabel' : 'Edit $typeLabel',
         context: context,
       ),
       body: ResponsiveWrapper(
         mobile: _buildMobileForm(context, ref),
         tablet: _buildTabletForm(context, ref),
         desktop: _buildDesktopForm(context, ref),
-      ),
-    );
-  }
-
-  /// Select a type and (when not editing) update the form state accordingly.
-  void _selectType(bool isService) {
-    if (_typeLocked) return;
-    setState(() => _isService = isService);
-    ref.read(productFormProvider(widget.product).notifier).updateIsService(isService);
-  }
-
-  /// The two Item / Service selection cards shown at the top of the page.
-  Widget _buildTypeSelector(BuildContext context) {
-    return Row(
-      children: [
-        _buildTypeCard(
-          title: 'Services',
-          win11IconPath: ImageAssets.win11Services,
-          icon: Icons.build,
-          isService: true,
-        ),
-        SizedBox(width: 16.w),
-        _buildTypeCard(
-          title: 'Items',
-          win11IconPath: ImageAssets.win11OpenBox,
-          icon: Icons.inventory,
-          isService: false,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTypeCard({
-    required String title,
-    required String win11IconPath,
-    required IconData icon,
-    required bool isService,
-  }) {
-    final bool selected = _isService == isService;
-    // Compact once a choice has been made; large prompt cards before that.
-    final bool compact = _hasType;
-    final Color baseColor =
-        selected ? AppColors.primary : AppColors.primary.withValues(alpha: 0.4);
-
-    return Expanded(
-      child: Opacity(
-        opacity: _typeLocked && !selected ? 0.5 : 1,
-        child: GestureDetector(
-          onTap: _typeLocked ? null : () => _selectType(isService),
-          child: Card(
-            elevation: selected ? 6 : 2,
-            shadowColor: Colors.black.withValues(alpha: 0.1),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16.r),
-            ),
-            child: Container(
-              height: compact ? 70.h : 200.h,
-              decoration: BoxDecoration(
-                color: baseColor.withValues(alpha: selected ? 0.2 : 0.08),
-                borderRadius: BorderRadius.circular(16.r),
-                border: Border.all(
-                  color: selected ? AppColors.primary : baseColor,
-                  width: selected ? 1.8 : 1.2,
-                ),
-              ),
-              child:
-                  compact
-                      ? Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          AppIcon(
-                            win11IconPath: win11IconPath,
-                            defaultIcon: icon,
-                            size: 24.spMin,
-                            color: AppColors.primary,
-                          ),
-                          SizedBox(width: 8.w),
-                          Text(
-                            title,
-                            style: TextStyle(
-                              fontSize: 15.spMin,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      )
-                      : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          AppIcon(
-                            win11IconPath: win11IconPath,
-                            defaultIcon: icon,
-                            size: 50.spMin,
-                            color: AppColors.primary,
-                          ),
-                          SizedBox(height: 10.h),
-                          Text(
-                            title,
-                            style: TextStyle(
-                              fontSize: 20.spMin,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -317,7 +213,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     final formState = ref.watch(productFormProvider(widget.product));
     final formNotifier = ref.read(productFormProvider(widget.product).notifier);
     final isEditing = widget.product != null;
-    final typeWord = (_isService ?? false) ? 'Service' : 'Item';
+    final typeWord = _isService ? 'Service' : 'Item';
     final buttonText = isEditing ? 'Update $typeWord' : 'Add $typeWord';
     final fieldConfigs = formState.fieldConfigs;
     final fieldErrors =
@@ -333,28 +229,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Step 1: Item / Service selection (kept on the same page).
-            _buildTypeSelector(context),
-            SizedBox(height: 20.h),
-
-            // Until a type is chosen, prompt and stop here.
-            if (!_hasType)
-              Padding(
-                padding: EdgeInsets.only(top: 12.h),
-                child: Text(
-                  'Select Item or Service to continue',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14.spMin,
-                    color:
-                        Theme.of(context).brightness == Brightness.dark
-                            ? AppColors.grey300
-                            : AppColors.grey600,
-                  ),
-                ),
-              ),
-
-            if (_hasType) ...[
             // Image Picker
             if (fieldConfigs['imageFile']!.isShow) ...[
               Stack(
@@ -497,7 +371,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               _buildOtherFields(
                 formState,
                 formNotifier,
-                _isService ?? false,
+                _isService,
                 context,
               ),
             ),
@@ -562,7 +436,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     final success = await formNotifier.submitForm();
                     if (success && mounted) {
                       final successMessage =
-                          '${(_isService ?? false) ? 'Service' : 'Product'} ${widget.product != null ? 'updated' : 'added'} successfully!';
+                          '${_isService ? 'Service' : 'Product'} ${widget.product != null ? 'updated' : 'added'} successfully!';
 
                       // Clear all text controllers
                       _nameController.clear();
@@ -587,7 +461,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 },
               ),
             ),
-            ], // end of if (_hasType)
           ],
         ),
       ),
@@ -758,6 +631,33 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             },
             onChange: (value) {
               formNotifier.updateStock(value ?? '');
+              return null;
+            },
+          ),
+        );
+      }
+
+      // Reorder Level Field (low-stock alert threshold)
+      if (fieldConfigs['stock']!.isShow) {
+        fields.add(
+          CustomTextField(
+            controller: _reorderController,
+            label: 'Reorder Level',
+            lableColor:
+                Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.dTFieldHintColor
+                    : AppColors.lTFieldHintColor,
+            hintText: 'Alert when stock reaches this level',
+            keyboardType: TextInputType.number,
+            filled: true,
+            prefixIcon: AppIcon(
+              win11IconPath: ImageAssets.win11Stock,
+              defaultIcon: Icons.warning_amber_outlined,
+              color: AppColors.primary.withValues(alpha: 0.7),
+              size: 20.spMin,
+            ),
+            onChange: (value) {
+              formNotifier.updateReorderLevel(value ?? '');
               return null;
             },
           ),

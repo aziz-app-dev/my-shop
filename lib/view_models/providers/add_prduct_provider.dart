@@ -37,6 +37,7 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
           brand: initialProduct?.brand,
           category: initialProduct?.category,
           barcode: initialProduct?.barcode,
+          reorderLevel: initialProduct?.reorderLevel,
           fieldConfigs:
               initialProduct?.fieldConfigs ?? _loadDefaultFieldConfigs(),
         ),
@@ -223,6 +224,14 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
     validateField('barcode');
   }
 
+  void updateReorderLevel(String value) {
+    final parsed = int.tryParse(value);
+    state = state.copyWith(
+      reorderLevel: parsed == null || parsed < 0 ? null : parsed,
+      errorMessage: null,
+    );
+  }
+
   void updateImageFile(File? file) {
     state = state.copyWith(imageFile: file, errorMessage: null);
   }
@@ -381,6 +390,7 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
         brand: state.isService ?? false ? null : state.brand,
         category: state.category,
         barcode: state.barcode,
+        reorderLevel: state.reorderLevel,
         fieldConfigs: state.fieldConfigs,
       );
 
@@ -447,6 +457,7 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
       brand: null,
       category: null,
       barcode: null,
+      reorderLevel: null,
       fieldConfigs: _loadDefaultFieldConfigs(),
     );
   }

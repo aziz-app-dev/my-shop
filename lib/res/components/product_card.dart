@@ -107,6 +107,15 @@ class ProductCard extends StatelessWidget {
   /// it simply render without a badge (avoids a per-card DB query).
   final List<Brand>? brands;
 
+  /// Optional shortcut key badge (e.g. "F1"). Shown top-left on the image so
+  /// the user knows which function key selects this item in the sales screen.
+  final String? shortcutKey;
+
+  /// Optional dropdown-menu button (shown top-right on the image). When set,
+  /// a small caret button is drawn; tapping it opens the caller's action menu
+  /// (Sale in cart / Details / Stock) without disturbing the card's own tap.
+  final GestureTapDownCallback? onMenuTapDown;
+
   const ProductCard({
     super.key,
     required this.product,
@@ -114,7 +123,19 @@ class ProductCard extends StatelessWidget {
     this.onTap,
     this.onSecondaryTapDown,
     this.brands,
+    this.shortcutKey,
+    this.onMenuTapDown,
   });
+
+  /// True when the item is a physical product at or below its reorder level
+  /// (defaults to 5 when no explicit level is set). Services never alert.
+  bool get isLowStock {
+    if (product.isService) return false;
+    final stock = product.stock;
+    if (stock == null) return false;
+    final threshold = product.reorderLevel ?? 5;
+    return stock <= threshold;
+  }
 
   Brand? get _brand {
     if (brands == null || product.brand == null || product.brand!.isEmpty) {
@@ -204,6 +225,64 @@ class ProductCard extends StatelessWidget {
                                 ),
                       ),
                     ),
+                    // Shortcut key badge (top-left) — shows the F-key that
+                    // selects this item in the sales screen.
+                    if (shortcutKey != null)
+                      Positioned(
+                        top: 6.h,
+                        left: 6.w,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6.w,
+                            vertical: 2.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(6.r),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.25),
+                                blurRadius: 3,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            shortcutKey!,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10.spMin,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    // Dropdown menu button (top-right): Sale in cart /
+                    // Details / Stock. Independent of the card tap itself.
+                    if (onMenuTapDown != null)
+                      Positioned(
+                        top: 6.h,
+                        right: 6.w,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTapDown: onMenuTapDown,
+                          child: Container(
+                            width: 26.h,
+                            height: 26.h,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.45),
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                            child: Icon(
+                              Icons.keyboard_arrow_down,
+                              size: 20.spMin,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+
                     // Brand Badge
                     if (brand != null &&
                         brand.imageUrl != null &&
@@ -279,9 +358,12 @@ class ProductCard extends StatelessWidget {
                             : Flexible(
                               child: customText(
                                 size: 8.spMin,
-                                text: 'Stock: ${product.stock ?? 0}',
+                                text:
+                                    isLowStock
+                                        ? 'Low: ${product.stock ?? 0}'
+                                        : 'Stock: ${product.stock ?? 0}',
                                 color:
-                                    (product.stock ?? 0) <= 5
+                                    isLowStock
                                         ? Colors.red
                                         : (Theme.of(context).brightness ==
                                                 Brightness.dark

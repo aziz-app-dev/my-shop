@@ -68,9 +68,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     ref.read(profileProvider.notifier).loadUserData();
 
-    // Delay navigation until after first frame is built
+    // Navigate directly to MainScreen after the splash animation.
+    // Auth/setup checks have been removed — the app goes straight in.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      splashScreen.isLogin(ref, context);
+      splashScreen.navigateToMain(ref, context);
     });
   }
 

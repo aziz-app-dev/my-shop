@@ -20,6 +20,7 @@ class ProductFormState {
   final String? brand;
   final String? category;
   final String? barcode;
+  final int? reorderLevel;
   final Map<String, FieldConfig> fieldConfigs;
   final Map<String, bool> fieldErrors; // Added field errors state
 
@@ -41,6 +42,7 @@ class ProductFormState {
     this.brand,
     this.category,
     this.barcode,
+    this.reorderLevel,
     Map<String, FieldConfig>? fieldConfigs,
     Map<String, bool>? fieldErrors,
   })  : fieldConfigs =
@@ -100,6 +102,7 @@ class ProductFormState {
     String? brand,
     String? category,
     String? barcode,
+    int? reorderLevel,
     Map<String, FieldConfig>? fieldConfigs,
     Map<String, bool>? fieldErrors,
   }) {
@@ -121,6 +124,7 @@ class ProductFormState {
       brand: brand ?? this.brand,
       category: category ?? this.category,
       barcode: barcode ?? this.barcode,
+      reorderLevel: reorderLevel ?? this.reorderLevel,
       fieldConfigs: fieldConfigs ?? this.fieldConfigs,
       fieldErrors: fieldErrors ?? this.fieldErrors,
     );

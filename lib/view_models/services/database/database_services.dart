@@ -15,6 +15,7 @@ import '../../../models/shopping_list_model.dart';
 import '../../../models/repair_model.dart';
 import '../../../models/user/user_model.dart';
 import '../../../models/expense_model.dart';
+import '../../../models/local_purchase_model.dart';
 import '../sync/sync_queue.dart';
 
 // Conditional import for path_provider (only used on non-web platforms)
@@ -48,6 +49,7 @@ class HiveService {
   static const String _repairBoxName = 'repairs'; // Repair jobs
   static const String _expenseBoxName = 'expenses';
   static const String _expenseCategoryBoxName = 'expenseCategories';
+  static const String _localPurchaseBoxName = 'localPurchases';
   static const String _syncQueueBoxName = SyncQueue.boxName;
   static const String _directoryPathKey = 'directoryPath';
   static const String _fieldConfigsKey = 'fieldConfigs';
@@ -74,6 +76,7 @@ class HiveService {
     await Hive.openBox<Map>(_repairBoxName);
     await Hive.openBox<Map>(_expenseBoxName);
     await Hive.openBox<Map>(_expenseCategoryBoxName);
+    await Hive.openBox<Map>(_localPurchaseBoxName);
     await Hive.openBox<Map>(_syncQueueBoxName);
 
     // Initialize default brands if brands box is empty
@@ -705,6 +708,7 @@ class HiveService {
     await Hive.openBox(_settingsBoxName);
     await Hive.openBox<Map>(_brandBoxName);
     await Hive.openBox<Map>(_categoryBoxName);
+    await Hive.openBox<Map>(_localPurchaseBoxName);
 
     await prefs.setString(_directoryPathKey, newPath);
   }
@@ -732,6 +736,7 @@ class HiveService {
   static Box<Map> get _shoppingListsBox => Hive.box<Map>(_shoppingListsBoxName);
   static Box<Map> get _shoppingListBox => Hive.box<Map>(_shoppingListBoxName);
   static Box<Map> get _repairBox => Hive.box<Map>(_repairBoxName);
+  static Box<Map> get _localPurchaseBox => Hive.box<Map>(_localPurchaseBoxName);
   static Box<Map> get _syncQueueBox => Hive.box<Map>(_syncQueueBoxName);
 
   // Product Field Configs
@@ -1251,6 +1256,23 @@ class HiveService {
     await _repairBox.delete(id);
   }
 
+  // Local Purchase Agreement Methods
+  Future<List<LocalPurchaseAgreement>> getLocalPurchases() async {
+    final maps = _localPurchaseBox.values.toList();
+    return maps
+        .map((map) => LocalPurchaseAgreement.fromMap(Map<String, dynamic>.from(map)))
+        .toList()
+      ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
+  }
+
+  Future<void> saveLocalPurchase(LocalPurchaseAgreement agreement) async {
+    await _localPurchaseBox.put(agreement.id, agreement.toMap());
+  }
+
+  Future<void> deleteLocalPurchase(String id) async {
+    await _localPurchaseBox.delete(id);
+  }
+
   Future<void> close() async {
     await Hive.close();
   }
@@ -1307,6 +1329,9 @@ class HiveService {
       case 'expenses':
         await _expenseBox.put(id, Map<String, dynamic>.from(record));
         return;
+      case 'localPurchases':
+        await _localPurchaseBox.put(id, Map<String, dynamic>.from(record));
+        return;
       default:
         return;
     }
@@ -1336,6 +1361,9 @@ class HiveService {
         return;
       case 'expenses':
         await _expenseBox.delete(id);
+        return;
+      case 'localPurchases':
+        await _localPurchaseBox.delete(id);
         return;
       default:
         return;
@@ -1562,6 +1590,21 @@ class DatabaseService {
   Future<void> deleteRepair(String id) async {
     await _hiveService.deleteRepair(id);
     await _hiveService.enqueueDelete('repairs', id);
+  }
+
+  // Local Purchase Agreement Management Methods
+  Future<List<LocalPurchaseAgreement>> getLocalPurchases() async {
+    return await _hiveService.getLocalPurchases();
+  }
+
+  Future<void> saveLocalPurchase(LocalPurchaseAgreement agreement) async {
+    await _hiveService.saveLocalPurchase(agreement);
+    await _hiveService.enqueueUpsert('localPurchases', agreement.toMap());
+  }
+
+  Future<void> deleteLocalPurchase(String id) async {
+    await _hiveService.deleteLocalPurchase(id);
+    await _hiveService.enqueueDelete('localPurchases', id);
   }
 
   // Expense Management Methods
