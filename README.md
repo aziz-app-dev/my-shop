@@ -1,8 +1,12 @@
 # My Shop — POS & Shop Management App
 
-A cross-platform **Point of Sale (POS) and shop management** application built with Flutter. My Shop lets a shop owner manage products, sales, billing, customers, repairs, expenses and inventory from a single app that runs on desktop, mobile and web.
+<p align="center">
+  <img src="assets/app_offlical_logo.png" alt="My Shop logo" width="180" />
+</p>
 
-The app works **offline-first** using a local Hive database and syncs to the cloud (Firebase Cloud Firestore) when a connection is available. Users sign in with email/password (Firebase Auth).
+A cross-platform **Point of Sale (POS) and shop management** application built with Flutter. My Shop lets a shop owner manage products, sales, billing, customers, repairs, expenses and inventory from a single app that runs on desktop and mobile.
+
+The app is **offline-first**: it stores everything in a local Hive database on each device, so it works with no internet connection at all. It keeps full-speed performance on phones by decoding images at display size instead of loading multi-megapixel camera photos.
 
 ---
 
@@ -11,18 +15,16 @@ The app works **offline-first** using a local Hive database and syncs to the clo
 - **Dashboard** — sales analytics and charts (`fl_chart`) at a glance.
 - **Products & Inventory** — add/edit products, brands, categories, images.
 - **Sales & Multi-Cart** — run multiple carts simultaneously (see [MULTI_CART_GUIDE.md](MULTI_CART_GUIDE.md)).
+- **Keyboard-first selling** (desktop) — the search bar auto-focuses, `Tab`/arrow keys walk the product grid with a visible highlight, `Enter` adds the selected item (or a single search result), `Ctrl+Enter` completes the sale, and `Ctrl+Enter` also submits the checkout screen.
+- **Walk-in checkout** — a fast payment form: customer name, address and phone are optional, paid amount and discount sit right where you need them, and an empty name means a walk-in customer.
 - **Billing & Printing** — generate PDF invoices and print to thermal/regular printers.
-- **Payment System** — flexible payment handling (see [PAYMENT_SYSTEM_IMPLEMENTATION.md](PAYMENT_SYSTEM_IMPLEMENTATION.md)).
-- **Customers** — customer records and history.
+- **Customers** — customer records, history and configurable checkout fields.
 - **Repairs** — track repair jobs.
 - **Expenses** — record and review shop expenses.
 - **Shopping List** — restock planning (see [SHOPPING_LIST_IMPLEMENTATION_GUIDE.md](SHOPPING_LIST_IMPLEMENTATION_GUIDE.md)).
-- **Barcode Scanning** — scan products via `mobile_scanner`.
-- **Authentication** — email/password login & registration (Firebase Auth) with animated screens; new users complete their full shop profile during sign-up.
-- **Cloud Image Storage** — product images hosted on Cloudinary with local caching.
-- **Offline-first Sync** — local Hive storage with background Cloud Firestore sync (writes queue offline and flush when online; realtime changes apply back to Hive).
+- **Barcode Scanning** — scan products via `mobile_scanner`, or use a USB barcode scanner into the search box on desktop.
+- **Customizable Home Screen** — reorder/hide sections and manage a banner carousel (auto-scroll, timing) from Settings → Home Screen Management. Picked banner images are copied into the app's data folder so they persist.
 - **Theming** — light/dark mode with a customizable primary color.
-- **Biometric Auth** — optional local app-lock (`local_auth`).
 
 ---
 
@@ -32,14 +34,18 @@ The app works **offline-first** using a local Hive database and syncs to the clo
 | ------------------ | ------------------------------------------------------------- |
 | Framework          | Flutter (Dart SDK `^3.7.0`)                                   |
 | State management   | Riverpod (`flutter_riverpod`, `StateNotifierProvider`)        |
-| Local persistence  | Hive (offline-first)                                          |
-| Auth               | Firebase Auth (email/password)                                |
-| Cloud backend      | Firebase Cloud Firestore                                      |
-| Image hosting      | Cloudinary                                                    |
+| Local persistence  | Hive (offline-first, per-device)                              |
+| Cloud backend      | Firebase Cloud Firestore **wired but inactive** — sync helpers exist in `lib/view_models/services/sync/` and re-activate automatically once a user identity is added |
+| Image hosting      | Cloudinary (optional; falls back to local file paths)         |
 | Responsive sizing  | `flutter_screenutil` (design size 360×690)                    |
 | Charts             | `fl_chart`                                                    |
 | PDF / Printing     | `pdf`, `printing`, `thermal_printer`                          |
 | Design system      | Material 3, `google_fonts`, custom components                 |
+
+> **Note on multi-device data:** with sync inactive, each device keeps its own
+> database and settings (products entered on the desktop stay on the desktop,
+> and vice-versa). Adding a sign-in identity to `FirebaseService` is all that's
+> needed to turn the existing sync on.
 
 ---
 
@@ -56,15 +62,15 @@ lib/
 │   └── app_url/              # Cloudinary / API config
 ├── responsive/               # Responsive layout helpers
 ├── routes/                   # Named routes & route generation
-├── utils/                    # app_sizes.dart (breakpoints), helpers
-├── view/                     # Screens: dashboard, sales, bills, products,
+├── utils/                    # app_sizes.dart (breakpoints), platform_utils, helpers
+├── view/                     # Screens: home, sales, bills, products,
 │   │                         #          customers, repairs, expenses, settings…
-│   └── widgets/              # Shared widgets
+│   └── widgets/              # Shared widgets (ProductCard, AppCachedImage…)
 └── view_models/
-    ├── providers/            # Riverpod StateNotifierProviders (incl. auth)
+    ├── providers/            # Riverpod StateNotifierProviders
     ├── states/               # Immutable state classes
-    └── services/             # database (Hive), firebase (auth + Firestore),
-                              # sync, cloudinary, theme, image_cache…
+    └── services/             # database (Hive), firebase, sync, cloudinary,
+                              # theme, image_cache, keyboard, notifications…
 ```
 
 **Responsive breakpoints** (`lib/utils/app_sizes.dart`): mobile `<600`, tablet `600–1100`, desktop `≥1100`.
@@ -82,21 +88,20 @@ Android · iOS · Windows · macOS · Linux · Web
 ### Prerequisites
 
 - [Flutter SDK](https://docs.flutter.dev/get-started/install) (Dart `^3.7.0`)
-- A Firebase project with **Authentication → Email/Password** enabled and a **Cloud Firestore** database
-- The [FlutterFire CLI](https://firebase.google.com/docs/flutter/setup) (`dart pub global activate flutterfire_cli`)
-- A Cloudinary account (for product images)
+- Optional: a Firebase project (see below) if you want cloud features
 
 ### 1. Clone & install dependencies
 
 ```bash
-git clone <your-repo-url>
-cd desktopapp
+git clone https://github.com/aziz-app-dev/my-shop.git
+cd my-shop
 flutter pub get
 ```
 
-### 2. Configure Firebase
+### 2. (Optional) Configure Firebase
 
-Firebase config is **gitignored** and must be generated locally per project:
+The app boots fine without Firebase — `main.dart` initializes it defensively and
+continues offline if config is missing. To enable the cloud side:
 
 ```bash
 flutterfire configure
@@ -104,7 +109,7 @@ flutterfire configure
 
 This generates `lib/firebase_options.dart` and the native config
 (`android/app/google-services.json`, etc.). Then lock your **Firestore security
-rules** so data is scoped to the signed-in user, e.g.:
+rules** so data is scoped to a user, e.g.:
 
 ```
 match /users/{uid}/{document=**} {
@@ -112,13 +117,9 @@ match /users/{uid}/{document=**} {
 }
 ```
 
-### 3. Configure Cloudinary (optional — for cloud-hosted images)
+### 3. (Optional) Configure Cloudinary for cloud-hosted images
 
-Cloudinary hosts product/shop images. It is **optional**: if you skip it, image
-uploads are simply not performed and the app falls back to storing local image
-paths (so everything still works, images just aren't synced to the cloud).
-
-To enable it, copy the template and fill in your Cloudinary credentials:
+Copy the template and fill in your Cloudinary credentials:
 
 ```bash
 cp lib/res/app_url/app_url.example.dart lib/res/app_url/app_url.dart
@@ -126,7 +127,8 @@ cp lib/res/app_url/app_url.example.dart lib/res/app_url/app_url.dart
 
 Get the cloud name / API key / API secret from **Cloudinary Dashboard →
 Settings → Access Keys**, and create an unsigned upload preset under
-**Settings → Upload → Upload presets**.
+**Settings → Upload → Upload presets**. If you skip this, images are stored as
+local file paths and everything still works.
 
 > **Do not commit real secrets.** `app_url.dart` and the Firebase config files
 > are gitignored — keep credentials out of version control.
@@ -139,10 +141,10 @@ flutter run -d windows      # or macos / linux
 
 # Mobile
 flutter run -d android      # or an attached iOS device
-
-# Web
-flutter run -d chrome
 ```
+
+On phones, prefer **release builds** — `flutter run --release` — debug builds
+are several times slower and make the app feel laggy even when the code is fine.
 
 ---
 
@@ -150,7 +152,7 @@ flutter run -d chrome
 
 ```bash
 flutter build windows       # Windows desktop
-flutter build apk           # Android
+flutter build apk --release # Android
 flutter build ios           # iOS
 flutter build web           # Web
 flutter build macos         # macOS
@@ -159,7 +161,10 @@ flutter build linux         # Linux
 
 ### App icons
 
-Launcher-icon config lives in `flutter_launcher_icons.yaml`. After changing the icon:
+The official logo lives at `assets/app_offlical_logo.png` and is copied to
+`assets/my-shop-1024.png`, the single source the icon generator reads.
+Launcher-icon config is in `flutter_launcher_icons.yaml`. After changing the
+logo, regenerate every platform's icons with:
 
 ```bash
 dart run flutter_launcher_icons
@@ -189,8 +194,10 @@ flutter analyze     # static analysis (flutter_lints)
 ## 🎨 Design System
 
 - **Brand / primary color:** orange `#FF6701`
+- **Logo:** `assets/app_offlical_logo.png` (splash, launcher icons and this README)
 - **Components:** reuse `lib/res/components/` (`CustomTextField`, `AppDropdown`, `AppButton`, `AppBarWidget`, `AppFlushbar`, `AppIcon`) rather than inventing new primitives.
 - **Sizing:** `flutter_screenutil` — prefer `.spMin` for sizes and gaps.
+- **Images:** always pass a `cacheWidth`/`cacheHeight` to `Image.file` so thumbnails don't decode full camera photos.
 
 ---
 
