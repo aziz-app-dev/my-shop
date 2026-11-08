@@ -34,7 +34,7 @@ class MultiCartNotifier extends StateNotifier<MultiCartState> {
   }
 
   // Add product to active cart
-  void addToCart(Product product) {
+  void addToCart(Product product, {bool force = false}) {
     if (state.activeCart == null) {
       createNewCart();
     }
@@ -43,7 +43,8 @@ class MultiCartNotifier extends StateNotifier<MultiCartState> {
     final newCartItems = Map<Product, int>.from(activeCart.cartItems);
 
     if (newCartItems.containsKey(product)) {
-      if (product.isService ||
+      if (force ||
+          product.isService ||
           (product.stock != null && newCartItems[product]! < product.stock!)) {
         newCartItems[product] = newCartItems[product]! + 1;
       } else {

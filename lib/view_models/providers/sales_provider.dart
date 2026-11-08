@@ -47,10 +47,11 @@ class SalesNotifier extends StateNotifier<SalesState> {
     super.dispose();
   }
 
-  void addToCart(Product product) {
+  void addToCart(Product product, {bool force = false}) {
     final newCartItems = Map<Product, int>.from(state.cartItems);
     if (newCartItems.containsKey(product)) {
-      if (product.isService ||
+      if (force ||
+          product.isService ||
           (product.stock != null && newCartItems[product]! < product.stock!)) {
         newCartItems[product] = newCartItems[product]! + 1;
       } else {

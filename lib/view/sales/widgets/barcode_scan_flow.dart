@@ -6,6 +6,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
@@ -15,6 +16,8 @@ import '../../../res/colors/app_color.dart';
 import '../../../res/components/app_bar_widget.dart';
 import '../../../res/components/app_icon.dart';
 import '../../../utils/platform_utils.dart';
+import '../../../view/add_product/add_product_view.dart';
+import '../../../view_models/providers/sales_provider.dart';
 
 /// One scanned product line on the scan page. Repeat scans of the same
 /// barcode bump [qty].
@@ -61,12 +64,14 @@ Future<List<ScannedEntry>> openBarcodeScanner(
 
 /// Full scan flow: open the persistent scanner page, collect items there
 /// (duplicates raise the quantity), and commit everything into the cart
-/// via [addToCart] when the user taps "Add to Cart". [onAdded] runs after a
-/// successful commit (e.g. navigate to the sales page from home).
+/// via [addToCart] when the user taps "Add to Cart". [addToCart]'s [force]
+/// flag is true when the scanned quantity exceeds the product's stock —
+/// the cart must accept it anyway ("add anyway" sale). [onAdded] runs after
+/// a successful commit (e.g. navigate to the sales page from home).
 Future<void> scanAndFillCart({
   required BuildContext context,
   required List<Product> products,
-  required void Function(Product product, int qty) addToCart,
+  required void Function(Product product, int qty, bool force) addToCart,
   VoidCallback? onAdded,
 }) async {
   final entries = await openBarcodeScanner(context, products: products);
@@ -75,7 +80,11 @@ Future<void> scanAndFillCart({
 
   var count = 0;
   for (final entry in entries) {
-    addToCart(entry.product, entry.qty);
+    final force =
+        !entry.product.isService &&
+        entry.product.stock != null &&
+        entry.qty > entry.product.stock!;
+    addToCart(entry.product, entry.qty, force);
     count += entry.qty;
   }
 
@@ -111,23 +120,33 @@ Product? findProductByBarcode(List<Product> products, String barcode) {
 /// Repeat scans of the same barcode increase the quantity instead of
 /// stacking another line. Non-matching / out-of-stock scans show an inline
 /// event strip rather than interrupting dialogs, so the flow keeps moving.
-class BarcodeScannerPage extends StatefulWidget {
+class BarcodeScannerPage extends ConsumerStatefulWidget {
   const BarcodeScannerPage({super.key, required this.products});
 
   /// All known products to match scans against.
   final List<Product> products;
 
   @override
-  State<BarcodeScannerPage> createState() => _BarcodeScannerPageState();
+  ConsumerState<BarcodeScannerPage> createState() =>
+      _BarcodeScannerPageState();
 }
 
-class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
+class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
   late MobileScannerController controller;
   String? _lastEvent;
   Color _lastEventColor = Colors.blueGrey;
 
+  /// Optional action shown on the event strip — e.g. "Add Product" for an
+  /// unknown barcode, or "Add anyway" for an out-of-stock product.
+  String? _lastEventActionLabel;
+  VoidCallback? _lastEventAction;
+
   /// Collected scan results.
   final List<ScannedEntry> _entries = <ScannedEntry>[];
+
+  /// Current product list — starts from [widget.products] and can be
+  /// refreshed after the user adds a new product mid-session.
+  late List<Product> _products = widget.products;
 
   /// Debounce: same hardcode within this window is ignored (camera often
   /// sees the same code for a moment).
@@ -181,37 +200,78 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
     _lastScanCode = code;
     _lastScanTime = now;
 
-    final product = findProductByBarcode(widget.products, code);
+    final product = findProductByBarcode(_products, code);
     if (!mounted) return;
 
     if (product == null) {
       setState(() {
         _lastEvent = 'No item with barcode: $code';
         _lastEventColor = Colors.orange;
+        _lastEventActionLabel = 'Add Product';
+        _lastEventAction = () => _openAddProductFor(code);
       });
       return;
     }
 
-    // Stock check (services always pass).
+    // Stock check (services always pass) — offer "Add anyway" so the shop
+    // can still sell something it has run out of.
     if (!product.isService && product.stock != null && product.stock! <= 0) {
       setState(() {
         _lastEvent = '${product.name} is out of stock';
         _lastEventColor = Colors.red;
+        _lastEventActionLabel = 'Add anyway';
+        _lastEventAction =
+            () => setState(() => _collectProduct(product, addedAnyway: true));
       });
       return;
     }
 
-    // Collect: bump qty on repeats, otherwise a new line.
+    setState(() => _collectProduct(product));
+  }
+
+  /// Collect a product into the scan list: bump qty on repeats, otherwise
+  /// add a new line. Clears any pending strip action.
+  void _collectProduct(Product product, {bool addedAnyway = false}) {
+    _lastEventActionLabel = null;
+    _lastEventAction = null;
+    final existing = _entries.where((e) => e.product == product).toList();
+    if (existing.isNotEmpty) {
+      existing.first.qty += 1;
+      _lastEvent = '${product.name} — quantity ${existing.first.qty}';
+    } else {
+      _entries.add(ScannedEntry(product));
+      _lastEvent = '${product.name} added to scan list';
+    }
+    _lastEventColor = addedAnyway ? Colors.deepOrange : Colors.green;
+  }
+
+  /// "Add Product" on the not-found strip: open the add-product page with
+  /// the scanned barcode pre-filled, then reload the product list. If the
+  /// user saved the product it is added to the scan list right away;
+  /// otherwise the not-found strip stays so they can try again.
+  Future<void> _openAddProductFor(String code) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            AddProductScreen(isService: false, initialBarcode: code),
+      ),
+    );
+    if (!mounted) return;
+
+    // Reload the product list so the (possibly) new product is matchable.
+    ref.invalidate(productsFutureProvider);
+    final fresh = await ref.read(productsFutureProvider.future);
+    if (!mounted) return;
+
+    final product = findProductByBarcode(fresh, code);
     setState(() {
-      final existing = _entries.where((e) => e.product == product).toList();
-      if (existing.isNotEmpty) {
-        existing.first.qty += 1;
-        _lastEvent = '${product.name} — quantity ${existing.first.qty}';
-      } else {
-        _entries.add(ScannedEntry(product));
-        _lastEvent = '${product.name} added to scan list';
+      _products = fresh;
+      if (product != null) {
+        _collectProduct(product);
       }
-      _lastEventColor = Colors.green;
+      // No product → user backed out without saving: the not-found strip
+      // with its "Add Product" button stays in place.
     });
   }
 
@@ -286,10 +346,38 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
                       ),
                     ),
                   ),
+                  if (_lastEventActionLabel != null &&
+                      _lastEventAction != null)
+                    InkWell(
+                      onTap: _lastEventAction,
+                      borderRadius: BorderRadius.circular(8.r),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 10.w,
+                          vertical: 4.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                        child: Text(
+                          _lastEventActionLabel!,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12.spMin,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
                   IconButton(
                     visualDensity: VisualDensity.compact,
                     icon: Icon(Icons.close, size: 16.spMin, color: Colors.white),
-                    onPressed: () => setState(() => _lastEvent = null),
+                    onPressed: () => setState(() {
+                      _lastEvent = null;
+                      _lastEventActionLabel = null;
+                      _lastEventAction = null;
+                    }),
                   ),
                 ],
               ),

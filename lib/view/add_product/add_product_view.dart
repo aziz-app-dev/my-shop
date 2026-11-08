@@ -45,11 +45,16 @@ class AddProductScreen extends ConsumerStatefulWidget {
   final bool? isService;
   final String? initialName;
 
+  /// Pre-filled barcode, e.g. when the scanner page sends an unknown code
+  /// here for "add this product now".
+  final String? initialBarcode;
+
   const AddProductScreen({
     super.key,
     this.product,
     this.isService,
     this.initialName,
+    this.initialBarcode,
   });
 
   @override
@@ -118,7 +123,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     );
     _stockController = TextEditingController(text: formState.stock?.toString());
     _descriptionController = TextEditingController(text: formState.description);
-    _barcodeController = TextEditingController(text: formState.barcode);
+    _barcodeController = TextEditingController(
+      text: widget.initialBarcode ?? formState.barcode,
+    );
     _reorderController = TextEditingController(
       text: formState.reorderLevel?.toString(),
     );
@@ -129,6 +136,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         ref
             .read(productFormProvider(widget.product).notifier)
             .updateName(widget.initialName!);
+      });
+    }
+
+    // Same sync for a pre-filled barcode (from the scanner's not-found flow).
+    if (widget.initialBarcode != null && widget.initialBarcode!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref
+            .read(productFormProvider(widget.product).notifier)
+            .updateBarcode(widget.initialBarcode!);
       });
     }
   }

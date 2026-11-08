@@ -55,10 +55,10 @@ class HomePageState extends ConsumerState<HomePage> {
     await scanAndFillCart(
       context: context,
       products: products,
-      addToCart: (product, qty) {
+      addToCart: (product, qty, force) {
         final notifier = ref.read(salesProvider.notifier);
         for (var i = 0; i < qty; i++) {
-          notifier.addToCart(product);
+          notifier.addToCart(product, force: force);
         }
       },
       // Land on the Sales page — the items are already in the cart there.

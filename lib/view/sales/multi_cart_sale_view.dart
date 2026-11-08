@@ -656,13 +656,12 @@ class _MultiCartSalesScreenState extends ConsumerState<MultiCartSalesScreen>
         await scanAndFillCart(
           context: context,
           products: products,
-          addToCart:
-              (product, qty) {
-                final notifier = ref.read(multiCartProvider.notifier);
-                for (var i = 0; i < qty; i++) {
-                  notifier.addToCart(product);
-                }
-              },
+          addToCart: (product, qty, force) {
+            final notifier = ref.read(multiCartProvider.notifier);
+            for (var i = 0; i < qty; i++) {
+              notifier.addToCart(product, force: force);
+            }
+          },
         );
       },
       child: const Icon(Icons.qr_code_scanner, color: Colors.white),
