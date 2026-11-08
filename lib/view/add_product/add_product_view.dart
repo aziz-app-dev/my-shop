@@ -16,6 +16,7 @@ import '../../models/category_model.dart';
 import '../../res/assets/image_assets.dart';
 import '../../res/components/app_icon.dart';
 import '../../res/components/app_text_widgrt.dart';
+import '../../res/components/selection_bottom_sheet.dart';
 import '../../res/components/text_field_widget.dart';
 import '../../view_models/providers/add_prduct_provider.dart';
 import '../../view_models/states/add_product_states.dart';
@@ -484,6 +485,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 ),
               ),
 
+            // Gap above the submit button so it breathes after the fields.
+            SizedBox(height: 24.h),
+
             // Submit Button
             AnimatedScale(
               scale: formState.isLoading ? 0.95 : 1.0,
@@ -562,6 +566,82 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       if (i + 2 < fields.length) rows.add(SizedBox(height: gap.h));
     }
     return rows;
+  }
+
+  /// Tappable picker field that looks like the other text fields but opens
+  /// a searchable bottom sheet (with an add-new option) instead of a dropdown.
+  Widget _selectionField({
+    required String label,
+    required Color? lableColor,
+    required String hintText,
+    required Widget prefixIcon,
+    required String? value,
+    required Future<void> Function() onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        mdTextBold(
+          text: label,
+          color:
+              lableColor ??
+              (isDark
+                  ? AppColors.dTFieldHintColor
+                  : AppColors.lTFieldHintColor),
+        ),
+        SizedBox(height: 6.h),
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            height: 35.h,
+            padding: EdgeInsets.symmetric(horizontal: 10.w),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.dTFieldColor : AppColors.lTFieldColor,
+              border: Border.all(
+                color:
+                    isDark
+                        ? AppColors.dTFieldHintColor
+                        : (AppColors.lTFieldHintColor ?? AppColors.primary),
+              ),
+              borderRadius: BorderRadius.circular(AppSizes.borderRadiusLg),
+            ),
+            child: Row(
+              children: [
+                prefixIcon,
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Text(
+                    value == null || value.isEmpty ? hintText : value,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 12.spMin,
+                      color:
+                          value == null || value.isEmpty
+                              ? (isDark
+                                  ? AppColors.dTFieldHintColor
+                                  : AppColors.lTFieldHintColor)
+                              : (isDark
+                                  ? AppColors.dTFieldHintColor
+                                  : Colors.black87),
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 18.spMin,
+                  color:
+                      isDark
+                          ? AppColors.dTFieldHintColor
+                          : AppColors.lTFieldHintColor ?? Colors.grey,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   List<Widget> _buildOtherFields(
@@ -829,19 +909,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         fields.add(
           brandsAsync.when(
             data: (brands) {
-              // Use toSet() to ensure unique brand names (avoid dropdown assertion error)
+              // Use toSet() to ensure unique brand names in the picker.
               final brandNames = brands.map((b) => b.name).toSet().toList();
-              return AppDropdown<String>(
-                prefixIcon: AppIcon(
-                  win11IconPath: ImageAssets.win11Brand,
-                  defaultIcon: Icons.branding_watermark_rounded,
-                  color: AppColors.primary.withValues(alpha: 0.7),
-                  size: 20.spMin,
-                ),
-                label:
-                    fieldConfigs['brand']!.isRequired
-                        ? fieldConfigs['brand']!.title
-                        : fieldConfigs['brand']!.title,
+              return _selectionField(
+                label: fieldConfigs['brand']!.title,
                 lableColor:
                     (fieldErrors['brand'] ?? false) &&
                             fieldConfigs['brand']!.isRequired
@@ -850,16 +921,47 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         ? AppColors.dTFieldHintColor
                         : AppColors.lTFieldHintColor,
                 hintText: fieldConfigs['brand']!.hintText,
+                prefixIcon: AppIcon(
+                  win11IconPath: ImageAssets.win11Brand,
+                  defaultIcon: Icons.branding_watermark_rounded,
+                  color: AppColors.primary.withValues(alpha: 0.7),
+                  size: 20.spMin,
+                ),
                 value:
                     formState.brand != null &&
                             brandNames.contains(formState.brand)
                         ? formState.brand
                         : null,
-                items: brandNames,
-                displayItems: brandNames,
-                filled: true,
-                onChanged: (value) {
-                  formNotifier.updateBrand(value ?? '');
+                onTap: () async {
+                  final selected = await showSelectionBottomSheet(
+                    context,
+                    title: fieldConfigs['brand']!.title,
+                    names: brandNames,
+                    addNewLabel: 'Add New Brand',
+                    selectedName: formState.brand,
+                    onAddNew: (name) async {
+                      // Already there → just select it.
+                      final exists = brandNames.any(
+                        (b) => b.toLowerCase() == name.toLowerCase(),
+                      );
+                      if (exists) return null;
+
+                      final now = DateTime.now();
+                      await DatabaseService().addBrand(
+                        Brand(
+                          id: DateTime.now().millisecondsSinceEpoch.toString(),
+                          name: name,
+                          createdAt: now,
+                          updatedAt: now,
+                        ),
+                      );
+                      ref.invalidate(brandsProvider);
+                      return null;
+                    },
+                  );
+                  if (selected != null && selected.isNotEmpty) {
+                    formNotifier.updateBrand(selected);
+                  }
                 },
               );
             },
@@ -942,20 +1044,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         fields.add(
           categoriesAsync.when(
             data: (categories) {
-              // Use toSet() to ensure unique category names (avoid dropdown assertion error)
+              // Use toSet() to ensure unique category names in the picker.
               final categoryNames =
                   categories.map((c) => c.name).toSet().toList();
-              return AppDropdown<String>(
-                prefixIcon: AppIcon(
-                  win11IconPath: ImageAssets.win11Category,
-                  defaultIcon: Icons.category,
-                  color: AppColors.primary.withValues(alpha: 0.7),
-                  size: 20.spMin,
-                ),
-                label:
-                    fieldConfigs['category']!.isRequired
-                        ? fieldConfigs['category']!.title
-                        : fieldConfigs['category']!.title,
+              return _selectionField(
+                label: fieldConfigs['category']!.title,
                 lableColor:
                     (fieldErrors['category'] ?? false) &&
                             fieldConfigs['category']!.isRequired
@@ -964,16 +1057,47 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         ? AppColors.dTFieldHintColor
                         : AppColors.lTFieldHintColor,
                 hintText: fieldConfigs['category']!.hintText,
+                prefixIcon: AppIcon(
+                  win11IconPath: ImageAssets.win11Category,
+                  defaultIcon: Icons.category,
+                  color: AppColors.primary.withValues(alpha: 0.7),
+                  size: 20.spMin,
+                ),
                 value:
                     formState.category != null &&
                             categoryNames.contains(formState.category)
                         ? formState.category
                         : null,
-                items: categoryNames,
-                displayItems: categoryNames,
-                filled: true,
-                onChanged: (value) {
-                  formNotifier.updateCategory(value ?? '');
+                onTap: () async {
+                  final selected = await showSelectionBottomSheet(
+                    context,
+                    title: fieldConfigs['category']!.title,
+                    names: categoryNames,
+                    addNewLabel: 'Add New Category',
+                    selectedName: formState.category,
+                    onAddNew: (name) async {
+                      // Already there → just select it.
+                      final exists = categoryNames.any(
+                        (c) => c.toLowerCase() == name.toLowerCase(),
+                      );
+                      if (exists) return null;
+
+                      final now = DateTime.now();
+                      await DatabaseService().addCategory(
+                        Category(
+                          id: DateTime.now().millisecondsSinceEpoch.toString(),
+                          name: name,
+                          createdAt: now,
+                          updatedAt: now,
+                        ),
+                      );
+                      ref.invalidate(categoriesProvider);
+                      return null;
+                    },
+                  );
+                  if (selected != null && selected.isNotEmpty) {
+                    formNotifier.updateCategory(selected);
+                  }
                 },
               );
             },
