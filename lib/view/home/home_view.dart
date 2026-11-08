@@ -64,6 +64,29 @@ class HomePageState extends ConsumerState<HomePage> {
     );
   }
 
+  /// Opens the add-item form (product or service) and refreshes the home
+  /// list afterwards. Shared by the desktop FABs and the mobile buttons.
+  void _openAddItem({required bool isService}) {
+    // Capture notifier before async gap to avoid "ref" after unmount
+    final notifier = ref.read(homePageProvider.notifier);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddProductScreen(isService: isService),
+      ),
+    ).then((value) {
+      notifier.refreshProducts();
+    });
+  }
+
+  /// Opens the shopping list. Shared by the desktop FAB and mobile button.
+  void _openShoppingList() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ShoppingListView()),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -151,25 +174,18 @@ class HomePageState extends ConsumerState<HomePage> {
                 ]
                 : const [],
       ),
-      floatingActionButton: Column(
+      // Mobile: the FAB actions live as inline buttons under the search bar
+      // (see _buildMobileActionButtons); hide the floating column there.
+      floatingActionButton:
+          AppSizes.isMobile(context)
+              ? null
+              : Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           FloatingActionButton.extended(
             heroTag: 'productFab',
-            onPressed: () {
-              // Capture notifier before async gap to avoid "ref" after unmount
-              final notifier = ref.read(homePageProvider.notifier);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder:
-                      (context) => const AddProductScreen(isService: false),
-                ),
-              ).then((value) {
-                notifier.refreshProducts();
-              });
-            },
+            onPressed: () => _openAddItem(isService: false),
             icon: AppIcon(
               win11IconPath: ImageAssets.win11OpenBox,
               defaultIcon: Icons.inventory_2,
@@ -182,18 +198,7 @@ class HomePageState extends ConsumerState<HomePage> {
           SizedBox(height: 12.spMin),
           FloatingActionButton.extended(
             heroTag: 'serviceFab',
-            onPressed: () {
-              // Capture notifier before async gap to avoid "ref" after unmount
-              final notifier = ref.read(homePageProvider.notifier);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AddProductScreen(isService: true),
-                ),
-              ).then((value) {
-                notifier.refreshProducts();
-              });
-            },
+            onPressed: () => _openAddItem(isService: true),
             icon: AppIcon(
               win11IconPath: ImageAssets.win11Services,
               defaultIcon: Icons.build,
@@ -207,14 +212,7 @@ class HomePageState extends ConsumerState<HomePage> {
             SizedBox(height: 12.spMin),
             FloatingActionButton.extended(
               heroTag: 'shoppingListFab',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ShoppingListView(),
-                  ),
-                );
-              },
+              onPressed: _openShoppingList,
               icon: AppIcon(
                 defaultIcon: Icons.shopping_bag,
                 win11IconPath: ImageAssets.win11List,
@@ -550,8 +548,122 @@ class HomePageState extends ConsumerState<HomePage> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [searchBar, SizedBox(height: AppSizes.md.h), content],
+        children: [
+          searchBar,
+          if (AppSizes.isMobile(context)) ...[
+            SizedBox(height: 10.h),
+            _buildMobileActionButtons(),
+          ],
+          SizedBox(height: AppSizes.md.h),
+          content,
+        ],
       ),
     );
+  }
+
+  /// Mobile-only action buttons shown right under the home search bar — the
+  /// old floating action buttons (Add Product / Add Services / Shopping List)
+  /// re-imagined as inline buttons, two per row, plus the barcode scan button
+  /// (same action as the app-bar scan icon).
+  Widget _buildMobileActionButtons() {
+    final showShoppingList = ref.watch(
+      settingsProvider.select((s) => s.showShoppingListModule),
+    );
+
+    Widget actionButton({
+      required String label,
+      required String? win11IconPath,
+      required IconData defaultIcon,
+      required VoidCallback onTap,
+    }) {
+      return SizedBox(
+        height: 42.spMin,
+        child: ElevatedButton(
+          onPressed: onTap,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            elevation: 2,
+            padding: EdgeInsets.symmetric(horizontal: 8.w),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10.r),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AppIcon(
+                win11IconPath: win11IconPath,
+                defaultIcon: defaultIcon,
+                color: Colors.white,
+                size: 18.spMin,
+              ),
+              SizedBox(width: 6.w),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 13.spMin,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final buttons = <Widget>[
+      // Scan: mobile only — matches the app-bar scan icon.
+      actionButton(
+        label: 'Scan',
+        win11IconPath: ImageAssets.win11QrCode,
+        defaultIcon: Icons.qr_code_scanner,
+        onTap: _scanProduct,
+      ),
+      actionButton(
+        label: 'Add Product',
+        win11IconPath: ImageAssets.win11OpenBox,
+        defaultIcon: Icons.inventory_2,
+        onTap: () => _openAddItem(isService: false),
+      ),
+      actionButton(
+        label: 'Add Services',
+        win11IconPath: ImageAssets.win11Services,
+        defaultIcon: Icons.build,
+        onTap: () => _openAddItem(isService: true),
+      ),
+      if (showShoppingList)
+        actionButton(
+          label: 'List',
+          win11IconPath: ImageAssets.win11List,
+          defaultIcon: Icons.shopping_bag,
+          onTap: _openShoppingList,
+        ),
+    ];
+
+    // Two buttons per row.
+    final rows = <Widget>[];
+    for (var i = 0; i < buttons.length; i += 2) {
+      final second = i + 1 < buttons.length ? buttons[i + 1] : const SizedBox();
+      rows.add(
+        Row(
+          children: [
+            Expanded(child: buttons[i]),
+            SizedBox(width: 8.w),
+            Expanded(child: second),
+          ],
+        ),
+      );
+      if (i + 2 < buttons.length) {
+        rows.add(SizedBox(height: 8.h));
+      }
+    }
+
+    return Column(children: rows);
   }
 }
