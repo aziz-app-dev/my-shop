@@ -662,6 +662,14 @@ class _MultiCartSalesScreenState extends ConsumerState<MultiCartSalesScreen>
               notifier.addToCart(product, force: force);
             }
           },
+          // "Complete Purchase": the active cart has the items — open the
+          // same checkout the Complete Sale button uses.
+          onCheckoutRequested: () {
+            final cart = ref.read(multiCartProvider).activeCart;
+            if (cart != null && cart.cartItems.isNotEmpty) {
+              unawaited(_completeSaleForCart(cart));
+            }
+          },
         );
       },
       child: const Icon(Icons.qr_code_scanner, color: Colors.white),

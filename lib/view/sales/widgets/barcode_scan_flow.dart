@@ -32,9 +32,19 @@ class ScannedEntry {
   double get lineTotal => product.price * qty;
 }
 
+/// What the scan page pops back with: the collected entries and whether the
+/// user chose to complete the sale straight from the scanner (jumping into
+/// checkout) instead of just adding to the cart.
+class ScanResult {
+  const ScanResult(this.entries, {this.completePurchase = false});
+
+  final List<ScannedEntry> entries;
+  final bool completePurchase;
+}
+
 /// Opens the camera scanner (mobile only) and returns the collected scan
-/// list — empty when cancelled or unsupported platform.
-Future<List<ScannedEntry>> openBarcodeScanner(
+/// result — empty entries when cancelled or unsupported platform.
+Future<ScanResult> openBarcodeScanner(
   BuildContext context, {
   required List<Product> products,
 }) async {
@@ -50,42 +60,52 @@ Future<List<ScannedEntry>> openBarcodeScanner(
         duration: Duration(seconds: 3),
       ),
     );
-    return [];
+    return const ScanResult([]);
   }
 
-  final result = await Navigator.push<List<ScannedEntry>>(
+  final result = await Navigator.push<ScanResult>(
     context,
     MaterialPageRoute(
       builder: (context) => BarcodeScannerPage(products: products),
     ),
   );
-  return result ?? const [];
+  return result ?? const ScanResult([]);
 }
 
 /// Full scan flow: open the persistent scanner page, collect items there
 /// (duplicates raise the quantity), and commit everything into the cart
 /// via [addToCart] when the user taps "Add to Cart". [addToCart]'s [force]
 /// flag is true when the scanned quantity exceeds the product's stock —
-/// the cart must accept it anyway ("add anyway" sale). [onAdded] runs after
-/// a successful commit (e.g. navigate to the sales page from home).
+/// the cart must accept it anyway ("add anyway" sale).
+///
+/// When the user taps "Complete Purchase" on the scanner,
+/// [onCheckoutRequested] runs after the commit — each caller wires it to
+/// its own checkout flow (single cart, multi cart, or the sales tab from
+/// home). [onAdded] runs after a plain "Add to Cart" commit.
 Future<void> scanAndFillCart({
   required BuildContext context,
   required List<Product> products,
   required void Function(Product product, int qty, bool force) addToCart,
   VoidCallback? onAdded,
+  VoidCallback? onCheckoutRequested,
 }) async {
-  final entries = await openBarcodeScanner(context, products: products);
-  if (!context.mounted) return;
-  if (entries.isEmpty) return;
+  final result = await openBarcodeScanner(context, products: products);
+  if (!context.mounted || result.entries.isEmpty) return;
 
   var count = 0;
-  for (final entry in entries) {
+  for (final entry in result.entries) {
     final force =
         !entry.product.isService &&
         entry.product.stock != null &&
         entry.qty > entry.product.stock!;
     addToCart(entry.product, entry.qty, force);
     count += entry.qty;
+  }
+
+  if (result.completePurchase) {
+    // The checkout screen takes over — no "added" snackbar from here.
+    onCheckoutRequested?.call();
+    return;
   }
 
   ScaffoldMessenger.of(context).showSnackBar(
@@ -446,6 +466,8 @@ class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // pc count + Subtotal — same layout as the cart's
+                  // bottom summary sheet.
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -457,7 +479,28 @@ class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
                         ),
                       ),
                       Text(
-                        'Total: Rs.${_totalPrice.toStringAsFixed(0)}',
+                        'Subtotal: Rs.${_totalPrice.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 12.spMin,
+                          color: isDark ? Colors.white70 : Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4.h),
+                  // Total row.
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Total',
+                        style: TextStyle(
+                          fontSize: 14.spMin,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Rs.${_totalPrice.toStringAsFixed(2)}',
                         style: TextStyle(
                           fontSize: 14.spMin,
                           fontWeight: FontWeight.bold,
@@ -466,37 +509,76 @@ class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
                       ),
                     ],
                   ),
-                  SizedBox(height: 8.h),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 10.h),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10.r),
+                  SizedBox(height: 10.h),
+                  Row(
+                    children: [
+                      // Add to Cart — commit and land on the sales page.
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                            side: BorderSide(
+                              color: AppColors.primary.withValues(alpha: 0.6),
+                            ),
+                            padding: EdgeInsets.symmetric(vertical: 10.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10.r),
+                            ),
+                          ),
+                          icon: const Icon(Icons.add_shopping_cart, size: 18),
+                          label: Text(
+                            'Add to Cart',
+                            style: TextStyle(
+                              fontSize: 13.spMin,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          onPressed:
+                              _entries.isEmpty
+                                  ? null
+                                  : () => Navigator.pop(
+                                    context,
+                                    ScanResult(
+                                      List<ScannedEntry>.from(_entries),
+                                      completePurchase: false,
+                                    ),
+                                  ),
                         ),
                       ),
-                      icon: const Icon(Icons.add_shopping_cart, size: 20),
-                      label: Text(
-                        _entries.isEmpty
-                            ? 'Scan items to add to cart'
-                            : 'Add $_totalCount item(s) to Cart',
-                        style: TextStyle(
-                          fontSize: 14.spMin,
-                          fontWeight: FontWeight.bold,
+                      SizedBox(width: 8.w),
+                      // Complete Purchase — commit and jump into checkout,
+                      // same flow as the cart bottom sheet's Complete Sale.
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 10.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10.r),
+                            ),
+                          ),
+                          icon: const Icon(Icons.point_of_sale, size: 18),
+                          label: Text(
+                            'Complete Purchase',
+                            style: TextStyle(
+                              fontSize: 13.spMin,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          onPressed:
+                              _entries.isEmpty
+                                  ? null
+                                  : () => Navigator.pop(
+                                    context,
+                                    ScanResult(
+                                      List<ScannedEntry>.from(_entries),
+                                      completePurchase: true,
+                                    ),
+                                  ),
                         ),
                       ),
-                      // Pop with the collected list — empty list = cancel.
-                      onPressed:
-                          _entries.isEmpty
-                              ? null
-                              : () => Navigator.pop(
-                                context,
-                                List<ScannedEntry>.from(_entries),
-                              ),
-                    ),
+                    ],
                   ),
                 ],
               ),

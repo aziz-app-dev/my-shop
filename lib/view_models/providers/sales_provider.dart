@@ -149,3 +149,9 @@ final salesProvider = StateNotifierProvider<SalesNotifier, SalesState>((ref) {
 final productsFutureProvider = FutureProvider<List<Product>>((ref) {
   return ref.read(databaseServiceProvider).getProducts();
 });
+
+/// One-shot flag: set when the user taps "Complete Purchase" on the scanner
+/// from a screen that can't open checkout itself (e.g. home). The single
+/// cart sale view picks the request up, resets the flag, and opens its
+/// normal checkout with the committed items.
+final pendingCheckoutProvider = StateProvider<bool>((ref) => false);

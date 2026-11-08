@@ -65,6 +65,13 @@ class HomePageState extends ConsumerState<HomePage> {
       onAdded:
           () =>
               ref.read(selectedIndexProvider.notifier).state = kSalesIndex,
+      // "Complete Purchase" on the scanner: jump to the sales tab and let
+      // the sale view open its checkout with the just-committed items
+      // (one-shot pendingCheckout flag).
+      onCheckoutRequested: () {
+        ref.read(pendingCheckoutProvider.notifier).state = true;
+        ref.read(selectedIndexProvider.notifier).state = kSalesIndex;
+      },
     );
   }
 

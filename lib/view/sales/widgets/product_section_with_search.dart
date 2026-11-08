@@ -87,9 +87,13 @@ class _ProductsSectionWithSearchState
   }
 
   /// Click entry point. Never hijack keys while the user is typing
-  /// in the search box.
+  /// in the search box — but a deliberate tap on a card must always work:
+  /// the search focus is dropped (closes the keyboard on mobile first) so
+  /// the item still goes straight into the cart with one tap.
   void _handleProductTap(Product product) {
-    if (_searchFocusNode.hasFocus) return;
+    if (_searchFocusNode.hasFocus) {
+      _searchFocusNode.unfocus();
+    }
     _addProductToCart(product);
   }
 

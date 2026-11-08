@@ -82,6 +82,15 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     // Initialize provider instances
     dbService = ref.read(databaseServiceProvider);
     hiveService = ref.read(hiveServiceProvider);
+    // Scanner "Complete Purchase" request that landed while this view was
+    // not mounted yet (e.g. switching tabs from home).
+    if (ref.read(pendingCheckoutProvider)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(pendingCheckoutProvider.notifier).state = false;
+        unawaited(_completeSale());
+      });
+    }
   }
 
   @override
@@ -661,6 +670,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
               notifier.addToCart(product, force: force);
             }
           },
+          // "Complete Purchase": the cart has the items — open the same
+          // checkout the Complete Sale button uses.
+          onCheckoutRequested: () => unawaited(_completeSale()),
         );
       },
       child: const Icon(Icons.qr_code_scanner, color: Colors.white),
@@ -670,6 +682,14 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   @override
   Widget build(BuildContext context) {
     final salesState = ref.watch(salesProvider);
+    // "Complete Purchase" on the scanner (from home) lands here: the items
+    // were committed into the cart, so open the regular checkout once.
+    ref.listen(pendingCheckoutProvider, (prev, requested) {
+      if (requested) {
+        ref.read(pendingCheckoutProvider.notifier).state = false;
+        unawaited(_completeSale());
+      }
+    });
     return LayoutBuilder(
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < 600;
