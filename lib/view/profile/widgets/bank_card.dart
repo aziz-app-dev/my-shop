@@ -173,6 +173,8 @@ class BankDetailsCard extends ConsumerWidget {
                         ? Image.file(
                           qrCode,
                           fit: BoxFit.fill,
+                          // Small QR box — decode downsampled.
+                          cacheWidth: 256,
                           errorBuilder:
                               (context, error, stackTrace) => Icon(
                                 Icons.broken_image,

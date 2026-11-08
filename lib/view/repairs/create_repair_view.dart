@@ -927,7 +927,13 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
           fit: StackFit.expand,
           children: [
             if (hasImage)
-              Image.file(File(_imagePath!), fit: BoxFit.cover)
+              Image.file(
+                File(_imagePath!),
+                fit: BoxFit.cover,
+                // Editor preview — decode downsampled (full photo would
+                // spike memory on phones).
+                cacheWidth: 1024,
+              )
             else
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,

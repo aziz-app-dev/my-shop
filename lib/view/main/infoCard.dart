@@ -63,6 +63,8 @@ Widget infoCard(WidgetRef ref) {
                                   child: Image.file(
                                     profileState.userImage!,
                                     fit: BoxFit.cover,
+                                    // Small avatar — decode downsampled.
+                                    cacheWidth: 128,
                                   ),
                                 )
                                 : Icon(
@@ -108,6 +110,7 @@ Widget infoCard(WidgetRef ref) {
                                 ? Image.file(
                                   profileState.shopLogo!,
                                   fit: BoxFit.cover,
+                                  cacheWidth: 128,
                                 )
                                 : Icon(
                                   Icons.person,
@@ -209,6 +212,7 @@ Widget tabIcon(WidgetRef ref) {
                             child: Image.file(
                               profileState.userImage!,
                               fit: BoxFit.cover,
+                              cacheWidth: 128,
                             ),
                           )
                           : Icon(
@@ -229,6 +233,7 @@ Widget tabIcon(WidgetRef ref) {
                           ? Image.file(
                             profileState.shopLogo!,
                             fit: BoxFit.cover,
+                            cacheWidth: 128,
                           )
                           : Icon(
                             Icons.person,

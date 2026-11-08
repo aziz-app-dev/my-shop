@@ -122,6 +122,16 @@ class _AppCachedImageState extends State<AppCachedImage> {
 
     final imageUrl = widget.imageUrl!;
 
+    // Decode bound: never allocate a full photo in memory — scale the decode
+    // to roughly the display size extra resolution for retina screens.
+    final int cacheWidth = switch (widget.width) {
+      final double w when w.isFinite && w > 0 => ((w * 2).round()).clamp(
+        128,
+        1024,
+      ),
+      _ => 512,
+    };
+
     // Local file path
     if (!imageUrl.startsWith('http')) {
       final file = File(imageUrl);
@@ -132,6 +142,7 @@ class _AppCachedImageState extends State<AppCachedImage> {
             width: widget.width,
             height: widget.height,
             fit: widget.fit,
+            cacheWidth: cacheWidth,
             errorBuilder: (context, error, stackTrace) => _buildErrorWidget(),
           ),
         );
@@ -149,6 +160,7 @@ class _AppCachedImageState extends State<AppCachedImage> {
             width: widget.width,
             height: widget.height,
             fit: widget.fit,
+            cacheWidth: cacheWidth,
             errorBuilder: (context, error, stackTrace) => _buildErrorWidget(),
           ),
         );
@@ -173,6 +185,7 @@ class _AppCachedImageState extends State<AppCachedImage> {
                 width: widget.width,
                 height: widget.height,
                 fit: widget.fit,
+                cacheWidth: cacheWidth,
                 errorBuilder: (context, error, stackTrace) =>
                     _buildErrorWidget(),
               );

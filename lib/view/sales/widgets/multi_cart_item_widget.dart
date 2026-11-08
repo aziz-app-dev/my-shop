@@ -53,6 +53,10 @@ class MultiCartItemWidget extends StatelessWidget {
                             fit: BoxFit.cover,
                             width: 50.spMin,
                             height: 50.spMin,
+                            // Decode at thumbnail size — camera images are
+                            // several MP and decoding full-size in a scrolled
+                            // list causes jank on phones.
+                            cacheWidth: 128,
                             errorBuilder: (context, error, stackTrace) => Icon(
                               Icons.broken_image,
                               size: 40.spMin,

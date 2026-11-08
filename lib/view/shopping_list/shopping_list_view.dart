@@ -663,6 +663,8 @@ class _ShoppingListViewState extends ConsumerState<ShoppingListView> {
                                 width: double.infinity,
                                 File(item.productImageUrl!),
                                 fit: BoxFit.cover,
+                                // Card-sized thumb — decode downsampled.
+                                cacheWidth: 256,
                                 errorBuilder:
                                     (context, error, trace) => Center(
                                       child: Icon(

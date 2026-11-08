@@ -113,6 +113,7 @@ class _BrandProductsViewState extends ConsumerState<BrandProductsView> {
                                 child: Image.file(
                                   File(widget.brand.imageUrl!),
                                   fit: BoxFit.cover,
+                                  cacheWidth: 128,
                                   errorBuilder: (context, error, stackTrace) {
                                     return AppIcon(
                                       defaultIcon: Icons.branding_watermark,

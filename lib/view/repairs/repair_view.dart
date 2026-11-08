@@ -522,6 +522,8 @@ class RepairCard extends StatelessWidget {
         width: 54.spMin,
         height: 54.spMin,
         fit: BoxFit.cover,
+        // List thumbnail — decode downsampled.
+        cacheWidth: 128,
         errorBuilder: (_, __, ___) => placeholder,
       ),
     );

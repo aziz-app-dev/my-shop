@@ -265,6 +265,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                   formState.imageFile!,
                                   fit: BoxFit.cover,
                                   width: double.infinity,
+                                  // Editor preview — decode downsampled.
+                                  cacheWidth: 512,
                                 )
                                 : Center(
                                   child: Column(

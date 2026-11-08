@@ -120,6 +120,8 @@ class _BannerSlide extends StatelessWidget {
           File(imagePath),
           width: double.infinity,
           fit: BoxFit.cover,
+          // Banners are full-width but only need screen resolution.
+          cacheWidth: 720,
           errorBuilder: (context, error, stackTrace) {
             return Container(
               color: Colors.grey.shade300,

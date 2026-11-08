@@ -577,6 +577,8 @@ class _Header extends StatelessWidget {
         width: 72.spMin,
         height: 72.spMin,
         fit: BoxFit.cover,
+        // List thumbnail — decode downsampled.
+        cacheWidth: 160,
         errorBuilder: (_, __, ___) => placeholder,
       ),
     );

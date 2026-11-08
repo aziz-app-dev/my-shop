@@ -49,6 +49,7 @@ class ShopOwnerCard extends ConsumerWidget {
                               ? Image.file(
                                 profileState.userImage!,
                                 fit: BoxFit.cover,
+                                cacheWidth: 128,
                               )
                               :
                               // Icon(Icons.person, size: 40.spMin, color: Colors.grey),

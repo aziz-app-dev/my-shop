@@ -313,6 +313,7 @@ class _ShoppingListSearchViewState
                                   child: Image.file(
                                     File(product.imageUrl!),
                                     fit: BoxFit.cover,
+                                    cacheWidth: 128,
                                     errorBuilder:
                                         (context, error, trace) => Icon(
                                           Icons.shopping_bag,
@@ -350,6 +351,8 @@ class _ShoppingListSearchViewState
                                       .imageUrl!,
                                 ),
                                 fit: BoxFit.contain,
+                                // Tiny badge — decode way down.
+                                cacheWidth: 48,
                                 errorBuilder:
                                     (context, error, trace) => Icon(
                                       Icons.branding_watermark,

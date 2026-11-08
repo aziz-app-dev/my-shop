@@ -48,6 +48,7 @@ class ShopCard extends ConsumerWidget {
                             ? Image.file(
                               profileState.shopLogo!,
                               fit: BoxFit.cover,
+                              cacheWidth: 128,
                             )
                             : Icon(
                               Icons.person,

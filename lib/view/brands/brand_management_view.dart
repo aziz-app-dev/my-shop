@@ -107,6 +107,7 @@ class _BrandManagementScreenState extends ConsumerState<BrandManagementScreen> {
                                               fit: BoxFit.cover,
                                               width: double.infinity,
                                               height: double.infinity,
+                                              cacheWidth: 256,
                                             )
                                           else if (existingImageUrl != null)
                                             Image.file(
@@ -114,6 +115,7 @@ class _BrandManagementScreenState extends ConsumerState<BrandManagementScreen> {
                                               fit: BoxFit.cover,
                                               width: double.infinity,
                                               height: double.infinity,
+                                              cacheWidth: 256,
                                             )
                                           else
                                             Center(
@@ -455,6 +457,7 @@ class _BrandManagementScreenState extends ConsumerState<BrandManagementScreen> {
                             child: Image.file(
                               File(brand.imageUrl!),
                               fit: BoxFit.contain,
+                              cacheWidth: 128,
                               errorBuilder: (context, error, stackTrace) {
                                 return AppIcon(
                                   defaultIcon: Icons.branding_watermark,

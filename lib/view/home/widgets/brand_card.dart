@@ -87,6 +87,8 @@ class BrandCard extends StatelessWidget {
       File(imageUrl!),
       width: double.infinity,
       fit: BoxFit.cover,
+      // Small card — decode downsampled.
+      cacheWidth: 256,
       errorBuilder: (context, error, stackTrace) => _fallback(),
     );
   }

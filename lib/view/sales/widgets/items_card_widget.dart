@@ -53,6 +53,9 @@ class CartItemCardWidget extends StatelessWidget {
                           fit: BoxFit.cover,
                           width: 50.spMin,
                           height: 50.spMin,
+                          // Decode at thumbnail size — full-size camera
+                          // photos jank the list on phones.
+                          cacheWidth: 128,
                           errorBuilder:
                               (context, error, stackTrace) => Icon(
                                 Icons.broken_image,

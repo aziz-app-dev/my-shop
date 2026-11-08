@@ -227,6 +227,8 @@ class _EditProfileState extends ConsumerState<EditProfile> {
                                               fit: BoxFit.cover,
                                               width: double.infinity,
                                               height: double.infinity,
+                                              // Avatar — decode downsampled.
+                                              cacheWidth: 256,
                                             ),
                                           )
                                           : Center(
@@ -277,6 +279,8 @@ class _EditProfileState extends ConsumerState<EditProfile> {
                                         fit: BoxFit.contain,
                                         width: double.infinity,
                                         height: double.infinity,
+                                        // Editor preview — decode downsampled.
+                                        cacheWidth: 384,
                                       )
                                       : Center(
                                         child: Column(
@@ -749,6 +753,9 @@ class _EditProfileState extends ConsumerState<EditProfile> {
                                                                 .bankDetails[index]
                                                                 .qrCode!,
                                                             fit: BoxFit.cover,
+                                                            // Small QR box —
+                                                            // decode downsampled.
+                                                            cacheWidth: 256,
                                                           ),
                                                         )
                                                         : Center(
@@ -983,6 +990,8 @@ class _EditProfileState extends ConsumerState<EditProfile> {
                                               fit: BoxFit.cover,
                                               width: double.infinity,
                                               height: double.infinity,
+                                              // Avatar — decode downsampled.
+                                              cacheWidth: 256,
                                             ),
                                           )
                                           : Center(
@@ -1032,6 +1041,8 @@ class _EditProfileState extends ConsumerState<EditProfile> {
                                         fit: BoxFit.contain,
                                         width: double.infinity,
                                         height: double.infinity,
+                                        // Editor preview — decode downsampled.
+                                        cacheWidth: 384,
                                       )
                                       : Center(
                                         child: Column(
@@ -1457,6 +1468,9 @@ class _EditProfileState extends ConsumerState<EditProfile> {
                                                             .bankDetails[index]
                                                             .qrCode!,
                                                         fit: BoxFit.cover,
+                                                        // Small QR box —
+                                                        // decode downsampled.
+                                                        cacheWidth: 256,
                                                       ),
                                                     )
                                                     : Center(

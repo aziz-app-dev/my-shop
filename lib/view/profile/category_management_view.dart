@@ -99,6 +99,7 @@ class _CategoryManagementScreenState
                                                   selectedImage,
                                                   fit: BoxFit.contain,
                                                   width: double.infinity,
+                                                  cacheWidth: 256,
                                                 ),
                                               ),
                                               Positioned(
@@ -128,6 +129,7 @@ class _CategoryManagementScreenState
                                                 File(existingImageUrl),
                                                 fit: BoxFit.cover,
                                                 width: double.infinity,
+                                                cacheWidth: 256,
                                               ),
                                               Positioned(
                                                 top: 4.h,
@@ -365,6 +367,7 @@ class _CategoryManagementScreenState
                             child: Image.file(
                               File(category.imageUrl!),
                               fit: BoxFit.contain,
+                              cacheWidth: 128,
                               errorBuilder: (context, error, stackTrace) {
                                 return Icon(
                                   Icons.branding_watermark,

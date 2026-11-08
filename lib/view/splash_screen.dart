@@ -143,6 +143,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                                 fit: BoxFit.cover,
                                 width: double.infinity,
                                 height: double.infinity,
+                                // Splash logo — decode downsampled.
+                                cacheWidth: 384,
                                 errorBuilder:
                                     (context, error, stackTrace) =>
                                         _appLogoImage(),
