@@ -12,6 +12,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../models/items_model.dart';
 import '../../../res/assets/image_assets.dart';
 import '../../../res/colors/app_color.dart';
+import '../../../res/components/app_bar_widget.dart';
 import '../../../res/components/app_icon.dart';
 import '../../../utils/platform_utils.dart';
 
@@ -232,10 +233,10 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Scan Barcode'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+      // Same theme appbar the other pages (home, sales, …) use.
+      appBar: AppBarWidget.customAppBar(
+        context: context,
+        title: 'Scan Barcode',
         actions: [
           IconButton(
             icon: ValueListenableBuilder(
@@ -259,28 +260,11 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
       ),
       body: Column(
         children: [
-          // Camera — top ~30% of the screen.
+          // Camera — top ~35% of the screen. The whole section is the
+          // scanner — no viewfinder box overlay.
           Expanded(
-            flex: 3,
-            child: Stack(
-              children: [
-                MobileScanner(controller: controller, onDetect: _onDetect),
-                // Scan overlay - wider for linear barcodes
-                Center(
-                  child: Container(
-                    width: 240.w,
-                    height: 90.h,
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: Colors.white,
-                        width: 3,
-                      ),
-                      borderRadius: BorderRadius.circular(14.r),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            flex: 35,
+            child: MobileScanner(controller: controller, onDetect: _onDetect),
           ),
           // Latest scan event
           if (_lastEvent != null)
@@ -310,12 +294,13 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
                 ],
               ),
             ),
-          // Scanned items — remaining ~70% of the screen.
+          // Scanned items — remaining ~65% of the screen, on the same
+          // scaffold background the other pages (home, sales) use.
           Expanded(
-            flex: 7,
+            flex: 65,
             child: Container(
               width: double.infinity,
-              color: isDark ? AppColors.dCardColor : AppColors.primaryLight1,
+              color: isDark ? AppColors.dScafoldColor : AppColors.lScafoldColor,
               child: _entries.isEmpty
                   ? Center(
                       child: Column(
@@ -359,7 +344,10 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
             child: Container(
               padding: EdgeInsets.all(10.spMin),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.grey800 : Colors.white,
+                color:
+                    isDark
+                        ? AppColors.dScafoldColor
+                        : AppColors.lScafoldColor,
                 border: Border(
                   top: BorderSide(
                     color: Colors.grey.withValues(alpha: 0.3),
