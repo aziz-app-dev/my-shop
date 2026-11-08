@@ -10,11 +10,14 @@ import '../../res/colors/app_color.dart';
 import '../../res/components/app_icon.dart';
 import '../../res/components/empty_widget.dart';
 import '../../res/components/text_field_widget.dart';
+import '../../utils/platform_utils.dart';
 import '../../view_models/providers/home_page_provider.dart';
 import '../../view_models/providers/sales_provider.dart';
 import '../../view_models/providers/settings_provider.dart';
 import '../../view_models/services/keyboard/app_keyboard_service.dart';
 import '../add_product/add_product_view.dart';
+import '../main/main_view.dart';
+import '../sales/widgets/barcode_scan_flow.dart';
 import '../shopping_list/shopping_list_view.dart';
 import 'rapper.dart';
 import 'section_products_view.dart';
@@ -42,6 +45,24 @@ class HomePageState extends ConsumerState<HomePage> {
   /// (items + services) instead of the normal home sections.
   final TextEditingController _homeSearchController = TextEditingController();
   String _homeSearchQuery = '';
+
+  /// Scan button in the app bar (mobile): open the camera scanner and, on a
+  /// match, add the product to the current cart and jump to the Sales page
+  /// so the user is already where the sale happens.
+  Future<void> _scanProduct() async {
+    final products = await ref.read(productsFutureProvider.future);
+    if (!mounted) return;
+    await scanAndAddToCart(
+      context: context,
+      products: products,
+      addToCart:
+          (product) => ref.read(salesProvider.notifier).addToCart(product),
+      // Land on the Sales page — the item is already in the cart there.
+      onAdded:
+          () =>
+              ref.read(selectedIndexProvider.notifier).state = kSalesIndex,
+    );
+  }
 
   @override
   void initState() {
@@ -108,7 +129,27 @@ class HomePageState extends ConsumerState<HomePage> {
         winBackIcon: ImageAssets.win11Menu,
         leadingOnTap: widget.openDrawer,
         title: 'Home',
-        actions: const [],
+        actions:
+            PlatformUtils.isMobile
+                ? [
+                  IconButton(
+                    // Mobile: quick barcode scan from anywhere — lands on the
+                    // Sales page with the product in the cart.
+                    tooltip: 'Scan Barcode',
+                    splashRadius: 20.r,
+                    onPressed: _scanProduct,
+                    icon: AppIcon(
+                      win11IconPath: ImageAssets.win11QrCode,
+                      defaultIcon: Icons.qr_code_scanner,
+                      size: 22.spMin,
+                      color:
+                          (Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white
+                              : Colors.black),
+                    ),
+                  ),
+                ]
+                : const [],
       ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,

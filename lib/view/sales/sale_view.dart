@@ -32,6 +32,7 @@ import '../bills/widgets/pdf_genrater_widget.dart';
 import '../bills/widgets/thermal_print_widget.dart';
 import 'check_out_view.dart';
 import 'mobile_cart_page.dart';
+import 'widgets/barcode_scan_flow.dart';
 import 'widgets/cart_section_widget.dart';
 import 'widgets/product_section_with_search.dart';
 
@@ -640,6 +641,28 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     }
   }
 
+  /// Round orange scan FAB — opens the camera scanner and adds the matched
+  /// product to the current cart. Mobile only (the parent hides it on
+  /// desktop).
+  Widget _buildScanFab(BuildContext context, WidgetRef ref) {
+    return FloatingActionButton(
+      heroTag: 'salesScanFab',
+      tooltip: 'Scan Barcode',
+      backgroundColor: AppColors.primary,
+      onPressed: () async {
+        final products = await ref.read(productsFutureProvider.future);
+        if (!context.mounted) return;
+        await scanAndAddToCart(
+          context: context,
+          products: products,
+          addToCart:
+              (product) => ref.read(salesProvider.notifier).addToCart(product),
+        );
+      },
+      child: const Icon(Icons.qr_code_scanner, color: Colors.white),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final salesState = ref.watch(salesProvider);
@@ -702,10 +725,18 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
               ],
             ),
           ),
-          // Show FAB on mobile when cart has items
+          // Mobile: scan FAB always, plus the cart/checkout FAB below it when
+          // the cart has items.
           floatingActionButton:
-              isMobile && salesState.cartItems.isNotEmpty
-                  ? FloatingActionButton.extended(
+              isMobile
+                  ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _buildScanFab(context, ref),
+                      if (salesState.cartItems.isNotEmpty) ...[
+                        SizedBox(height: 12.spMin),
+                        FloatingActionButton.extended(
                     onPressed: () async {
                       final result =
                           await showModalBottomSheet<Map<String, dynamic>>(
@@ -757,6 +788,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                        ),
+                      ],
+                    ],
                   )
                   : null,
         );

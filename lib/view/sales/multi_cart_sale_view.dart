@@ -32,6 +32,7 @@ import '../bills/widgets/pdf_genrater_widget.dart';
 import '../bills/widgets/thermal_print_widget.dart';
 import 'check_out_view.dart';
 import 'mobile_multi_cart_page.dart';
+import 'widgets/barcode_scan_flow.dart';
 import 'widgets/multi_cart_section_widget.dart';
 import 'widgets/multi_cart_product_section.dart';
 
@@ -641,6 +642,29 @@ class _MultiCartSalesScreenState extends ConsumerState<MultiCartSalesScreen>
     );
   }
 
+  /// Round orange scan FAB — opens the camera scanner and adds the matched
+  /// product to the active multi-cart. Mobile only (the parent hides it on
+  /// desktop).
+  Widget _buildScanFab(BuildContext context, WidgetRef ref) {
+    return FloatingActionButton(
+      heroTag: 'multiCartScanFab',
+      tooltip: 'Scan Barcode',
+      backgroundColor: AppColors.primary,
+      onPressed: () async {
+        final products = await ref.read(productsFutureProvider.future);
+        if (!context.mounted) return;
+        await scanAndAddToCart(
+          context: context,
+          products: products,
+          addToCart:
+              (product) =>
+                  ref.read(multiCartProvider.notifier).addToCart(product),
+        );
+      },
+      child: const Icon(Icons.qr_code_scanner, color: Colors.white),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final multiCartState = ref.watch(multiCartProvider);
@@ -940,12 +964,19 @@ class _MultiCartSalesScreenState extends ConsumerState<MultiCartSalesScreen>
                           ],
                         ],
                       ),
-                      // Show FAB on mobile when active cart has items
+                      // Mobile: scan FAB always, plus the cart/checkout FAB
+                      // below it when the active cart has items.
                       floatingActionButton:
-                          isMobile &&
-                                  activeCart != null &&
-                                  activeCart.cartItems.isNotEmpty
-                              ? FloatingActionButton.extended(
+                          isMobile
+                              ? Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    _buildScanFab(context, ref),
+                                    if (activeCart != null &&
+                                        activeCart.cartItems.isNotEmpty) ...[
+                                      SizedBox(height: 12.spMin),
+                                      FloatingActionButton.extended(
                                 onPressed: () {
                                   Navigator.push(
                                     context,
@@ -999,7 +1030,10 @@ class _MultiCartSalesScreenState extends ConsumerState<MultiCartSalesScreen>
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                              )
+                                      )
+                                    ],
+                                  ],
+                                )
                               : null,
                     );
                   },

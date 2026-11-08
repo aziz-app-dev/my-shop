@@ -112,6 +112,12 @@ class ProductCard extends StatelessWidget {
   /// (Sale in cart / Details / Stock) without disturbing the card's own tap.
   final GestureTapDownCallback? onMenuTapDown;
 
+  /// Optional long-press handler — in the sales grid on mobile, the
+  /// 3-option menu opens on a long press. The card resolves its own box and
+  /// passes the menu's anchor position (top-right, next to the caret button)
+  /// as the argument.
+  final void Function(Offset globalPosition)? onLongPress;
+
   /// True while the card is the keyboard-selected item (Tab / arrow walking
   /// in the sales grid). Draws an accent border so the user can see which
   /// item Enter will send to the cart.
@@ -125,6 +131,7 @@ class ProductCard extends StatelessWidget {
     this.onSecondaryTapDown,
     this.brands,
     this.onMenuTapDown,
+    this.onLongPress,
     this.isHighlighted,
   });
 
@@ -192,6 +199,18 @@ class ProductCard extends StatelessWidget {
               },
           onTap: onTap,
           onSecondaryTapDown: onSecondaryTapDown,
+          // InkWell has no positioned long-press; anchor the menu at the
+          // caret button's spot (top-right of the card).
+          onLongPress:
+              onLongPress == null
+                  ? null
+                  : () {
+                    final box = context.findRenderObject() as RenderBox;
+                    final anchor = box.localToGlobal(
+                      Offset(box.size.width - 40.h, 6.h),
+                    );
+                    onLongPress!(anchor);
+                  },
           borderRadius: BorderRadius.circular(AppSizes.borderRadiusSm.r),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

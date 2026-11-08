@@ -23,6 +23,11 @@ final selectedIndexProvider = StateProvider<int>((ref) => 0);
 /// handler to return to Home (navigation is index-based, not a route stack).
 const int kHomeIndex = 0;
 
+/// Index of the Sales page in the nav/page lists — the home page's scan
+/// button jumps here after a successful add-to-cart (see
+/// barcode_scan_flow.dart usage in home_view.dart).
+const int kSalesIndex = 1;
+
 /// Key on the mobile shell Scaffold that owns the navigation drawer, so any
 /// page can open the drawer without the key being threaded through.
 final GlobalKey<ScaffoldState> rootScaffoldKey = GlobalKey<ScaffoldState>();
