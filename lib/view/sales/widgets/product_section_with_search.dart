@@ -37,6 +37,16 @@ class _ProductsSectionWithSearchState
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
+  // --- Keyboard navigation (Tab / arrows / Enter, Esc to clear). The user
+  // can walk the visible items without the mouse.
+  //
+  /// Index in [_liveProducts] of the keyboard-selected product. Null until
+  /// the user presses Tab/arrows; cleared on Escape or on a new query.
+  int? _focusedProductIndex;
+  int _gridColumns = 1; // visible columns, updated on every build
+  final GlobalKey _selectedItemKey =
+      GlobalKey(); // reused key for scroll-into-view
+
   // Cache brand/category extraction so it only recomputes when the product
   // list itself changes — not on every search keystroke or rebuild.
   List<Product>? _cachedSource;
@@ -51,12 +61,9 @@ class _ProductsSectionWithSearchState
   }
 
   /// Adds the given [product] to the cart, or warns when it is out of stock.
-  /// Shared by the card tap handler and the F1–F9 / 1–9 keyboard shortcuts so
-  /// both paths behave identically.
-  void _handleProductTap(Product product) {
-    // Never hijack keys while the user is typing in the search box.
-    if (_searchFocusNode.hasFocus) return;
-
+  /// The raw action — no focus guards — shared by the card tap handler and
+  /// the Enter-on-single-result path so all entry points behave identically.
+  void _addProductToCart(Product product) {
     if (!product.isService && product.stock != null && product.stock! <= 0) {
       if (!context.mounted) return;
       showDialog(
@@ -86,6 +93,13 @@ class _ProductsSectionWithSearchState
         ),
       );
     }
+  }
+
+  /// Click entry point. Never hijack keys while the user is typing
+  /// in the search box.
+  void _handleProductTap(Product product) {
+    if (_searchFocusNode.hasFocus) return;
+    _addProductToCart(product);
   }
 
   /// Dropdown menu on the card's caret button. Order matches the user's
@@ -249,15 +263,13 @@ class _ProductsSectionWithSearchState
   }
 
   /// Products currently shown (search result), updated on every build so the
-  /// keyboard handler always maps F1–F9 / 1–9 to the first nine *visible*
-  /// products.
+  /// keyboard handler always navigates over the *visible* products.
   List<Product>? _liveProducts;
 
-  /// Sales-screen shortcut scope (F1–F9, digits 1–9 and numpad 1–9 fire the
-  /// first nine shown products into the cart, the way other billing software
-  /// uses function keys). Handled by the window-level keyboard dispatcher
+  /// Sales-screen shortcut scope (Tab / arrows / Enter navigate the product
+  /// grid, Esc clears). Handled by the window-level keyboard dispatcher
   /// (see [AppKeyboardScope]) — focus-independent. Registered later than the
-  /// main-nav scope, so it wins over the F-key section navigation while this
+  /// main-nav scope, so it wins over the section navigation while this
   /// page is on screen.
   late final AppKeyboardScope _keys = AppKeyboardScope(
     'sales-products',
@@ -273,55 +285,138 @@ class _ProductsSectionWithSearchState
     final products = _liveProducts;
     if (products == null || products.isEmpty) return false;
 
-    const fKeys = [
-      LogicalKeyboardKey.f1,
-      LogicalKeyboardKey.f2,
-      LogicalKeyboardKey.f3,
-      LogicalKeyboardKey.f4,
-      LogicalKeyboardKey.f5,
-      LogicalKeyboardKey.f6,
-      LogicalKeyboardKey.f7,
-      LogicalKeyboardKey.f8,
-      LogicalKeyboardKey.f9,
-    ];
-    const digits = [
-      LogicalKeyboardKey.digit1,
-      LogicalKeyboardKey.digit2,
-      LogicalKeyboardKey.digit3,
-      LogicalKeyboardKey.digit4,
-      LogicalKeyboardKey.digit5,
-      LogicalKeyboardKey.digit6,
-      LogicalKeyboardKey.digit7,
-      LogicalKeyboardKey.digit8,
-      LogicalKeyboardKey.digit9,
-    ];
-    const numpad = [
-      LogicalKeyboardKey.numpad1,
-      LogicalKeyboardKey.numpad2,
-      LogicalKeyboardKey.numpad3,
-      LogicalKeyboardKey.numpad4,
-      LogicalKeyboardKey.numpad5,
-      LogicalKeyboardKey.numpad6,
-      LogicalKeyboardKey.numpad7,
-      LogicalKeyboardKey.numpad8,
-      LogicalKeyboardKey.numpad9,
-    ];
+    // --- Tab / arrow / Enter navigation over the visible products ---
+    // Shift+Tab keeps its normal focus-traversal meaning.
+    if (HardwareKeyboard.instance.isShiftPressed) return false;
 
-    for (var i = 0; i < 9 && i < products.length; i++) {
-      if (AppKeyboardScope.didPress(event, fKeys[i]) ||
-          AppKeyboardScope.didPress(event, digits[i]) ||
-          AppKeyboardScope.didPress(event, numpad[i])) {
-        _handleProductTap(products[i]);
+    if (_focusedProductIndex == null) {
+      // Nothing selected yet — Tab / Down / Right start on the first item.
+      if (_isNavPress(event, LogicalKeyboardKey.tab) ||
+          _isNavPress(event, LogicalKeyboardKey.arrowDown) ||
+          _isNavPress(event, LogicalKeyboardKey.arrowRight)) {
+        _setKeyboardSelection(0);
         return true;
       }
+      return false;
+    }
+
+    final selected = _focusedProductIndex!;
+    if (selected >= products.length) {
+      // Stale selection (list shrank) — drop it.
+      _clearKeyboardSelection();
+      return false;
+    }
+
+    // Enter (fresh press only) sends the selected product straight to the
+    // cart, then moves the selection one step down so a held row of items
+    // can be rung up with a few Enters. Ctrl+Enter is left alone — it
+    // belongs to the page-level "complete sale" shortcut.
+    if (AppKeyboardScope.didPress(event, LogicalKeyboardKey.enter) ||
+        AppKeyboardScope.didPress(event, LogicalKeyboardKey.numpadEnter)) {
+      if (HardwareKeyboard.instance.isControlPressed) return false;
+      _addProductToCart(products[selected]);
+      _setKeyboardSelection((selected + _gridColumns).clamp(
+        0,
+        products.length - 1,
+      ));
+      return true;
+    }
+    // Escape clears the selection.
+    if (AppKeyboardScope.didPress(event, LogicalKeyboardKey.escape)) {
+      _clearKeyboardSelection();
+      return true;
+    }
+    // Tab / Right move forward, Left backward — both wrap around.
+    if (_isNavPress(event, LogicalKeyboardKey.tab) ||
+        _isNavPress(event, LogicalKeyboardKey.arrowRight)) {
+      _setKeyboardSelection(
+        selected == products.length - 1 ? 0 : selected + 1,
+      );
+      return true;
+    }
+    if (_isNavPress(event, LogicalKeyboardKey.arrowLeft)) {
+      _setKeyboardSelection(
+        selected == 0 ? products.length - 1 : selected - 1,
+      );
+      return true;
+    }
+    // Up / Down move a whole grid row.
+    if (_isNavPress(event, LogicalKeyboardKey.arrowDown)) {
+      _setKeyboardSelection(
+        (selected + _gridColumns).clamp(0, products.length - 1),
+      );
+      return true;
+    }
+    if (_isNavPress(event, LogicalKeyboardKey.arrowUp)) {
+      _setKeyboardSelection(
+        (selected - _gridColumns).clamp(0, products.length - 1),
+      );
+      return true;
     }
     return false;
+  }
+
+  /// Arrow / Tab navigation is allowed to auto-repeat while held (unlike
+  /// one-shot actions such as Enter that must not fire several times in a
+  /// row).
+  bool _isNavPress(KeyEvent event, LogicalKeyboardKey key) =>
+      (event is KeyDownEvent || event is KeyRepeatEvent) &&
+      event.logicalKey == key;
+
+  void _clearKeyboardSelection() {
+    if (mounted && _focusedProductIndex != null) {
+      setState(() => _focusedProductIndex = null);
+    }
+  }
+
+  /// Selects [index] in the visible product list (clamped) and scrolls it
+  /// into view.
+  void _setKeyboardSelection(int index) {
+    final count = _liveProducts?.length ?? 0;
+    if (count == 0) return;
+    setState(() => _focusedProductIndex = index.clamp(0, count - 1));
+    _revealSelectedItem();
+  }
+
+  void _revealSelectedItem() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _selectedItemKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   @override
   void initState() {
     super.initState();
     AppKeyboardScope.register(_keys);
+
+    // Focus the search bar as soon as the page opens, so the user can start
+    // typing (or scan a barcode) without touching the mouse first.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocusNode.requestFocus();
+    });
+
+    // Tab inside the search box jumps into the product grid selection, so the
+    // user can walk the items with the keyboard instead of the mouse.
+    _searchFocusNode.onKeyEvent = (node, event) {
+      if (event is KeyDownEvent &&
+          event.logicalKey == LogicalKeyboardKey.tab) {
+        final products = _liveProducts;
+        if (products != null && products.isNotEmpty) {
+          _setKeyboardSelection(0);
+          _searchFocusNode.unfocus();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      }
+      return KeyEventResult.ignored;
+    };
   }
 
   @override
@@ -866,10 +961,21 @@ class _ProductsSectionWithSearchState
                           ],
                         ),
                         onChange: (value) {
+                          // A new query invalidates the previous selection.
+                          _clearKeyboardSelection();
                           ref
                               .read(singleCartProductSearchProvider.notifier)
                               .updateSearchQuery(value!);
                           return null;
+                        },
+                        onFieldSubmitted: (value) {
+                          // Enter while still typing in the search box: when
+                          // the query matched exactly ONE product, send it
+                          // straight to the cart.
+                          final products = _liveProducts;
+                          if (products != null && products.length == 1) {
+                            _addProductToCart(products.first);
+                          }
                         },
                       ),
                     ),
@@ -894,8 +1000,9 @@ class _ProductsSectionWithSearchState
               ),
             ),
 
-            // Category Filter Row (chips under the search bar)
-            if (categories.isNotEmpty)
+            // Category Filter Row (chips under the search bar) — hidden while
+            // searching so the results get the full space.
+            if (categories.isNotEmpty && searchState.searchQuery.isEmpty)
               _buildChipsRow(
                 items: categories,
                 selected: searchState.selectedCategory,
@@ -937,21 +1044,31 @@ class _ProductsSectionWithSearchState
                           // `childAspectRatio` is a pure ratio → NOT scaled.
                           final double maxCardWidth =
                               isMobile ? 130.spMin : 170.spMin;
+                          final double spacing = 8.spMin;
+                          // Real column count of the grid (matches Flutter's
+                          // SliverGridDelegateWithMaxCrossAxisExtent math) —
+                          // needed for Up/Down navigation.
+                          _gridColumns =
+                              ((constraints.maxWidth + spacing) ~/
+                                      (maxCardWidth + spacing))
+                                  .clamp(1, filteredProducts.length);
                           return GridView.builder(
                             padding: EdgeInsets.all(8.spMin),
                             gridDelegate:
                                 SliverGridDelegateWithMaxCrossAxisExtent(
                                   maxCrossAxisExtent: maxCardWidth,
                                   childAspectRatio: 0.72,
-                                  crossAxisSpacing: 8.spMin,
-                                  mainAxisSpacing: 8.spMin,
+                                  crossAxisSpacing: spacing,
+                                  mainAxisSpacing: spacing,
                                 ),
                             itemCount: filteredProducts.length,
                             itemBuilder: (context, index) {
                               final product = filteredProducts[index];
-                              return ProductCard(
+                              final bool isKeyboardSelected =
+                                  _focusedProductIndex == index;
+                              Widget card = ProductCard(
                                 product: product,
-                                shortcutKey: index < 9 ? 'F${index + 1}' : null,
+                                isHighlighted: isKeyboardSelected,
                                 onTap: () => _handleProductTap(product),
                                 onMenuTapDown:
                                     (details) => _showProductMenu(
@@ -960,6 +1077,15 @@ class _ProductsSectionWithSearchState
                                       details.globalPosition,
                                     ),
                               );
+                              if (isKeyboardSelected) {
+                                // One reusable key on the selected card so
+                                // keyboard navigation can scroll it into view.
+                                card = KeyedSubtree(
+                                  key: _selectedItemKey,
+                                  child: card,
+                                );
+                              }
+                              return card;
                             },
                           );
                         },

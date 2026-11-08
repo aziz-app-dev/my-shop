@@ -45,7 +45,8 @@ class _MainScrennState extends ConsumerState<MainScrenn> {
   /// App-wide navigation scope. Registered for the whole app lifetime so the
   /// F-key navigation works no matter where the focus is (see
   /// [AppKeyboardScope] — window-level dispatch, not focus-dependent).
-  /// Page-specific scopes (e.g. Sales' F1–F9 add-to-cart) register later, so
+  /// Page-specific scopes (e.g. Sales' Tab/arrow/Enter product navigation)
+  /// register later, so
   /// they win over these bindings while their page is on screen.
   late final AppKeyboardScope _navKeys = AppKeyboardScope(
     'main-nav',
@@ -270,8 +271,14 @@ class _MainScrennState extends ConsumerState<MainScrenn> {
                     Padding(
                       padding: EdgeInsets.only(top: 8.h),
                       child: Text(
-                        'On the Sales screen, F1–F9 (or number keys 1–9) add the '
-                        'matching item to the cart.',
+                        'On the Sales screen, Tab (or the arrow keys) walks '
+                        'the items and Enter sends the selected one to the '
+                        'cart; Esc clears the selection. When a search '
+                        'matches exactly one product, pressed Enter sends it '
+                        'straight to the cart. Ctrl + Enter completes the '
+                        'sale and opens the payment page (on that page, '
+                        'Ctrl + Enter saves it too). An empty name on the '
+                        'payment page means a walk-in customer.',
                         style: TextStyle(
                           fontSize: 12.spMin,
                           color: Colors.grey,

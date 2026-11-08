@@ -1,5 +1,6 @@
 import 'package:desktopapp/res/components/app_text_widgrt.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
@@ -8,12 +9,13 @@ import '../../../models/items_model.dart';
 import '../../../res/assets/image_assets.dart';
 import '../../../res/colors/app_color.dart';
 import '../../../res/components/app_icon.dart';
+import '../../../res/components/product_card.dart';
 import '../../../res/components/text_field_widget.dart';
 import '../../../utils/platform_utils.dart';
 import '../../../view_models/providers/multi_cart_provider.dart';
 import '../../../view_models/providers/sales_provider.dart';
 import '../../../view_models/providers/product_search_provider.dart';
-import '../../../res/components/product_card.dart';
+import '../../../view_models/services/keyboard/app_keyboard_service.dart';
 
 /// Shared height for the search field and the action buttons next to it, so
 /// they line up exactly across desktop / tablet / mobile.
@@ -30,6 +32,190 @@ class ProductsSectionWithSearch extends ConsumerStatefulWidget {
 class _ProductsSectionWithSearchState
     extends ConsumerState<ProductsSectionWithSearch> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+
+  // --- Keyboard navigation (Tab / arrows / Enter, Esc to clear). ---
+  /// Index in [_liveProducts] of the keyboard-selected product.
+  int? _focusedProductIndex;
+  int _gridColumns = 1; // visible columns, updated on every build
+  final GlobalKey _selectedItemKey =
+      GlobalKey(); // reused key for scroll-into-view
+
+  /// Products currently shown (search result), updated on every build so the
+  /// keyboard handler always navigates over the *visible* products.
+  List<Product>? _liveProducts;
+
+  /// Sales-screen shortcut scope for the multi-cart page. Window-level,
+  /// focus-independent (the visible page wins over other scopes).
+  late final AppKeyboardScope _keys = AppKeyboardScope(
+    'multi-cart-products',
+    _handleKey,
+  );
+
+  /// Adds the given [product] to the active multi-cart, or warns when it is
+  /// out of stock. The raw action, shared by the card tap and the Enter
+  /// paths.
+  void _addProductToCart(Product product) {
+    if (!product.isService && product.stock != null && product.stock! <= 0) {
+      if (!context.mounted) return;
+      showDialog(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: mdTextBold(text: 'Out of Stock'),
+              content: smText(
+                maxLines: 3,
+                text: '${product.name} is currently out of stock.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: mdTextBold(text: 'OK'),
+                ),
+              ],
+            ),
+      );
+    } else {
+      ref.read(multiCartProvider.notifier).addToCart(product);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${product.name} added to cart'),
+          duration: const Duration(seconds: 1),
+          backgroundColor: AppColors.primary,
+        ),
+      );
+    }
+  }
+
+  bool _handleKey(KeyEvent event) {
+    // Don't hijack typing: while a text field has focus (e.g. the search box)
+    // keys must reach it instead of firing products into the cart.
+    final focusWidget = FocusManager.instance.primaryFocus?.context?.widget;
+    if (focusWidget is EditableText) return false;
+
+    final products = _liveProducts;
+    if (products == null || products.isEmpty) return false;
+
+    // --- Tab / arrow / Enter navigation over the visible products ---
+    // Shift+Tab keeps its normal focus-traversal meaning.
+    if (HardwareKeyboard.instance.isShiftPressed) return false;
+
+    if (_focusedProductIndex == null) {
+      if (_isNavPress(event, LogicalKeyboardKey.tab) ||
+          _isNavPress(event, LogicalKeyboardKey.arrowDown) ||
+          _isNavPress(event, LogicalKeyboardKey.arrowRight)) {
+        _setKeyboardSelection(0);
+        return true;
+      }
+      return false;
+    }
+
+    final selected = _focusedProductIndex!;
+    if (selected >= products.length) {
+      _clearKeyboardSelection();
+      return false;
+    }
+
+    if (AppKeyboardScope.didPress(event, LogicalKeyboardKey.enter) ||
+        AppKeyboardScope.didPress(event, LogicalKeyboardKey.numpadEnter)) {
+      // Ctrl+Enter belongs to the page-level "complete sale" shortcut.
+      if (HardwareKeyboard.instance.isControlPressed) return false;
+      _addProductToCart(products[selected]);
+      _setKeyboardSelection(
+        (selected + _gridColumns).clamp(0, products.length - 1),
+      );
+      return true;
+    }
+    if (AppKeyboardScope.didPress(event, LogicalKeyboardKey.escape)) {
+      _clearKeyboardSelection();
+      return true;
+    }
+    if (_isNavPress(event, LogicalKeyboardKey.tab) ||
+        _isNavPress(event, LogicalKeyboardKey.arrowRight)) {
+      _setKeyboardSelection(
+        selected == products.length - 1 ? 0 : selected + 1,
+      );
+      return true;
+    }
+    if (_isNavPress(event, LogicalKeyboardKey.arrowLeft)) {
+      _setKeyboardSelection(
+        selected == 0 ? products.length - 1 : selected - 1,
+      );
+      return true;
+    }
+    if (_isNavPress(event, LogicalKeyboardKey.arrowDown)) {
+      _setKeyboardSelection(
+        (selected + _gridColumns).clamp(0, products.length - 1),
+      );
+      return true;
+    }
+    if (_isNavPress(event, LogicalKeyboardKey.arrowUp)) {
+      _setKeyboardSelection(
+        (selected - _gridColumns).clamp(0, products.length - 1),
+      );
+      return true;
+    }
+    return false;
+  }
+
+  /// Arrow / Tab navigation is allowed to auto-repeat while held.
+  bool _isNavPress(KeyEvent event, LogicalKeyboardKey key) =>
+      (event is KeyDownEvent || event is KeyRepeatEvent) &&
+      event.logicalKey == key;
+
+  void _clearKeyboardSelection() {
+    if (mounted && _focusedProductIndex != null) {
+      setState(() => _focusedProductIndex = null);
+    }
+  }
+
+  /// Selects [index] in the visible product list (clamped) and scrolls it
+  /// into view.
+  void _setKeyboardSelection(int index) {
+    final count = _liveProducts?.length ?? 0;
+    if (count == 0) return;
+    setState(() => _focusedProductIndex = index.clamp(0, count - 1));
+    _revealSelectedItem();
+  }
+
+  void _revealSelectedItem() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _selectedItemKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    AppKeyboardScope.register(_keys);
+
+    // Focus the search bar as soon as the page opens.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocusNode.requestFocus();
+    });
+
+    // Tab inside the search box jumps into the product grid selection.
+    _searchFocusNode.onKeyEvent = (node, event) {
+      if (event is KeyDownEvent &&
+          event.logicalKey == LogicalKeyboardKey.tab) {
+        final products = _liveProducts;
+        if (products != null && products.isNotEmpty) {
+          _setKeyboardSelection(0);
+          _searchFocusNode.unfocus();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      }
+      return KeyEventResult.ignored;
+    };
+  }
 
   // Cache brand/category extraction so it only recomputes when the product
   // list itself changes — not on every search keystroke or rebuild.
@@ -46,7 +232,9 @@ class _ProductsSectionWithSearchState
 
   @override
   void dispose() {
+    AppKeyboardScope.unregister(_keys);
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -517,6 +705,8 @@ class _ProductsSectionWithSearchState
           searchState.selectedCategory,
         );
 
+        _liveProducts = filteredProducts;
+
         return Column(
           children: [
             // Search Bar with Filter + Barcode Scanner. Buttons match the
@@ -532,6 +722,7 @@ class _ProductsSectionWithSearchState
                       child: CustomTextField(
                         hintText: 'Search products ...',
                         controller: _searchController,
+                        focusNode: _searchFocusNode,
                         prefixIcon: Icon(
                           TablerIcons.search,
                           size: 20.spMin,
@@ -587,10 +778,21 @@ class _ProductsSectionWithSearchState
                           ],
                         ),
                         onChange: (value) {
+                          // A new query invalidates the previous selection.
+                          _clearKeyboardSelection();
                           ref
                               .read(multiCartProductSearchProvider.notifier)
                               .updateSearchQuery(value!);
                           return null;
+                        },
+                        onFieldSubmitted: (value) {
+                          // Enter while still typing in the search box: when
+                          // the query matched exactly ONE product, send it
+                          // straight to the cart.
+                          final products = _liveProducts;
+                          if (products != null && products.length == 1) {
+                            _addProductToCart(products.first);
+                          }
                         },
                       ),
                     ),
@@ -615,8 +817,9 @@ class _ProductsSectionWithSearchState
               ),
             ),
 
-            // Category Filter Row (chips under the search bar)
-            if (categories.isNotEmpty)
+            // Category Filter Row (chips under the search bar) — hidden while
+            // searching so the results get the full space.
+            if (categories.isNotEmpty && searchState.searchQuery.isEmpty)
               _buildChipsRow(
                 items: categories,
                 selected: searchState.selectedCategory,
@@ -674,60 +877,41 @@ class _ProductsSectionWithSearchState
                           // `childAspectRatio` is a pure ratio → NOT scaled.
                           final double maxCardWidth =
                               isMobile ? 130.spMin : 170.spMin;
+                          final double spacing = 8.spMin;
+                          // Real column count of the grid — needed for
+                          // Up/Down navigation.
+                          _gridColumns =
+                              ((constraints.maxWidth + spacing) ~/
+                                      (maxCardWidth + spacing))
+                                  .clamp(1, filteredProducts.length);
                           return GridView.builder(
                             padding: EdgeInsets.all(8.spMin),
                             gridDelegate:
                                 SliverGridDelegateWithMaxCrossAxisExtent(
                               maxCrossAxisExtent: maxCardWidth,
                               childAspectRatio: 0.72,
-                              crossAxisSpacing: 8.spMin,
-                              mainAxisSpacing: 8.spMin,
+                              crossAxisSpacing: spacing,
+                              mainAxisSpacing: spacing,
                             ),
                             itemCount: filteredProducts.length,
                             itemBuilder: (context, index) {
                               final product = filteredProducts[index];
-                              return ProductCard(
+                              final bool isKeyboardSelected =
+                                  _focusedProductIndex == index;
+                              ProductCard card = ProductCard(
                                 product: product,
-                                onTap: () {
-                                  // Skip stock check for services (isService == true, stock == null)
-                                  if (!product.isService &&
-                                      product.stock != null &&
-                                      product.stock! <= 0) {
-                                    showDialog(
-                                      context: context,
-                                      builder:
-                                          (context) => AlertDialog(
-                                            title: mdTextBold(
-                                              text: 'Out of Stock',
-                                            ),
-                                            content: smText(
-                                              text:
-                                                  '${product.name} is currently out of stock.',
-                                              maxLines: 3,
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed:
-                                                    () =>
-                                                        Navigator.pop(context),
-                                                child: Text(
-                                                  'OK',
-                                                  style: TextStyle(
-                                                    fontSize: 14.spMin,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                    );
-                                  } else {
-                                    // Use multi-cart provider to add to active cart
-                                    ref
-                                        .read(multiCartProvider.notifier)
-                                        .addToCart(product);
-                                  }
-                                },
+                                isHighlighted: isKeyboardSelected,
+                                onTap: () => _addProductToCart(product),
                               );
+                              if (isKeyboardSelected) {
+                                // One reusable key on the selected card so
+                                // keyboard navigation can scroll it into view.
+                                return KeyedSubtree(
+                                  key: _selectedItemKey,
+                                  child: card,
+                                );
+                              }
+                              return card;
                             },
                           );
                         },

@@ -1,10 +1,10 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:desktopapp/res/colors/app_color.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
@@ -25,6 +25,7 @@ import '../../view_models/providers/sales_provider.dart'
 import '../../view_models/providers/settings_provider.dart'
     hide hiveServiceProvider;
 import '../../view_models/services/database/database_services.dart';
+import '../../view_models/services/keyboard/app_keyboard_service.dart';
 import '../../view_models/states/sales_state.dart';
 import '../bills/bills_details.dart';
 import '../bills/widgets/pdf_genrater_widget.dart';
@@ -45,12 +46,47 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   late final DatabaseService dbService; // Store provider instance
   late final HiveService hiveService; // Store provider instance
 
+  /// Window-level shortcut scope: Ctrl+Enter fires the complete-sale action —
+  /// the same as tapping the Complete button on the cart panel — which opens
+  /// the customer & payment page for this sale.
+  late final AppKeyboardScope _saleKeys = AppKeyboardScope(
+    'sales-complete',
+    (event) {
+      if (!AppKeyboardScope.didPress(event, LogicalKeyboardKey.enter,
+              ctrl: true) &&
+          !AppKeyboardScope.didPress(event, LogicalKeyboardKey.numpadEnter,
+              ctrl: true)) {
+        return false;
+      }
+      // No surprise combos: Shift/Alt + Enter keeps other meanings.
+      if (HardwareKeyboard.instance.isShiftPressed ||
+          HardwareKeyboard.instance.isAltPressed) {
+        return false;
+      }
+      if (!mounted) return false;
+      // Only when this page is actually on top (not while the checkout or
+      // bill screen is open above it).
+      final route = ModalRoute.of(context);
+      if (route != null && !route.isCurrent) return false;
+      if (ref.read(salesProvider).cartItems.isEmpty) return false;
+      unawaited(_completeSale());
+      return true;
+    },
+  );
+
   @override
   void initState() {
     super.initState();
+    AppKeyboardScope.register(_saleKeys);
     // Initialize provider instances
     dbService = ref.read(databaseServiceProvider);
     hiveService = ref.read(hiveServiceProvider);
+  }
+
+  @override
+  void dispose() {
+    AppKeyboardScope.unregister(_saleKeys);
+    super.dispose();
   }
 
   Future<void> _completeSale() async {

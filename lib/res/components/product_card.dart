@@ -107,14 +107,15 @@ class ProductCard extends StatelessWidget {
   /// it simply render without a badge (avoids a per-card DB query).
   final List<Brand>? brands;
 
-  /// Optional shortcut key badge (e.g. "F1"). Shown top-left on the image so
-  /// the user knows which function key selects this item in the sales screen.
-  final String? shortcutKey;
-
   /// Optional dropdown-menu button (shown top-right on the image). When set,
   /// a small caret button is drawn; tapping it opens the caller's action menu
   /// (Sale in cart / Details / Stock) without disturbing the card's own tap.
   final GestureTapDownCallback? onMenuTapDown;
+
+  /// True while the card is the keyboard-selected item (Tab / arrow walking
+  /// in the sales grid). Draws an accent border so the user can see which
+  /// item Enter will send to the cart.
+  final bool? isHighlighted;
 
   const ProductCard({
     super.key,
@@ -123,8 +124,8 @@ class ProductCard extends StatelessWidget {
     this.onTap,
     this.onSecondaryTapDown,
     this.brands,
-    this.shortcutKey,
     this.onMenuTapDown,
+    this.isHighlighted,
   });
 
   /// True when the item is a physical product at or below its reorder level
@@ -159,6 +160,10 @@ class ProductCard extends StatelessWidget {
               (Theme.of(context).brightness == Brightness.dark
                   ? AppColors.dCardColor
                   : AppColors.lCardColor),
+          border:
+              (isHighlighted ?? false)
+                  ? Border.all(color: AppColors.primary, width: 2)
+                  : null,
           borderRadius: BorderRadius.all(
             Radius.circular(AppSizes.borderRadiusSm.r),
           ),
@@ -225,39 +230,6 @@ class ProductCard extends StatelessWidget {
                                 ),
                       ),
                     ),
-                    // Shortcut key badge (top-left) — shows the F-key that
-                    // selects this item in the sales screen.
-                    if (shortcutKey != null)
-                      Positioned(
-                        top: 6.h,
-                        left: 6.w,
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 6.w,
-                            vertical: 2.h,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(6.r),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.25),
-                                blurRadius: 3,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                          child: Text(
-                            shortcutKey!,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10.spMin,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-
                     // Dropdown menu button (top-right): Sale in cart /
                     // Details / Stock. Independent of the card tap itself.
                     if (onMenuTapDown != null)
