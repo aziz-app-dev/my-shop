@@ -652,11 +652,16 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       onPressed: () async {
         final products = await ref.read(productsFutureProvider.future);
         if (!context.mounted) return;
-        await scanAndAddToCart(
+        await scanAndFillCart(
           context: context,
           products: products,
           addToCart:
-              (product) => ref.read(salesProvider.notifier).addToCart(product),
+              (product, qty) {
+                final notifier = ref.read(salesProvider.notifier);
+                for (var i = 0; i < qty; i++) {
+                  notifier.addToCart(product);
+                }
+              },
         );
       },
       child: const Icon(Icons.qr_code_scanner, color: Colors.white),

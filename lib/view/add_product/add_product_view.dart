@@ -235,7 +235,47 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 children: [
                   GestureDetector(
                     onTap: () async {
-                      await formNotifier.pickImage();
+                      // On mobile let the user choose Gallery or Camera —
+                      // desktop has no useful camera, keep straight-to-
+                      // gallery there.
+                      if (_isMobilePlatform) {
+                        final source = await showModalBottomSheet<String>(
+                          context: context,
+
+                          builder: (sheetContext) => SafeArea(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ListTile(
+                                  leading: const Icon(Icons.photo_library),
+                                  title: const Text('Choose from Gallery'),
+                                  onTap:
+                                      () => Navigator.pop(
+                                        sheetContext,
+                                        'gallery',
+                                      ),
+                                ),
+                                ListTile(
+                                  leading: const Icon(Icons.photo_camera),
+                                  title: const Text('Take Photo'),
+                                  onTap:
+                                      () => Navigator.pop(
+                                        sheetContext,
+                                        'camera',
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                        if (source == 'camera') {
+                          await formNotifier.pickImageFromCamera();
+                        } else if (source == 'gallery') {
+                          await formNotifier.pickImage();
+                        }
+                      } else {
+                        await formNotifier.pickImage();
+                      }
                     },
                     child: Container(
                       height: 250.h,
@@ -364,6 +404,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   formNotifier.updateName(value ?? '');
                   return null;
                 },
+                textInputAction: TextInputAction.next,
+                // Keyboard "next" moves focus to the following field.
+                onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
               ),
             SizedBox(height: 16.h),
 
@@ -552,6 +595,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             formNotifier.updatePrice(value ?? '');
             return null;
           },
+        textInputAction: TextInputAction.next,
+            onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
         ),
       );
     }
@@ -596,6 +641,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               formNotifier.updatePurchasePrice(value ?? '');
               return null;
             },
+          textInputAction: TextInputAction.next,
+            onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
         );
       }
@@ -635,6 +682,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               formNotifier.updateStock(value ?? '');
               return null;
             },
+          textInputAction: TextInputAction.next,
+            onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
         );
       }
@@ -662,6 +711,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               formNotifier.updateReorderLevel(value ?? '');
               return null;
             },
+          textInputAction: TextInputAction.next,
+            onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
         );
       }
@@ -719,6 +770,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               formNotifier.updateBarcode(value ?? '');
               return null;
             },
+          textInputAction: TextInputAction.next,
+            onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
         );
       }

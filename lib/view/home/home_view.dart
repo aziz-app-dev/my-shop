@@ -46,18 +46,22 @@ class HomePageState extends ConsumerState<HomePage> {
   final TextEditingController _homeSearchController = TextEditingController();
   String _homeSearchQuery = '';
 
-  /// Scan button in the app bar (mobile): open the camera scanner and, on a
-  /// match, add the product to the current cart and jump to the Sales page
-  /// so the user is already where the sale happens.
+  /// Scan button in the app bar (mobile): open the camera scanner, collect
+  /// the scanned items, and on "Add to Cart" commit them into the cart and
+  /// jump to the Sales page so the user is already where the sale happens.
   Future<void> _scanProduct() async {
     final products = await ref.read(productsFutureProvider.future);
     if (!mounted) return;
-    await scanAndAddToCart(
+    await scanAndFillCart(
       context: context,
       products: products,
-      addToCart:
-          (product) => ref.read(salesProvider.notifier).addToCart(product),
-      // Land on the Sales page — the item is already in the cart there.
+      addToCart: (product, qty) {
+        final notifier = ref.read(salesProvider.notifier);
+        for (var i = 0; i < qty; i++) {
+          notifier.addToCart(product);
+        }
+      },
+      // Land on the Sales page — the items are already in the cart there.
       onAdded:
           () =>
               ref.read(selectedIndexProvider.notifier).state = kSalesIndex,

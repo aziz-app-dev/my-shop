@@ -266,8 +266,19 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
     }
   }
 
+  /// Pick an image from the gallery and copy it into the app's own images
+  /// folder (avoids Android scoped-storage issues with temp paths).
   Future<void> pickImage() async {
-    final pickedFile = await ImagePickerHelper.pickImageFromGallery();
+    await _persistPicked(await ImagePickerHelper.pickImageFromGallery());
+  }
+
+  /// Pick an image from the camera on mobile — same persistence as the
+  /// gallery pick.
+  Future<void> pickImageFromCamera() async {
+    await _persistPicked(await ImagePickerHelper.pickImageFromCamera());
+  }
+
+  Future<void> _persistPicked(File? pickedFile) async {
     if (pickedFile != null) {
       // Copy file to app documents directory to avoid Android scoped storage issues
       final appDir = await getApplicationDocumentsDirectory();

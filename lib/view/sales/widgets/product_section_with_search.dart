@@ -8,7 +8,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../../models/items_model.dart';
 import '../../../res/colors/app_color.dart';
-import '../../../utils/platform_utils.dart';
 import '../../../view_models/providers/sales_provider.dart';
 import '../../../view_models/providers/product_search_provider.dart';
 import '../../../view_models/services/keyboard/app_keyboard_service.dart';
@@ -861,18 +860,23 @@ class _ProductsSectionWithSearchState
                                 product: product,
                                 isHighlighted: isKeyboardSelected,
                                 onTap: () => _handleProductTap(product),
+                                // The caret dropdown button lives on
+                                // tablet/desktop. On mobile the card's menu
+                                // (Sale / Details / Stock) opens on long
+                                // press only — see onLongPress below.
                                 onMenuTapDown:
-                                    (details) => _showProductMenu(
-                                      context,
-                                      product,
-                                      details.globalPosition,
-                                    ),
+                                    isMobile
+                                        ? null
+                                        : (details) => _showProductMenu(
+                                          context,
+                                          product,
+                                          details.globalPosition,
+                                        ),
                                 // Mobile: the card's 3-option menu
-                                // (Sale / Details / Stock) also opens on a
-                                // long press — the tiny caret button is hard
-                                // to hit on a phone.
+                                // (Sale / Details / Stock) opens on a long
+                                // press.
                                 onLongPress:
-                                    PlatformUtils.isMobile
+                                    isMobile
                                         ? (position) => _showProductMenu(
                                           context,
                                           product,
