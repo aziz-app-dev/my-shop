@@ -240,31 +240,46 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
   final TextEditingController discountController = TextEditingController();
   final FocusNode _nameFocusNode = FocusNode();
 
-  /// Window-level shortcut scope: Ctrl+Enter submits the form — the same as
-  /// tapping "Save & Complete Sale" — returning to the sales screen which
-  /// finishes the bill for the next customer.
+  /// Window-level shortcut scope:
+  ///  * Ctrl+Enter submits the form — the same as tapping "Save & Complete
+  ///    Sale" — returning to the sales screen which finishes the bill for
+  ///    the next customer.
+  ///  * Ctrl+W makes it a walk-in customer (same as tapping the Walk-in
+  ///    mode chip): no customer data is saved for the sale.
   late final AppKeyboardScope _checkoutKeys = AppKeyboardScope(
     'checkout-complete',
     (event) {
-      if (!AppKeyboardScope.didPress(event, LogicalKeyboardKey.enter,
-              ctrl: true) &&
-          !AppKeyboardScope.didPress(event, LogicalKeyboardKey.numpadEnter,
-              ctrl: true)) {
-        return false;
-      }
-      if (HardwareKeyboard.instance.isShiftPressed ||
-          HardwareKeyboard.instance.isAltPressed) {
-        return false;
-      }
       if (!mounted) return false;
-      // Only while this checkout itself is the top-most page (so Ctrl+Enter
-      // doesn't double-fire the sales screen's shortcut as well — its scope
+      // Only while this checkout itself is the top-most page (so shortcuts
+      // don't double-fire the sales screen's shortcut as well — its scope
       // sits below this one; this check plus the "top-most wins" LIFO order
       // keeps the two from racing).
       final route = ModalRoute.of(context);
       if (route != null && !route.isCurrent) return false;
-      _submitCheckout();
-      return true;
+
+      final noShiftAlt =
+          !HardwareKeyboard.instance.isShiftPressed &&
+          !HardwareKeyboard.instance.isAltPressed;
+
+      final isCtrlEnter =
+          AppKeyboardScope.didPress(event, LogicalKeyboardKey.enter,
+              ctrl: true) ||
+          AppKeyboardScope.didPress(event, LogicalKeyboardKey.numpadEnter,
+              ctrl: true);
+      if (isCtrlEnter && noShiftAlt) {
+        _submitCheckout();
+        return true;
+      }
+
+      // Ctrl+W → walk-in customer.
+      if (AppKeyboardScope.didPress(event, LogicalKeyboardKey.keyW,
+              ctrl: true) &&
+          noShiftAlt) {
+        _setCheckoutMode('walk-in');
+        return true;
+      }
+
+      return false;
     },
   );
 
