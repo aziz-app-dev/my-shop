@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import '../../../res/assets/image_assets.dart';
 import '../../../res/colors/app_color.dart';
@@ -394,6 +396,8 @@ class HomePageSettingsPage extends ConsumerWidget {
                                     width: 80.h,
                                     height: 50.h,
                                     fit: BoxFit.cover,
+                                    // Small preview row — decode downsampled.
+                                    cacheWidth: 160,
                                     errorBuilder: (context, error, stackTrace) {
                                       return Container(
                                         width: 80.w,
@@ -742,8 +746,33 @@ class HomePageSettingsPage extends ConsumerWidget {
 
   Future<void> _pickBannerImage(BuildContext context, WidgetRef ref) async {
     final image = await ImagePickerHelper.pickImageFromGallery();
+    if (image == null) return;
 
-    if (image != null) {
+    // Copy the picked image into the app's own data folder before saving it.
+    // Gallery results on phones are temporary cache files that the OS can
+    // delete at any time, and desktop keeps the original source path — copying
+    // into the app's directory makes the banner permanent and stable on both.
+    try {
+      String baseDir = ref.read(settingsProvider).directoryPath;
+      if (baseDir.trim().isEmpty) {
+        baseDir = (await getApplicationDocumentsDirectory()).path;
+      }
+      final dir = Directory(p.join(baseDir, 'banners'));
+      if (!dir.existsSync()) dir.createSync(recursive: true);
+      final String ext = p.extension(image.path).isEmpty
+          ? '.jpg'
+          : p.extension(image.path).toLowerCase();
+      final dest = p.join(
+        dir.path,
+        'banner_${DateTime.now().millisecondsSinceEpoch}$ext',
+      );
+      await image.copy(dest);
+      if (!context.mounted) return;
+      ref.read(settingsProvider.notifier).addBannerImage(dest);
+    } catch (_) {
+      // Copy failed (unlikely) — fall back to the raw picked path so the
+      // user still gets their banner rather than nothing.
+      if (!context.mounted) return;
       ref.read(settingsProvider.notifier).addBannerImage(image.path);
     }
   }
