@@ -18,6 +18,7 @@ import '../../view_models/providers/sales_provider.dart';
 import '../../view_models/providers/checkout_provider.dart';
 import '../../view_models/services/database/database_services.dart'
     hide databaseServiceProvider;
+import '../../view_models/services/keyboard/app_keyboard_service.dart';
 import '../../models/items_model.dart';
 import '../../view_models/states/sales_state.dart';
 import '../../utils/payment_calculator.dart';
@@ -82,7 +83,7 @@ class CustomerFormNotifier extends StateNotifier<CustomerFormState> {
     : super(CustomerFormState(fieldConfigs: _loadDefaultFieldConfigs()));
 
   static Map<String, FieldConfig> _loadDefaultFieldConfigs() {
-    return {
+    final configs = {
       'name': FieldConfig.initial('name', WidgetType.textField),
       'address': FieldConfig.initial('address', WidgetType.textField),
       'phoneNumber': FieldConfig.initial('phoneNumber', WidgetType.textField),
@@ -97,6 +98,15 @@ class CustomerFormNotifier extends StateNotifier<CustomerFormState> {
       ),
       'discount': FieldConfig.initial('discount', WidgetType.textField),
     };
+    // 'name' is a shared field key — the generic default is "Item Name"
+    // (product form). This is the CUSTOMER checkout form, so use its proper
+    // title / hint / validator.
+    configs['name'] = configs['name']!.copyWith(
+      title: 'Customer Name',
+      hintText: 'Enter customer name',
+      validatorText: 'Customer name is required',
+    );
+    return configs;
   }
 
   void updateName(String name) {
@@ -135,6 +145,38 @@ class CustomerFormNotifier extends StateNotifier<CustomerFormState> {
     state = state.copyWith(discount: parsedDiscount, errorMessage: null);
   }
 
+  /// Proper default titles for the customer checkout fields. This provider
+  /// is only used for that form, so the raw-field-key fallback resolves to
+  /// customer-appropriate names (not "Item Name").
+  static const Map<String, String> _customerFieldTitles = {
+    'name': 'Customer Name',
+    'address': 'Address',
+    'phoneNumber': 'Phone Number',
+    'paidAmount': 'Paid Amount',
+    'paymentStatus': 'Payment Status',
+    'paymentMethod': 'Payment Method',
+    'discount': 'Discount',
+  };
+
+  /// Corrects field titles coming from stored configs. Older app versions
+  /// saved the raw field key (e.g. "phoneNumber", "paidAmount") as the
+  /// title — map those back to the proper default — and the first letter
+  /// is always capitalised.
+  String _properTitle(String title, String fieldName, WidgetType widgetType) {
+    final String trimmed = title.trim();
+    final bool isRawKey =
+        trimmed.isEmpty || trimmed.toLowerCase() == fieldName.toLowerCase();
+    final String fixed =
+        isRawKey
+            ? (_customerFieldTitles[fieldName] ??
+                FieldConfig.initial(fieldName, widgetType).title)
+            : trimmed;
+    if (fixed.isEmpty) {
+      return trimmed;
+    }
+    return fixed[0].toUpperCase() + fixed.substring(1);
+  }
+
   void updateFieldConfig(
     String fieldName, {
     bool? isShow,
@@ -144,13 +186,16 @@ class CustomerFormNotifier extends StateNotifier<CustomerFormState> {
     String? title,
     WidgetType? widgetType,
   }) {
+    // Ensure the fallback title resolves with the right widget type.
+    final WidgetType effectiveType =
+        widgetType ?? state.fieldConfigs[fieldName]!.widgetType;
     final updatedConfigs = Map<String, FieldConfig>.from(state.fieldConfigs);
     updatedConfigs[fieldName] = updatedConfigs[fieldName]!.copyWith(
       isShow: isShow,
       isRequired: isRequired,
       hintText: hintText,
       validatorText: validatorText,
-      title: title,
+      title: title == null ? null : _properTitle(title, fieldName, effectiveType),
       widgetType: widgetType,
     );
     state = state.copyWith(fieldConfigs: updatedConfigs);
@@ -193,6 +238,35 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController paidAmountController = TextEditingController();
   final TextEditingController discountController = TextEditingController();
+  final FocusNode _nameFocusNode = FocusNode();
+
+  /// Window-level shortcut scope: Ctrl+Enter submits the form — the same as
+  /// tapping "Save & Complete Sale" — returning to the sales screen which
+  /// finishes the bill for the next customer.
+  late final AppKeyboardScope _checkoutKeys = AppKeyboardScope(
+    'checkout-complete',
+    (event) {
+      if (!AppKeyboardScope.didPress(event, LogicalKeyboardKey.enter,
+              ctrl: true) &&
+          !AppKeyboardScope.didPress(event, LogicalKeyboardKey.numpadEnter,
+              ctrl: true)) {
+        return false;
+      }
+      if (HardwareKeyboard.instance.isShiftPressed ||
+          HardwareKeyboard.instance.isAltPressed) {
+        return false;
+      }
+      if (!mounted) return false;
+      // Only while this checkout itself is the top-most page (so Ctrl+Enter
+      // doesn't double-fire the sales screen's shortcut as well — its scope
+      // sits below this one; this check plus the "top-most wins" LIFO order
+      // keeps the two from racing).
+      final route = ModalRoute.of(context);
+      if (route != null && !route.isCurrent) return false;
+      _submitCheckout();
+      return true;
+    },
+  );
 
   // Anchor + overlay for the customer-name suggestions so they float over the
   // fields below (like a real dropdown) instead of taking layout space and
@@ -204,6 +278,20 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
   @override
   void initState() {
     super.initState();
+    AppKeyboardScope.register(_checkoutKeys);
+
+    // Focus the customer name as soon as the page opens so the sale can be
+    // finished with the keyboard alone (name → Tab through fields → Ctrl+Enter).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final checkoutState = ref.read(checkoutProvider);
+      if (!checkoutState.isWalkIn && !checkoutState.isTestBill) {
+        _nameFocusNode.requestFocus();
+      }
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final customers = await ref.read(databaseServiceProvider).getCustomers();
       ref.read(checkoutProvider.notifier).loadCustomers(customers);
@@ -219,7 +307,9 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
                 fieldConfigs['name']?.validatorText ??
                 'Customer name is required',
             isShow: fieldConfigs['name']?.isShow ?? true,
-            isRequired: fieldConfigs['name']?.isRequired ?? true,
+            // An empty name means a walk-in customer, so name can never block
+            // the sale.
+            isRequired: false,
           );
       ref
           .read(customerFormProvider.notifier)
@@ -229,8 +319,9 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
             hintText: fieldConfigs['address']?.hintText ?? 'Enter address',
             validatorText:
                 fieldConfigs['address']?.validatorText ?? 'Address is required',
+            // Address is completely optional — never required.
             isShow: fieldConfigs['address']?.isShow ?? true,
-            isRequired: fieldConfigs['address']?.isRequired ?? false,
+            isRequired: false,
           );
       ref
           .read(customerFormProvider.notifier)
@@ -242,8 +333,9 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
             validatorText:
                 fieldConfigs['phoneNumber']?.validatorText ??
                 'Phone number is required',
+            // Phone is optional too — details just make it a saved customer.
             isShow: fieldConfigs['phoneNumber']?.isShow ?? true,
-            isRequired: fieldConfigs['phoneNumber']?.isRequired ?? false,
+            isRequired: false,
           );
       ref
           .read(customerFormProvider.notifier)
@@ -311,11 +403,13 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
 
   @override
   void dispose() {
+    AppKeyboardScope.unregister(_checkoutKeys);
     nameController.dispose();
     addressController.dispose();
     phoneController.dispose();
     paidAmountController.dispose();
     discountController.dispose();
+    _nameFocusNode.dispose();
     super.dispose();
   }
 
@@ -354,6 +448,68 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
     }
   }
 
+  /// Customer data returned to the sales screen. An empty name means a
+  /// walk-in customer (nothing is saved to the customer DB); any typed
+  /// details (phone/address are optional) make it a regular saved customer.
+  Map<String, dynamic> _buildCustomerData() {
+    final checkoutState = ref.read(checkoutProvider);
+    final isTestBill = checkoutState.isTestBill;
+    final isWalkInMode = checkoutState.isWalkIn || isTestBill;
+
+    if (isWalkInMode || nameController.text.trim().isEmpty) {
+      // Walk-in / test bill: no customer record is saved.
+      return {
+        'name':
+            nameController.text.trim().isNotEmpty
+                ? nameController.text.trim()
+                : (isTestBill ? 'TEST' : 'WALK-IN'),
+        'address': null,
+        'phoneNumber': null,
+        'isWalkIn': !isTestBill,
+        'isTestBill': isTestBill,
+      };
+    }
+
+    return {
+      'name': nameController.text.trim(),
+      'address': addressController.text.trim(),
+      'phoneNumber': phoneController.text.trim(),
+      'isWalkIn': false,
+      'isTestBill': false,
+    };
+  }
+
+  /// Shared submit logic: validate the form and pop back with the customer
+  /// data. Used by the "Save & Complete Sale" button AND the Ctrl+Enter
+  /// shortcut, so both paths behave identically.
+  void _submitCheckout() {
+    debugPrint(
+      '========== CHECKOUT: Save & Complete Sale ==========',
+    );
+
+    if (!_formKey.currentState!.validate()) {
+      debugPrint('ERROR: Form validation failed!');
+      return;
+    }
+
+    if (!mounted) return;
+    final currentSalesState = ref.read(salesProvider);
+    final customerFormState = ref.read(customerFormProvider);
+    final totalAfterDiscount =
+        widget.totalAmount -
+        (customerFormState.discount ?? widget.discount);
+
+    if (!currentSalesState.isPaid &&
+        currentSalesState.paidAmount > totalAfterDiscount) {
+      AppFlushbar.error(context, message: 'Paid amount cannot exceed total');
+      return;
+    }
+
+    final customerData = _buildCustomerData();
+    debugPrint('Customer Data to Return: $customerData');
+    Navigator.pop(context, customerData);
+  }
+
   Widget _buildNameField(
     CustomerFormState customerFormState,
     bool isWalkIn, {
@@ -378,6 +534,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
                 _nameFieldWidth = constraints.maxWidth;
                 return CustomTextField(
                   controller: nameController,
+                  focusNode: _nameFocusNode,
                   hintText: customerFormState.fieldConfigs['name']!.hintText,
                   label: customerFormState.fieldConfigs['name']!.title,
                   keyboardType: TextInputType.name,
@@ -938,10 +1095,6 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
           _buildPaymentMethodField(customerFormState, salesState),
           SizedBox(height: 24.spMin),
         ],
-        if (customerFormState.fieldConfigs['discount']!.isShow) ...[
-          _buildDiscountField(customerFormState),
-          SizedBox(height: 24.spMin),
-        ],
         if (customerFormState.fieldConfigs['paidAmount']!.isShow &&
             !salesState.isPaid) ...[
           _buildPaidAmountField(
@@ -951,83 +1104,14 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
           ),
           SizedBox(height: 32.spMin),
         ],
+        // Discount is the LAST field, right above the Save button.
+        if (customerFormState.fieldConfigs['discount']!.isShow) ...[
+          _buildDiscountField(customerFormState),
+          SizedBox(height: 24.spMin),
+        ],
         AppButton().primaryButton(
           text: isTestBill ? "Generate Test Bill" : "Save & Complete Sale",
-          onPressed: () {
-            debugPrint(
-              '========== CHECKOUT: Save & Complete Sale Button Pressed ==========',
-            );
-            debugPrint(
-              'Form Validation Result: ${_formKey.currentState!.validate()}',
-            );
-
-            if (_formKey.currentState!.validate()) {
-              // READ THE CURRENT STATE HERE, NOT THE OLD ONE!
-              final currentSalesState = ref.read(salesProvider);
-
-              debugPrint('--- Payment Information ---');
-              debugPrint('Total Amount: ${widget.totalAmount}');
-              debugPrint(
-                'Discount: ${customerFormState.discount ?? widget.discount}',
-              );
-              debugPrint('Total After Discount: $totalAfterDiscount');
-              debugPrint(
-                'Payment Status (isPaid): ${currentSalesState.isPaid}',
-              );
-              debugPrint('Paid Amount: ${currentSalesState.paidAmount}');
-              debugPrint('Payment Method: ${currentSalesState.paymentMethod}');
-
-              final pendingAmount = PaymentCalculator.calculatePendingAmount(
-                totalAmount: widget.totalAmount,
-                discount: customerFormState.discount ?? widget.discount,
-                paidAmount: currentSalesState.paidAmount,
-              );
-              debugPrint('Pending Amount (Calculated): $pendingAmount');
-
-              debugPrint('--- Customer Information ---');
-              debugPrint('Customer Name: ${nameController.text}');
-              debugPrint('Address: ${addressController.text}');
-              debugPrint('Phone: ${phoneController.text}');
-              debugPrint('Is Walk-in: $isWalkIn');
-
-              if (!currentSalesState.isPaid &&
-                  currentSalesState.paidAmount > totalAfterDiscount) {
-                debugPrint('ERROR: Paid amount exceeds total!');
-                AppFlushbar.error(
-                  context,
-                  message: 'Paid amount cannot exceed total',
-                );
-                return;
-              }
-
-              final customerData =
-                  isWalkIn
-                      ? {
-                        'name': nameController.text,
-                        'address': null,
-                        'phoneNumber': null,
-                        'isWalkIn': !isTestBill,
-                        'isTestBill': isTestBill,
-                      }
-                      : {
-                        'name': nameController.text,
-                        'address': addressController.text,
-                        'phoneNumber': phoneController.text,
-                        'isWalkIn': false,
-                        'isTestBill': false,
-                      };
-
-              debugPrint('--- Customer Data to Return ---');
-              debugPrint('Customer Data: $customerData');
-              debugPrint(
-                '========== CHECKOUT: Returning to Previous Screen ==========\n',
-              );
-
-              Navigator.pop(context, customerData);
-            } else {
-              debugPrint('ERROR: Form validation failed!');
-            }
-          },
+          onPressed: _submitCheckout,
         ),
       ],
     );
@@ -1095,10 +1179,6 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
             ],
           ),
         SizedBox(height: 24.spMin),
-        if (customerFormState.fieldConfigs['discount']!.isShow) ...[
-          _buildDiscountField(customerFormState),
-          SizedBox(height: 24.spMin),
-        ],
         if (customerFormState.fieldConfigs['paidAmount']!.isShow &&
             !salesState.isPaid) ...[
           _buildPaidAmountField(
@@ -1108,83 +1188,14 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
           ),
           SizedBox(height: 32.spMin),
         ],
+        // Discount is the LAST field, right above the Save button.
+        if (customerFormState.fieldConfigs['discount']!.isShow) ...[
+          _buildDiscountField(customerFormState),
+          SizedBox(height: 24.spMin),
+        ],
         AppButton().primaryButton(
           text: isTestBill ? "Generate Test Bill" : "Save & Complete Sale",
-          onPressed: () {
-            debugPrint(
-              '========== CHECKOUT (Desktop/Tablet): Save & Complete Sale Button Pressed ==========',
-            );
-            debugPrint(
-              'Form Validation Result: ${_formKey.currentState!.validate()}',
-            );
-
-            if (_formKey.currentState!.validate()) {
-              // READ THE CURRENT STATE HERE, NOT THE OLD ONE!
-              final currentSalesState = ref.read(salesProvider);
-
-              debugPrint('--- Payment Information ---');
-              debugPrint('Total Amount: ${widget.totalAmount}');
-              debugPrint(
-                'Discount: ${customerFormState.discount ?? widget.discount}',
-              );
-              debugPrint('Total After Discount: $totalAfterDiscount');
-              debugPrint(
-                'Payment Status (isPaid): ${currentSalesState.isPaid}',
-              );
-              debugPrint('Paid Amount: ${currentSalesState.paidAmount}');
-              debugPrint('Payment Method: ${currentSalesState.paymentMethod}');
-
-              final pendingAmount = PaymentCalculator.calculatePendingAmount(
-                totalAmount: widget.totalAmount,
-                discount: customerFormState.discount ?? widget.discount,
-                paidAmount: currentSalesState.paidAmount,
-              );
-              debugPrint('Pending Amount (Calculated): $pendingAmount');
-
-              debugPrint('--- Customer Information ---');
-              debugPrint('Customer Name: ${nameController.text}');
-              debugPrint('Address: ${addressController.text}');
-              debugPrint('Phone: ${phoneController.text}');
-              debugPrint('Is Walk-in: $isWalkIn');
-
-              if (!currentSalesState.isPaid &&
-                  currentSalesState.paidAmount > totalAfterDiscount) {
-                debugPrint('ERROR: Paid amount exceeds total!');
-                AppFlushbar.error(
-                  context,
-                  message: 'Paid amount cannot exceed total',
-                );
-                return;
-              }
-
-              final customerData =
-                  isWalkIn
-                      ? {
-                        'name': nameController.text,
-                        'address': null,
-                        'phoneNumber': null,
-                        'isWalkIn': !isTestBill,
-                        'isTestBill': isTestBill,
-                      }
-                      : {
-                        'name': nameController.text,
-                        'address': addressController.text,
-                        'phoneNumber': phoneController.text,
-                        'isWalkIn': false,
-                        'isTestBill': false,
-                      };
-
-              debugPrint('--- Customer Data to Return ---');
-              debugPrint('Customer Data: $customerData');
-              debugPrint(
-                '========== CHECKOUT (Desktop/Tablet): Returning to Previous Screen ==========\n',
-              );
-
-              Navigator.pop(context, customerData);
-            } else {
-              debugPrint('ERROR: Form validation failed!');
-            }
-          },
+          onPressed: _submitCheckout,
         ),
       ],
     );

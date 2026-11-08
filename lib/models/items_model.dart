@@ -78,6 +78,40 @@ class FieldConfig {
         defaultHintText = 'Enter or scan barcode';
         defaultValidatorText = 'Barcode is required';
         break;
+      // --- Customer & payment (checkout form) fields. Without these the
+      // default case fell through to the raw field key ("phoneNumber")
+      // which showed up as the field title on the checkout page and in
+      // the settings field editor.
+      case 'address':
+        defaultTitle = 'Address';
+        defaultHintText = 'Enter address';
+        defaultValidatorText = 'Address is required';
+        break;
+      case 'phoneNumber':
+        defaultTitle = 'Phone Number';
+        defaultHintText = 'Enter phone number';
+        defaultValidatorText = 'Phone number is required';
+        break;
+      case 'paidAmount':
+        defaultTitle = 'Paid Amount';
+        defaultHintText = 'Enter paid amount';
+        defaultValidatorText = 'Invalid amount';
+        break;
+      case 'paymentStatus':
+        defaultTitle = 'Payment Status';
+        defaultHintText = 'Select payment status';
+        defaultValidatorText = 'Payment status is required';
+        break;
+      case 'paymentMethod':
+        defaultTitle = 'Payment Method';
+        defaultHintText = 'Select payment method';
+        defaultValidatorText = 'Payment method is required';
+        break;
+      case 'discount':
+        defaultTitle = 'Discount';
+        defaultHintText = 'Enter discount amount';
+        defaultValidatorText = 'Invalid discount amount';
+        break;
       default:
         defaultTitle = fieldName;
         defaultHintText = 'Enter $fieldName';
