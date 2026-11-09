@@ -11,6 +11,19 @@ import '../../res/colors/app_color.dart';
 import '../../res/components/app_text_widgrt.dart';
 import '../../view_models/providers/profile_provider.dart';
 import '../../view_models/providers/settings_provider.dart';
+import 'screens.dart';
+
+/// Navigates to the profile card's tap target: the Customers page. The index
+/// is resolved by label so a nav reorder never breaks the jump.
+void _goToCustomers(WidgetRef ref) {
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    ref.read(selectedIndexProvider.notifier).state =
+        navIndexForLabel(
+          'Customers',
+          showRepairs: ref.read(settingsProvider).showRepairsModule,
+        );
+  });
+}
 
 Widget infoCard(WidgetRef ref) {
   ref.read(profileProvider.notifier).loadUserData();
@@ -41,12 +54,7 @@ Widget infoCard(WidgetRef ref) {
                 children: [
                   Center(
                     child: GestureDetector(
-                      onTap: () {
-                        // Delay the state update to avoid focus issues
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          ref.read(selectedIndexProvider.notifier).state = 3;
-                        });
-                      },
+                      onTap: () => _goToCustomers(ref),
                       child: Container(
                         height: 50.spMin,
                         width: 50.spMin,
@@ -96,12 +104,7 @@ Widget infoCard(WidgetRef ref) {
                 children: [
                   Center(
                     child: GestureDetector(
-                      onTap: () {
-                        // Delay the state update to avoid focus issues
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          ref.read(selectedIndexProvider.notifier).state = 3;
-                        });
-                      },
+                      onTap: () => _goToCustomers(ref),
                       child: Container(
                         height: 45.spMin,
                         decoration: BoxDecoration(shape: BoxShape.circle),
@@ -195,7 +198,7 @@ Widget tabIcon(WidgetRef ref) {
     height: isShowUserCard ? 50.h : 30.h,
     child: Center(
       child: GestureDetector(
-        onTap: () => ref.read(selectedIndexProvider.notifier).state = 3,
+        onTap: () => _goToCustomers(ref),
         child:
             isShowUserCard
                 ? Container(

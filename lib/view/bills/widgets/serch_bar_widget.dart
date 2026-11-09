@@ -12,10 +12,16 @@ class SearchBarWidget extends ConsumerWidget {
   final VoidCallback onFilterTap;
   final bool hasActiveFilter;
 
+  /// Grabs the keyboard focus as soon as the page mounts (used on desktop
+  /// where F-key navigation should land the user straight in the search box
+  /// ready to type).
+  final bool autofocus;
+
   const SearchBarWidget({
     super.key,
     required this.onFilterTap,
     required this.hasActiveFilter,
+    this.autofocus = false,
   });
 
   @override
@@ -31,6 +37,7 @@ class SearchBarWidget extends ConsumerWidget {
       child: CustomTextField(
         controller: searchController,
         hintText: 'Search with key words...',
+        autofocus: autofocus,
         prefixIcon: const AppIcon(
           defaultIcon: Icons.search,
           win11IconPath: ImageAssets.win11Search,

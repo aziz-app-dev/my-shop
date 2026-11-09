@@ -436,77 +436,95 @@ class _MainScrennState extends ConsumerState<MainScrenn> {
       settingsProvider.select((s) => s.showRepairsModule),
     );
     final navItems = navItemsFor(showRepairs: showRepairs);
-    final Color activeIconColor = AppColors.primary;
-    final Color inactiveIconColor = Colors.grey[600]!;
 
     return Drawer(
-      child: FocusScope(
-        child: Builder(
-          builder: (BuildContext drawerContext) {
-            return Column(
-              children: [
-                infoCard(ref),
-                ...navItems.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final item = entry.value;
-                  return Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 2.h,
-                    ),
-                    child: InkWell(
-                      focusNode: FocusNode(
-                        // Skip traversal to avoid unnecessary focus events
-                        skipTraversal: true,
-                        // Ensure focus is not retained after disposal
-                        // onDispose: () {},
-                      ),
-                      borderRadius: BorderRadius.circular(12.0),
-                      onTap: () {
-                        // Update state and close drawer in a post-frame callback
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          ref.read(selectedIndexProvider.notifier).state =
-                              index;
-                          Navigator.pop(drawerContext);
-                        });
-                      },
-                      child: Container(
-                        padding: EdgeInsets.all(10.h),
-                        decoration: BoxDecoration(
-                          color:
-                              selectedIndex == index
-                                  ? activeIconColor.withValues(alpha: 0.2)
-                                  : Colors.transparent,
+      // Single primary-color surface for the whole mobile drawer.
+      child: Container(
+        color: AppColors.primary,
+        child: FocusScope(
+          child: Builder(
+            builder: (BuildContext drawerContext) {
+              // Keep the profile card clear of the status bar notch.
+              return SafeArea(
+                bottom: false,
+                child: Column(
+                  children: [
+                    // Same profile card the desktop sidebar uses.
+                    infoCard(ref),
+                    ...navItems.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final item = entry.value;
+                      return Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 2.h,
+                        ),
+                        child: InkWell(
+                          focusNode: FocusNode(
+                            // Skip traversal to avoid unnecessary focus events
+                            skipTraversal: true,
+                            // Ensure focus is not retained after disposal
+                            // onDispose: () {},
+                          ),
                           borderRadius: BorderRadius.circular(12.0),
-                        ),
-                        child: Row(
-                          children: [
-                            _withReminderDot(
-                              ref,
-                              item,
-                              AppIcon(
-                                defaultIcon:
-                                    selectedIndex == index
-                                        ? item.activeIcon
-                                        : item.icon,
-                                win11IconPath: item.activeWind11Icon,
-                                color:
-                                    selectedIndex == index
-                                        ? activeIconColor
-                                        : inactiveIconColor,
-                              ),
+                          onTap: () {
+                            // Update state and close drawer in a post-frame callback
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              ref.read(selectedIndexProvider.notifier).state =
+                                  index;
+                              Navigator.pop(drawerContext);
+                            });
+                          },
+                          child: Container(
+                            padding: EdgeInsets.all(10.h),
+                            decoration: BoxDecoration(
+                              color:
+                                  selectedIndex == index
+                                      ? Colors.white.withValues(alpha: 0.25)
+                                      : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12.0),
                             ),
-                            const SizedBox(width: 12),
-                            Text(item.label),
-                          ],
+                            child: Row(
+                              children: [
+                                _withReminderDot(
+                                  ref,
+                                  item,
+                                  AppIcon(
+                                    defaultIcon:
+                                        selectedIndex == index
+                                            ? item.activeIcon
+                                            : item.icon,
+                                    win11IconPath: item.activeWind11Icon,
+                                    color:
+                                        selectedIndex == index
+                                            ? Colors.white
+                                            : Colors.white.withValues(
+                                              alpha: 0.72,
+                                            ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  item.label,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight:
+                                        selectedIndex == index
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  );
-                }),
-              ],
-            );
-          },
+                      );
+                    }),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

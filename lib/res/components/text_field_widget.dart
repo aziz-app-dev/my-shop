@@ -26,6 +26,7 @@ class CustomTextField extends ConsumerWidget {
   final FocusNode? focusNode;
   final TextStyle? hintStyle;
   final bool isSearch;
+  final bool autofocus;
   final bool? isDense;
   final Widget? prefixIcon;
   final Widget? suffixIcon;
@@ -66,6 +67,7 @@ class CustomTextField extends ConsumerWidget {
     this.icon,
     this.focusNode,
     this.isSearch = false,
+    this.autofocus = false,
     this.prefixIcon,
     this.suffixIcon,
     this.apiError,
@@ -101,6 +103,7 @@ class CustomTextField extends ConsumerWidget {
             )
             : SizedBox.shrink(),
         TextFormField(
+          autofocus: autofocus,
           inputFormatters:
               inputFormatters ??
               (keyboardType == TextInputType.number

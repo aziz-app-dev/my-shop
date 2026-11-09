@@ -299,6 +299,9 @@ class CustomerListScreen extends ConsumerWidget {
                 child: CustomTextField(
                   hintText: 'Search customers...',
                   isSearch: true,
+                  // Desktop: navigation lands here with the keyboard ready
+                  // in the search box.
+                  autofocus: AppSizes.isDesktop(context),
                   prefixIcon: AppIcon(
                     defaultIcon: Icons.search,
                     win11IconPath: ImageAssets.win11Search,

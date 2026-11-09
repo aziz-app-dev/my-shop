@@ -53,6 +53,9 @@ const List<NavigationItem> mobileNavItems = [
 ];
 
 //! Navigation Items
+// Order (F-key = position): F1 Home, F2 Sales, F3 Purchases, (F4 Repairs —
+// only when the module is enabled), then Customers, Expenses, Receipts,
+// Reminders, Dashboard, Profile, Settings.
 const List<NavigationItem> desktopNavItems = [
   NavigationItem(
     icon: TablerIcons.home,
@@ -67,10 +70,10 @@ const List<NavigationItem> desktopNavItems = [
     activeWind11Icon: ImageAssets.win11Checkout,
   ),
   NavigationItem(
-    icon: TablerIcons.receipt,
-    activeIcon: TablerIcons.receipt,
-    label: 'Receipts',
-    activeWind11Icon: ImageAssets.win11Bill,
+    icon: TablerIcons.shopping_cart,
+    activeIcon: TablerIcons.shopping_cart,
+    label: 'Purchases',
+    activeWind11Icon: ImageAssets.win11Stock,
   ),
   NavigationItem(
     icon: TablerIcons.users,
@@ -79,23 +82,22 @@ const List<NavigationItem> desktopNavItems = [
     activeWind11Icon: ImageAssets.win11People,
   ),
   NavigationItem(
-    icon: TablerIcons.bell,
-    activeIcon: TablerIcons.bell_ringing,
-    label: 'Reminders',
-    activeWind11Icon: ImageAssets.win11Notification,
-  ),
-
-  NavigationItem(
-    icon: Icons.person_4_outlined,
-    activeIcon: Icons.person_4_outlined,
-    label: 'Profile',
-    activeWind11Icon: ImageAssets.win11Administrator,
-  ),
-  NavigationItem(
     icon: TablerIcons.report_money,
     activeIcon: TablerIcons.report_money,
     label: 'Expenses',
     activeWind11Icon: ImageAssets.win11Invoice,
+  ),
+  NavigationItem(
+    icon: TablerIcons.receipt,
+    activeIcon: TablerIcons.receipt,
+    label: 'Receipts',
+    activeWind11Icon: ImageAssets.win11Bill,
+  ),
+  NavigationItem(
+    icon: TablerIcons.bell,
+    activeIcon: TablerIcons.bell_ringing,
+    label: 'Reminders',
+    activeWind11Icon: ImageAssets.win11Notification,
   ),
   NavigationItem(
     icon: TablerIcons.chart_pie,
@@ -104,10 +106,10 @@ const List<NavigationItem> desktopNavItems = [
     activeWind11Icon: ImageAssets.win11Accounting,
   ),
   NavigationItem(
-    icon: TablerIcons.shopping_cart,
-    activeIcon: TablerIcons.shopping_cart,
-    label: 'Purchases',
-    activeWind11Icon: ImageAssets.win11Stock,
+    icon: Icons.person_4_outlined,
+    activeIcon: Icons.person_4_outlined,
+    label: 'Profile',
+    activeWind11Icon: ImageAssets.win11Administrator,
   ),
   NavigationItem(
     icon: TablerIcons.settings,
@@ -126,16 +128,25 @@ const NavigationItem _repairsNavItem = NavigationItem(
 );
 
 /// Builds the desktop/tablet nav items, optionally including the Repairs module.
-/// Repairs is inserted right after Customers so it sits next to other
-/// client-facing features. The returned list MUST stay index-aligned with
-/// [pages]; both are built from the same [showRepairs] flag.
+/// Repairs is inserted right after Purchases so it sits with the transaction
+/// screens. The returned list MUST stay index-aligned with [pages]; both are
+/// built from the same [showRepairs] flag.
 List<NavigationItem> navItemsFor({required bool showRepairs}) {
   final items = List<NavigationItem>.from(desktopNavItems);
   if (showRepairs) {
-    final insertAt = items.indexWhere((i) => i.label == 'Customers') + 1;
+    final insertAt = items.indexWhere((i) => i.label == 'Purchases') + 1;
     items.insert(insertAt, _repairsNavItem);
   }
   return items;
+}
+
+/// Index of the nav/page named [label] in the current nav order (0 when the
+/// label is unknown). Call sites around the app jump to pages through this
+/// instead of hard-coded positions, so reordering the list stays safe.
+int navIndexForLabel(String label, {required bool showRepairs}) {
+  final items = navItemsFor(showRepairs: showRepairs);
+  final i = items.indexWhere((n) => n.label == label);
+  return i >= 0 ? i : 0;
 }
 
 // Sales screen selector based on settings
@@ -153,8 +164,8 @@ class SalesScreenSelector extends ConsumerWidget {
 }
 
 /// Builds the page list. MUST stay index-aligned with [navItemsFor]; the
-/// Repairs page is inserted at the same position (after Customers) using the
-/// same [showRepairs] flag.
+/// Repairs page is inserted at the same position (after Purchases, before
+/// Customers) using the same [showRepairs] flag.
 List<Widget> pages(
   GlobalKey<ScaffoldState> scaffoldKey, {
   bool showRepairs = true,
@@ -162,20 +173,20 @@ List<Widget> pages(
   final list = <Widget>[
     HomePage(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
     const SalesScreenSelector(), // Dynamically shows single or multi-cart based on settings
-    BillsScreen(),
-    CustomerListScreen(),
-    RemindersView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
-    ProfileView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
-    ExpensesView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
-    DashboradView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
     LocalPurchaseListView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
+    CustomerListScreen(),
+    ExpensesView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
+    BillsScreen(),
+    RemindersView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
+    DashboradView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
+    ProfileView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
     SettingsPage(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
   ];
   if (showRepairs) {
-    // CustomerListScreen is at index 3 → insert Repairs at index 4 (right
-    // after Customers, before Reminders), matching navItemsFor's placement.
+    // Purchases is at index 2 → insert Repairs at index 3 (right after
+    // Purchases, before Customers), matching navItemsFor's placement.
     list.insert(
-      4,
+      3,
       RepairView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
     );
   }

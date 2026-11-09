@@ -146,6 +146,9 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
                   SearchBarWidget(
                     onFilterTap: () => showBillsFilterDialog(context),
                     hasActiveFilter: hasActiveFilter,
+                    // Desktop: navigation lands here with the keyboard
+                    // ready in the search box.
+                    autofocus: AppSizes.isDesktop(context),
                   ),
                   Expanded(
                     child: Column(

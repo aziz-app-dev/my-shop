@@ -259,6 +259,9 @@ class _SearchAndFilters extends ConsumerWidget {
           child: CustomTextField(
             hintText: 'Search client, device, brand, serial...',
             isSearch: true,
+            // Desktop: navigation lands here with the keyboard ready in the
+            // search box.
+            autofocus: AppSizes.isDesktop(context),
             prefixIcon: AppIcon(
               defaultIcon: Icons.search,
               win11IconPath: ImageAssets.win11Search,

@@ -26,17 +26,24 @@ class LocalPurchaseListView extends ConsumerStatefulWidget {
 }
 
 class _LocalPurchaseListViewState extends ConsumerState<LocalPurchaseListView> {
-  /// Ctrl+N opens the create form — handled by the window-level keyboard
-  /// dispatcher (see [AppKeyboardScope]) — focus-independent.
-  late final AppKeyboardScope _keys = AppKeyboardScope('purchase-list', (
-    event,
-  ) {
-    if (AppKeyboardScope.didPress(event, LogicalKeyboardKey.keyN, ctrl: true)) {
-      _openCreateForm();
-      return true;
-    }
-    return false;
-  });
+  /// Window-level shortcuts:
+  ///  * Ctrl+N opens the create form.
+  ///  * Ctrl+P prints the single selected purchase (same PDF pipeline as the
+  ///    detail screen, via [LocalPurchaseDetailView] with autoPrint).
+  late final AppKeyboardScope _keys = AppKeyboardScope(
+    'purchase-list',
+    (event) {
+      if (AppKeyboardScope.didPress(event, LogicalKeyboardKey.keyN, ctrl: true)) {
+        _openCreateForm();
+        return true;
+      }
+      if (AppKeyboardScope.didPress(event, LogicalKeyboardKey.keyP, ctrl: true)) {
+        _printSelectedAgreement();
+        return true;
+      }
+      return false;
+    },
+  );
 
   @override
   void initState() {
@@ -67,6 +74,40 @@ class _LocalPurchaseListViewState extends ConsumerState<LocalPurchaseListView> {
         builder: (_) => LocalPurchaseDetailView(agreement: agreement),
       ),
     );
+  }
+
+  /// Prints the single selected purchase. If none or several are selected,
+  /// it guides the user instead of failing silently — same behavior as the
+  /// bills list's Ctrl+P. The print itself is delegated to
+  /// [LocalPurchaseDetailView] (autoPrint) so the list reuses the exact
+  /// same PDF pipeline as the detail screen.
+  void _printSelectedAgreement() {
+    final state = ref.read(localPurchaseProvider);
+    final selected =
+        state.allAgreements
+            .where((a) => state.selectedAgreements[a.id] == true)
+            .toList();
+
+    if (selected.length == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder:
+              (_) =>
+                  LocalPurchaseDetailView(agreement: selected.first, autoPrint: true),
+        ),
+      );
+    } else if (selected.isEmpty) {
+      AppFlushbar.info(
+        context,
+        message: 'Select a purchase, then press Ctrl+P to print it.',
+      );
+    } else {
+      AppFlushbar.info(
+        context,
+        message: 'Select a single purchase to print with Ctrl+P.',
+      );
+    }
   }
 
   void _confirmDeleteSelected() {
@@ -134,11 +175,14 @@ class _LocalPurchaseListViewState extends ConsumerState<LocalPurchaseListView> {
               child: const Text('Cancel'),
             ),
           ] else ...[
-            IconButton(
-              icon: const Icon(Icons.add),
-              tooltip: 'New Agreement (Ctrl+N)',
-              onPressed: _openCreateForm,
-            ),
+            // Desktop uses Ctrl+N (search box focused most of the time, so a
+            // visible tap target is only needed on mobile).
+            if (isMobile)
+              IconButton(
+                icon: const Icon(Icons.add),
+                tooltip: 'New Agreement (Ctrl+N)',
+                onPressed: _openCreateForm,
+              ),
           ],
         ],
       ),
@@ -184,6 +228,9 @@ class _LocalPurchaseListViewState extends ConsumerState<LocalPurchaseListView> {
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
       child: TextField(
         controller: notifier.searchController,
+        // Desktop: navigation lands here with the keyboard ready in the
+        // search box.
+        autofocus: AppSizes.isDesktop(context),
         decoration: InputDecoration(
           hintText: 'Search by seller name, phone, ID card...',
           prefixIcon: const Icon(Icons.search),
