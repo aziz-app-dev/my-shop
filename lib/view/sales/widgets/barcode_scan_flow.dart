@@ -15,6 +15,7 @@ import '../../../res/assets/image_assets.dart';
 import '../../../res/colors/app_color.dart';
 import '../../../res/components/app_bar_widget.dart';
 import '../../../res/components/app_icon.dart';
+import '../../../res/components/text_field_widget.dart';
 import '../../../utils/platform_utils.dart';
 import '../../../view/add_product/add_product_view.dart';
 import '../../../view_models/providers/sales_provider.dart';
@@ -123,7 +124,8 @@ Product? findProductByBarcode(List<Product> products, String barcode) {
   try {
     return products.firstWhere(
       (p) =>
-          p.barcode != null && p.barcode!.toLowerCase() == barcode.toLowerCase(),
+          p.barcode != null &&
+          p.barcode!.toLowerCase() == barcode.toLowerCase(),
     );
   } catch (e) {
     return null;
@@ -147,8 +149,7 @@ class BarcodeScannerPage extends ConsumerStatefulWidget {
   final List<Product> products;
 
   @override
-  ConsumerState<BarcodeScannerPage> createState() =>
-      _BarcodeScannerPageState();
+  ConsumerState<BarcodeScannerPage> createState() => _BarcodeScannerPageState();
 }
 
 class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
@@ -163,6 +164,9 @@ class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
 
   /// Collected scan results.
   final List<ScannedEntry> _entries = <ScannedEntry>[];
+
+  /// True while the product-search bottom sheet is open — scanning pauses.
+  bool _searchSheetOpen = false;
 
   /// Current product list — starts from [widget.products] and can be
   /// refreshed after the user adds a new product mid-session.
@@ -206,6 +210,9 @@ class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
   }
 
   void _onDetect(BarcodeCapture capture) {
+    // Product search sheet open? Camera input is paused — the operator is
+    // picking items by name, not aiming the lens.
+    if (_searchSheetOpen) return;
     final List<Barcode> barcodes = capture.barcodes;
     if (barcodes.isEmpty) return;
     final code = barcodes.first.rawValue;
@@ -265,6 +272,297 @@ class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
     _lastEventColor = addedAnyway ? Colors.deepOrange : Colors.green;
   }
 
+  /// "Search Items" — pick products by name instead of aiming the camera.
+  /// Bottom sheet with a live search box over the shop catalogue; tapping a
+  /// result adds it to the scan list (duplicates bump qty) and leaves the
+  /// sheet open so several items can be cherry-picked at once.
+  Future<void> _openProductSearchSheet() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sheetFocus = FocusNode();
+    final searchController = TextEditingController();
+    final addedInSheet = <Product>{};
+
+    setState(() => _searchSheetOpen = true);
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: isDark ? AppColors.grey900 : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
+        ),
+        builder: (sheetContext) {
+          var focusRequested = false;
+          return StatefulBuilder(
+            builder: (context, setSheetState) {
+              if (!focusRequested) {
+                focusRequested = true;
+                WidgetsBinding.instance.addPostFrameCallback(
+                  (_) => sheetFocus.requestFocus(),
+                );
+              }
+              final results = _searchProducts(searchController.text);
+              return SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+                  ),
+                  child: SizedBox(
+                    height: MediaQuery.of(sheetContext).size.height * 0.75,
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16.w,
+                            vertical: 10.h,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.add_shopping_cart,
+                                size: 20.spMin,
+                                color: AppColors.primary,
+                              ),
+                              SizedBox(width: 8.w),
+                              Expanded(
+                                child: Text(
+                                  'Add Items to Scan List',
+                                  style: TextStyle(
+                                    fontSize: 15.spMin,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                '${_entries.length} in list',
+                                style: TextStyle(
+                                  fontSize: 12.spMin,
+                                  color:
+                                      isDark ? Colors.white70 : Colors.black54,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16.w),
+                          child: CustomTextField(
+                            hintText: 'Search items...',
+                            controller: searchController,
+                            focusNode: sheetFocus,
+                            prefixIcon: Icon(
+                              Icons.search,
+                              size: 20.spMin,
+                              color:
+                                  isDark
+                                      ? Colors.white70
+                                      : AppColors.lIconColor,
+                            ),
+                            onChange: (value) {
+                              setSheetState(() {});
+                              return value;
+                            },
+                          ),
+                        ),
+                        SizedBox(height: 8.h),
+                        if (results.isEmpty)
+                          Expanded(
+                            child: Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(24.h),
+                                child: Text(
+                                  searchController.text.trim().isEmpty
+                                      ? 'No items in the shop yet'
+                                      : 'No items match "${searchController.text.trim()}"',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 14.spMin,
+                                    color:
+                                        isDark
+                                            ? Colors.white70
+                                            : Colors.black54,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          Expanded(
+                            child: ListView.builder(
+                              padding: EdgeInsets.symmetric(horizontal: 16.w),
+                              itemCount: results.length,
+                              itemBuilder: (context, index) {
+                                final product = results[index];
+                                final added = addedInSheet.contains(product);
+                                final outOfStock =
+                                    !product.isService &&
+                                    product.stock != null &&
+                                    product.stock! <= 0;
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: AppColors.primary
+                                        .withValues(alpha: 0.15),
+                                    child: Text(
+                                      product.name.isNotEmpty
+                                          ? product.name[0].toUpperCase()
+                                          : '?',
+                                      style: TextStyle(
+                                        fontSize: 15.spMin,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                  title: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          product.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 14.spMin,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      if (product.isService)
+                                        _sheetTag(
+                                          'Service',
+                                          Colors.blue,
+                                          isDark,
+                                        )
+                                      else if (outOfStock)
+                                        _sheetTag(
+                                          'Out of stock',
+                                          Colors.red,
+                                          isDark,
+                                        ),
+                                    ],
+                                  ),
+                                  subtitle: Text(
+                                    'Rs.${product.price.toStringAsFixed(2)}'
+                                    '    '
+                                    '${product.brand ?? product.category ?? ''}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12.spMin,
+                                      color:
+                                          isDark
+                                              ? Colors.white70
+                                              : Colors.black54,
+                                    ),
+                                  ),
+                                  trailing:
+                                      added
+                                          ? Icon(
+                                            Icons.check_circle,
+                                            size: 22.spMin,
+                                            color: Colors.green,
+                                          )
+                                          : Icon(
+                                            Icons.add_circle_outline,
+                                            size: 22.spMin,
+                                            color: AppColors.primary,
+                                          ),
+                                  onTap: () {
+                                    setState(() {
+                                      _collectProduct(
+                                        product,
+                                        addedAnyway: outOfStock,
+                                      );
+                                    });
+                                    setSheetState(
+                                      () => addedInSheet.add(product),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16.w,
+                            vertical: 10.h,
+                          ),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(vertical: 10.h),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10.r),
+                                ),
+                              ),
+                              icon: const Icon(Icons.done, size: 18),
+                              label: Text(
+                                'Done',
+                                style: TextStyle(
+                                  fontSize: 13.spMin,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              onPressed: () => Navigator.pop(sheetContext),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      );
+    } finally {
+      if (mounted) setState(() => _searchSheetOpen = false);
+      sheetFocus.dispose();
+      searchController.dispose();
+    }
+  }
+
+  /// Catalogue filter for the search sheet: name / description / barcode /
+  /// brand / category, case-insensitive.
+  List<Product> _searchProducts(String raw) {
+    final query = raw.trim().toLowerCase();
+    if (query.isEmpty) return _products;
+    return _products.where((p) {
+      final haystack =
+          [
+            p.name,
+            p.description ?? '',
+            p.barcode ?? '',
+            p.brand ?? '',
+            p.category ?? '',
+          ].join(' ').toLowerCase();
+      return haystack.contains(query);
+    }).toList();
+  }
+
+  /// Tiny rounded status tag used on the search-sheet tiles.
+  Widget _sheetTag(String label, Color color, bool isDark) {
+    return Container(
+      margin: EdgeInsets.only(left: 6.w),
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8.r),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10.spMin,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
+      ),
+    );
+  }
+
   /// "Add Product" on the not-found strip: open the add-product page with
   /// the scanned barcode pre-filled, then reload the product list. If the
   /// user saved the product it is added to the scan list right away;
@@ -273,8 +571,8 @@ class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            AddProductScreen(isService: false, initialBarcode: code),
+        builder:
+            (_) => AddProductScreen(isService: false, initialBarcode: code),
       ),
     );
     if (!mounted) return;
@@ -302,8 +600,7 @@ class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
     });
   }
 
-  int get _totalCount =>
-      _entries.fold(0, (sum, entry) => sum + entry.qty);
+  int get _totalCount => _entries.fold(0, (sum, entry) => sum + entry.qty);
 
   double get _totalPrice =>
       _entries.fold(0.0, (sum, entry) => sum + entry.lineTotal);
@@ -366,8 +663,7 @@ class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
                       ),
                     ),
                   ),
-                  if (_lastEventActionLabel != null &&
-                      _lastEventAction != null)
+                  if (_lastEventActionLabel != null && _lastEventAction != null)
                     InkWell(
                       onTap: _lastEventAction,
                       borderRadius: BorderRadius.circular(8.r),
@@ -392,12 +688,17 @@ class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
                     ),
                   IconButton(
                     visualDensity: VisualDensity.compact,
-                    icon: Icon(Icons.close, size: 16.spMin, color: Colors.white),
-                    onPressed: () => setState(() {
-                      _lastEvent = null;
-                      _lastEventActionLabel = null;
-                      _lastEventAction = null;
-                    }),
+                    icon: Icon(
+                      Icons.close,
+                      size: 16.spMin,
+                      color: Colors.white,
+                    ),
+                    onPressed:
+                        () => setState(() {
+                          _lastEvent = null;
+                          _lastEventActionLabel = null;
+                          _lastEventAction = null;
+                        }),
                   ),
                 ],
               ),
@@ -409,41 +710,42 @@ class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
             child: Container(
               width: double.infinity,
               color: isDark ? AppColors.dScafoldColor : AppColors.lScafoldColor,
-              child: _entries.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          AppIcon(
-                            defaultIcon: Icons.qr_code_scanner,
-                            color: Colors.grey,
-                            size: 36.spMin,
-                          ),
-                          SizedBox(height: 8.h),
-                          Text(
-                            'Scan items to add them here',
-                            style: TextStyle(
-                              fontSize: 13.spMin,
+              child:
+                  _entries.isEmpty
+                      ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AppIcon(
+                              defaultIcon: Icons.qr_code_scanner,
                               color: Colors.grey,
+                              size: 36.spMin,
+                            ),
+                            SizedBox(height: 8.h),
+                            Text(
+                              'Scan items to add them here',
+                              style: TextStyle(
+                                fontSize: 13.spMin,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                      : Column(
+                        children: [
+                          Expanded(
+                            child: ListView.builder(
+                              padding: EdgeInsets.all(8.spMin),
+                              itemCount: _entries.length,
+                              itemBuilder: (context, index) {
+                                final entry = _entries[index];
+                                return _buildEntryTile(entry);
+                              },
                             ),
                           ),
                         ],
                       ),
-                    )
-                  : Column(
-                      children: [
-                        Expanded(
-                          child: ListView.builder(
-                            padding: EdgeInsets.all(8.spMin),
-                            itemCount: _entries.length,
-                            itemBuilder: (context, index) {
-                              final entry = _entries[index];
-                              return _buildEntryTile(entry);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
             ),
           ),
           // Footer: running total + commit button.
@@ -453,9 +755,7 @@ class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
               padding: EdgeInsets.all(10.spMin),
               decoration: BoxDecoration(
                 color:
-                    isDark
-                        ? AppColors.dScafoldColor
-                        : AppColors.lScafoldColor,
+                    isDark ? AppColors.dScafoldColor : AppColors.lScafoldColor,
                 border: Border(
                   top: BorderSide(
                     color: Colors.grey.withValues(alpha: 0.3),
@@ -512,7 +812,10 @@ class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
                   SizedBox(height: 10.h),
                   Row(
                     children: [
-                      // Add to Cart — commit and land on the sales page.
+                      // Search Items — open the name-search sheet to pick
+                      // products into the scan list without scanning.
+                      // Always available, even before anything is on the
+                      // list (unlike Complete Purchase).
                       Expanded(
                         child: OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
@@ -525,24 +828,15 @@ class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
                               borderRadius: BorderRadius.circular(10.r),
                             ),
                           ),
-                          icon: const Icon(Icons.add_shopping_cart, size: 18),
+                          icon: const Icon(Icons.search, size: 18),
                           label: Text(
-                            'Add to Cart',
+                            'Search',
                             style: TextStyle(
                               fontSize: 13.spMin,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          onPressed:
-                              _entries.isEmpty
-                                  ? null
-                                  : () => Navigator.pop(
-                                    context,
-                                    ScanResult(
-                                      List<ScannedEntry>.from(_entries),
-                                      completePurchase: false,
-                                    ),
-                                  ),
+                          onPressed: _openProductSearchSheet,
                         ),
                       ),
                       SizedBox(width: 8.w),
@@ -601,8 +895,7 @@ class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
       child: Row(
         children: [
           // Thumbnail
-          entry.product.imageUrl != null &&
-                  entry.product.imageUrl!.isNotEmpty
+          entry.product.imageUrl != null && entry.product.imageUrl!.isNotEmpty
               ? ClipRRect(
                 borderRadius: BorderRadius.circular(8.r),
                 child: Image.file(
