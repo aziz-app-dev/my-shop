@@ -21,6 +21,8 @@ import '../../res/components/text_field_widget.dart';
 import '../../view_models/providers/add_prduct_provider.dart';
 import '../../view_models/states/add_product_states.dart';
 import '../../view_models/services/database/database_services.dart';
+import '../../view_models/services/gemini/gemini_product_vision.dart';
+import '../../res/components/app_flushbar.dart';
 import '../home/rapper.dart';
 
 // Provider to load brands
@@ -83,13 +85,84 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     return Platform.isAndroid || Platform.isIOS;
   }
 
+  /// Runs right after a product photo was picked. Sends the image to Gemini
+  /// and auto-fills ONLY the fields the user has not typed anything into:
+  /// name, brand, category, description and (new entries only) Item/Service.
+  /// Never throws — a failed analysis just leaves the form untouched.
+  Future<void> _aiFillFromImage(ProductFormNotifier formNotifier) async {
+    final formState = ref.read(productFormProvider(widget.product));
+    final imageFile = formState.imageFile;
+    if (imageFile == null || !await imageFile.exists()) return;
+
+    // Give the model the shop's own brands/categories so it answers with
+    // values that actually match the pickers.
+    final brandNames = <String>[];
+    final categoryNames = <String>[];
+    try {
+      final brands = await ref.read(brandsProvider.future);
+      brandNames.addAll(brands.map((b) => b.name));
+    } catch (_) {}
+    try {
+      final categories = await ref.read(categoriesProvider.future);
+      categoryNames.addAll(categories.map((c) => c.name));
+    } catch (_) {}
+
+    final suggestion = await GeminiProductVision.analyzeProductImage(
+      imageFile.path,
+      brands: brandNames,
+      categories: categoryNames,
+    );
+    if (suggestion == null || !mounted) return;
+
+    final filled = <String>[];
+
+    if (suggestion.name != null && _nameController.text.trim().isEmpty) {
+      _nameController.text = suggestion.name!;
+      formNotifier.updateName(suggestion.name!);
+      filled.add('name');
+    }
+
+    if (suggestion.description != null &&
+        _descriptionController.text.trim().isEmpty) {
+      _descriptionController.text = suggestion.description!;
+      formNotifier.updateDescription(suggestion.description!);
+      filled.add('description');
+    }
+
+    if (suggestion.brand != null &&
+        (formState.brand == null || formState.brand!.trim().isEmpty)) {
+      formNotifier.updateBrand(suggestion.brand!);
+      filled.add('brand');
+    }
+
+    if (suggestion.category != null &&
+        (formState.category == null || formState.category!.trim().isEmpty)) {
+      formNotifier.updateCategory(suggestion.category!);
+      filled.add('category');
+    }
+
+    // Auto-type only for brand-new entries whose photo clearly shows a
+    // service being performed — the user's manual choice always wins.
+    if (widget.product == null && suggestion.isService && !_isService) {
+      setState(() => _isService = true);
+      formNotifier.updateIsService(true);
+      filled.add('type: Service');
+    }
+
+    if (filled.isNotEmpty) {
+      AppFlushbar.success(
+        context,
+        message: 'AI analysed the image and filled: ${filled.join(', ')}',
+        duration: const Duration(seconds: 3),
+      );
+    }
+  }
+
   /// Open barcode scanner and set the result to barcode field
   Future<void> _openBarcodeScanner(ProductFormNotifier formNotifier) async {
     final result = await Navigator.push<String>(
       context,
-      MaterialPageRoute(
-        builder: (context) => const _BarcodeScannerPage(),
-      ),
+      MaterialPageRoute(builder: (context) => const _BarcodeScannerPage()),
     );
 
     if (result != null && result.isNotEmpty && mounted) {
@@ -264,39 +337,44 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         final source = await showModalBottomSheet<String>(
                           context: context,
 
-                          builder: (sheetContext) => SafeArea(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                ListTile(
-                                  leading: const Icon(Icons.photo_library),
-                                  title: const Text('Choose from Gallery'),
-                                  onTap:
-                                      () => Navigator.pop(
-                                        sheetContext,
-                                        'gallery',
-                                      ),
+                          builder:
+                              (sheetContext) => SafeArea(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    ListTile(
+                                      leading: const Icon(Icons.photo_library),
+                                      title: const Text('Choose from Gallery'),
+                                      onTap:
+                                          () => Navigator.pop(
+                                            sheetContext,
+                                            'gallery',
+                                          ),
+                                    ),
+                                    ListTile(
+                                      leading: const Icon(Icons.photo_camera),
+                                      title: const Text('Take Photo'),
+                                      onTap:
+                                          () => Navigator.pop(
+                                            sheetContext,
+                                            'camera',
+                                          ),
+                                    ),
+                                  ],
                                 ),
-                                ListTile(
-                                  leading: const Icon(Icons.photo_camera),
-                                  title: const Text('Take Photo'),
-                                  onTap:
-                                      () => Navigator.pop(
-                                        sheetContext,
-                                        'camera',
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
+                              ),
                         );
                         if (source == 'camera') {
                           await formNotifier.pickImageFromCamera();
                         } else if (source == 'gallery') {
                           await formNotifier.pickImage();
                         }
+                        if (!mounted) return;
+                        await _aiFillFromImage(formNotifier);
                       } else {
                         await formNotifier.pickImage();
+                        if (!mounted) return;
+                        await _aiFillFromImage(formNotifier);
                       }
                     },
                     child: Container(
@@ -435,12 +513,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             // Other Fields — paired two-per-row on tablet/desktop.
             ..._layoutFields(
               context,
-              _buildOtherFields(
-                formState,
-                formNotifier,
-                _isService,
-                context,
-              ),
+              _buildOtherFields(formState, formNotifier, _isService, context),
             ),
 
             // // Timestamps
@@ -524,7 +597,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
                       // Navigate back first, then show success message
                       if (mounted && context.mounted) {
-                        Navigator.of(context).pop({'success': true, 'message': successMessage});
+                        Navigator.of(
+                          context,
+                        ).pop({'success': true, 'message': successMessage});
                       }
                     }
                   }
@@ -562,9 +637,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           children: [
             Expanded(child: left),
             SizedBox(width: gap.w),
-            Expanded(
-              child: hasRight ? fields[i + 1] : const SizedBox.shrink(),
-            ),
+            Expanded(child: hasRight ? fields[i + 1] : const SizedBox.shrink()),
           ],
         ),
       );
@@ -696,8 +769,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             formNotifier.updatePrice(value ?? '');
             return null;
           },
-        textInputAction: TextInputAction.next,
-            onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
+          textInputAction: TextInputAction.next,
+          onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
         ),
       );
     }
@@ -742,7 +815,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               formNotifier.updatePurchasePrice(value ?? '');
               return null;
             },
-          textInputAction: TextInputAction.next,
+            textInputAction: TextInputAction.next,
             onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
         );
@@ -783,7 +856,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               formNotifier.updateStock(value ?? '');
               return null;
             },
-          textInputAction: TextInputAction.next,
+            textInputAction: TextInputAction.next,
             onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
         );
@@ -812,7 +885,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               formNotifier.updateReorderLevel(value ?? '');
               return null;
             },
-          textInputAction: TextInputAction.next,
+            textInputAction: TextInputAction.next,
             onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
         );
@@ -833,34 +906,36 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     : AppColors.lTFieldHintColor,
             hintText: fieldConfigs['barcode']!.hintText,
             filled: true,
-            prefixIcon: _isMobilePlatform
-                ? GestureDetector(
-                    onTap: () => _openBarcodeScanner(formNotifier),
-                    child: AppIcon(
+            prefixIcon:
+                _isMobilePlatform
+                    ? GestureDetector(
+                      onTap: () => _openBarcodeScanner(formNotifier),
+                      child: AppIcon(
+                        win11IconPath: ImageAssets.win11QrCode,
+                        defaultIcon: Icons.qr_code_scanner,
+                        color: AppColors.primary,
+                        size: 20.spMin,
+                      ),
+                    )
+                    : AppIcon(
                       win11IconPath: ImageAssets.win11QrCode,
                       defaultIcon: Icons.qr_code_scanner,
-                      color: AppColors.primary,
+                      color: AppColors.primary.withValues(alpha: 0.7),
                       size: 20.spMin,
                     ),
-                  )
-                : AppIcon(
-                    win11IconPath: ImageAssets.win11QrCode,
-                    defaultIcon: Icons.qr_code_scanner,
-                    color: AppColors.primary.withValues(alpha: 0.7),
-                    size: 20.spMin,
-                  ),
-            suffixIcon: _isMobilePlatform
-                ? IconButton(
-                    onPressed: () => _openBarcodeScanner(formNotifier),
-                    icon: AppIcon(
-                      win11IconPath: ImageAssets.win11QrCode,
-                      defaultIcon: Icons.qr_code_scanner,
-                      color: AppColors.primary,
-                      size: 20.spMin,
-                    ),
-                    tooltip: 'Scan Barcode',
-                  )
-                : null,
+            suffixIcon:
+                _isMobilePlatform
+                    ? IconButton(
+                      onPressed: () => _openBarcodeScanner(formNotifier),
+                      icon: AppIcon(
+                        win11IconPath: ImageAssets.win11QrCode,
+                        defaultIcon: Icons.qr_code_scanner,
+                        color: AppColors.primary,
+                        size: 20.spMin,
+                      ),
+                      tooltip: 'Scan Barcode',
+                    )
+                    : null,
             validator: (value) {
               final hasError =
                   fieldConfigs['barcode']!.isRequired &&
@@ -871,7 +946,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               formNotifier.updateBarcode(value ?? '');
               return null;
             },
-          textInputAction: TextInputAction.next,
+            textInputAction: TextInputAction.next,
             onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
         );
@@ -1287,20 +1362,14 @@ class _BarcodeScannerPageState extends State<_BarcodeScannerPage> {
       ),
       body: Stack(
         children: [
-          MobileScanner(
-            controller: controller,
-            onDetect: _onDetect,
-          ),
+          MobileScanner(controller: controller, onDetect: _onDetect),
           // Scan overlay
           Center(
             child: Container(
               width: 280.w,
               height: 280.w,
               decoration: BoxDecoration(
-                border: Border.all(
-                  color: AppColors.primary,
-                  width: 3,
-                ),
+                border: Border.all(color: AppColors.primary, width: 3),
                 borderRadius: BorderRadius.circular(16.r),
               ),
             ),
@@ -1312,10 +1381,7 @@ class _BarcodeScannerPageState extends State<_BarcodeScannerPage> {
             right: 0,
             child: Center(
               child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 24.w,
-                  vertical: 12.h,
-                ),
+                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
                 decoration: BoxDecoration(
                   color: Colors.black54,
                   borderRadius: BorderRadius.circular(8.r),

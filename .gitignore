@@ -141,3 +141,6 @@ macos/firebase_app_id_file.json
 
 # Large archives should never be committed.
 *.zip
+
+# Local-only Gemini API key (never commit) 
+lib/view_models/services/gemini/gemini_api_key_secret.dart
