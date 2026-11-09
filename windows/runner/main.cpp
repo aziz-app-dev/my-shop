@@ -26,7 +26,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
-  Win32Window::Size size(1280, 720);
+  // Bigger default window for the desktop POS layout (scalers clamp it to
+  // the screen in win32_window.cpp if the monitor is smaller).
+  Win32Window::Size size(1600, 900);
   if (!window.Create(L"My Shop", origin, size)) {
     return EXIT_FAILURE;
   }
