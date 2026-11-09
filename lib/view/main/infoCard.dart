@@ -32,6 +32,9 @@ Widget infoCard(WidgetRef ref) {
   final isShowUserCard = settingsState.isShowUserCard;
   final isTagLineInsteadOfCEOName = settingsState.isTagLineInsteadOfCEOName;
   final profileState = ref.watch(profileProvider);
+  // Blank/whitespace-only taglines get no reservation — the gap under the
+  // avatar row only appears when there is actually text to show.
+  final tagline = (profileState.shopTagline ?? '').trim();
 
   return Padding(
     padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 6.h),
@@ -163,23 +166,26 @@ Widget infoCard(WidgetRef ref) {
                 ],
               ),
 
-          isShowTagLine
-              ? Padding(
-                padding: EdgeInsets.only(left: 2.w, top: 5.h),
-                child: Text(
-                  profileState.shopTagline ?? "",
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.kaushanScript(
-                    textStyle: TextStyle(
-                      fontSize: 14.spMin,
-                      fontWeight: FontWeight.bold,
-                      // color: Colors.black,
-                    ),
+          // Tagline under the avatar row: an 8.h gap keeps it clear of the
+          // avatar and the block disappears entirely when the tagline is
+          // empty — no reserved blank space.
+          if (isShowTagLine && tagline.isNotEmpty) ...[
+            SizedBox(height: 8.h),
+            Padding(
+              padding: EdgeInsets.only(left: 2.w),
+              child: Text(
+                tagline,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.kaushanScript(
+                  textStyle: TextStyle(
+                    fontSize: 14.spMin,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              )
-              : SizedBox.shrink(),
+              ),
+            ),
+          ],
 
           // Divider(),
         ],
