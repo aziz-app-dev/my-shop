@@ -15,6 +15,8 @@ import '../../res/components/text_field_widget.dart';
 import '../../utils/app_sizes.dart';
 import '../../view_models/providers/repair_provider.dart';
 import '../../view_models/states/repair_state.dart';
+import '../../view_models/services/keyboard/app_keyboard_service.dart';
+import 'package:flutter/services.dart';
 import '../main/main_view.dart';
 import 'repair_detail_view.dart';
 import 'create_repair_view.dart';
@@ -24,12 +26,46 @@ import 'widgets/repair_summary_widget.dart';
 /// route instead, so it doesn't use this.
 final selectedRepairIdProvider = StateProvider<String?>((ref) => null);
 
-class RepairView extends ConsumerWidget {
+class RepairView extends ConsumerStatefulWidget {
   final VoidCallback? openDrawer;
   const RepairView({super.key, this.openDrawer});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RepairView> createState() => _RepairViewState();
+}
+
+class _RepairViewState extends ConsumerState<RepairView> {
+  /// Ctrl+N creates a new repair — window-level shortcut, same as the
+  /// purchases list.
+  late final AppKeyboardScope _keys = AppKeyboardScope('repair-list', (event) {
+    if (AppKeyboardScope.didPress(event, LogicalKeyboardKey.keyN, ctrl: true)) {
+      _openForm(context);
+      return true;
+    }
+    return false;
+  });
+
+  @override
+  void initState() {
+    super.initState();
+    AppKeyboardScope.register(_keys);
+  }
+
+  @override
+  void dispose() {
+    AppKeyboardScope.unregister(_keys);
+    super.dispose();
+  }
+
+  void _openForm(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const CreateRepairView()),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBarWidget.customAppBar(
         title: 'Repairs',
@@ -63,13 +99,6 @@ class RepairView extends ConsumerWidget {
           return useSplitView ? const _SplitLayout() : const _MobileList();
         },
       ),
-    );
-  }
-
-  void _openForm(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const CreateRepairView()),
     );
   }
 }
@@ -400,13 +429,25 @@ class _RepairListContent extends StatelessWidget {
           SizedBox(height: 12.spMin),
           Text(
             'No repair jobs yet',
-            style: TextStyle(fontSize: 15.spMin, color: Colors.grey[600]),
+            style: TextStyle(
+              fontSize: 15.spMin,
+              color:
+                  Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.grey300
+                      : Colors.grey[600],
+            ),
           ),
           SizedBox(height: 4.spMin),
           Text(
             'Tap "New Repair" to take an item from a client.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12.spMin, color: Colors.grey[500]),
+            style: TextStyle(
+              fontSize: 12.spMin,
+              color:
+                  Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.grey300
+                      : Colors.grey[500],
+            ),
           ),
         ],
       ),
@@ -481,7 +522,10 @@ class RepairCard extends StatelessWidget {
                         repair.clientPhone,
                         style: TextStyle(
                           fontSize: 12.spMin,
-                          color: Colors.grey[600],
+                          color:
+                              Theme.of(context).brightness == Brightness.dark
+                                  ? AppColors.grey300
+                                  : Colors.grey[600],
                         ),
                       ),
                     if (deviceLine.isNotEmpty) ...[

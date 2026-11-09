@@ -313,7 +313,13 @@ class RepairDetailEmpty extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13.spMin, color: Colors.grey[600]),
+            style: TextStyle(
+              fontSize: 13.spMin,
+              color:
+                  Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.grey300
+                      : Colors.grey[600],
+            ),
           ),
         ],
       ),
@@ -424,14 +430,14 @@ class _Header extends StatelessWidget {
                           Icon(
                             TablerIcons.phone,
                             size: 13.spMin,
-                            color: Colors.grey[500],
+                            color: isDark ? AppColors.grey300 : Colors.grey[500],
                           ),
                           SizedBox(width: 4.spMin),
                           Text(
                             repair.clientPhone,
                             style: TextStyle(
                               fontSize: 12.spMin,
-                              color: Colors.grey[600],
+                              color: isDark ? AppColors.grey300 : Colors.grey[600],
                             ),
                           ),
                         ],
@@ -500,7 +506,11 @@ class _Header extends StatelessWidget {
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 10.spMin, color: Colors.grey[600]),
+          style: TextStyle(
+            fontSize: 10.spMin,
+            // Grey must stay readable on the dark-grey section card.
+            color: isDark ? AppColors.grey300 : Colors.grey[600],
+          ),
         ),
         SizedBox(height: 4.spMin),
         Text(
@@ -736,7 +746,14 @@ class _InfoRow extends StatelessWidget {
             width: 110.spMin,
             child: Text(
               label,
-              style: TextStyle(fontSize: 12.spMin, color: Colors.grey[600]),
+              style: TextStyle(
+                fontSize: 12.spMin,
+                // Grey must stay readable on the dark-grey section card.
+                color:
+                    Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.grey300
+                        : Colors.grey[600],
+              ),
             ),
           ),
           Expanded(
@@ -789,7 +806,10 @@ class _ProblemSection extends StatelessWidget {
       children: [
         Text(
           'Reported problem',
-          style: TextStyle(fontSize: 12.spMin, color: Colors.grey[600]),
+          style: TextStyle(
+            fontSize: 12.spMin,
+            color: isDark ? AppColors.grey300 : Colors.grey[600],
+          ),
         ),
         SizedBox(height: 4.spMin),
         Text(
@@ -800,7 +820,10 @@ class _ProblemSection extends StatelessWidget {
           SizedBox(height: 12.spMin),
           Text(
             'Accessories received',
-            style: TextStyle(fontSize: 12.spMin, color: Colors.grey[600]),
+            style: TextStyle(
+              fontSize: 12.spMin,
+              color: isDark ? AppColors.grey300 : Colors.grey[600],
+            ),
           ),
           SizedBox(height: 4.spMin),
           Text(
@@ -849,7 +872,10 @@ class _CostSection extends StatelessWidget {
             style: TextStyle(
               fontSize: 12.spMin,
               fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-              color: bold ? null : Colors.grey[700],
+              color:
+                  bold
+                      ? null
+                      : (isDark ? AppColors.grey300 : Colors.grey[700]),
             ),
           ),
           Text(
@@ -892,7 +918,7 @@ class _ItemsSection extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11.spMin,
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey[600],
+                    color: isDark ? AppColors.grey300 : Colors.grey[600],
                   ),
                 ),
               ),
@@ -904,7 +930,7 @@ class _ItemsSection extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11.spMin,
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey[600],
+                    color: isDark ? AppColors.grey300 : Colors.grey[600],
                   ),
                 ),
               ),
@@ -916,7 +942,7 @@ class _ItemsSection extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11.spMin,
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey[600],
+                    color: isDark ? AppColors.grey300 : Colors.grey[600],
                   ),
                 ),
               ),
@@ -928,7 +954,7 @@ class _ItemsSection extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11.spMin,
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey[600],
+                    color: isDark ? AppColors.grey300 : Colors.grey[600],
                   ),
                 ),
               ),
