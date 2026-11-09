@@ -106,10 +106,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _isService = widget.isService ?? widget.product?.isService ?? false;
 
     // Keep the form provider in sync with the requested type for new entries.
+    // Deferred to after the first frame: mutating a provider inside initState
+    // throws "Tried to modify a provider while the widget tree was building".
     if (widget.product == null) {
-      ref
-          .read(productFormProvider(widget.product).notifier)
-          .updateIsService(_isService);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref
+            .read(productFormProvider(widget.product).notifier)
+            .updateIsService(_isService);
+      });
     }
 
     // Initialize controllers with initial values from formState
