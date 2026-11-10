@@ -70,6 +70,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   /// The type of entry being created/edited (`true` = service, `false` = item).
   bool _isService = false;
 
+  /// True while the product photo is being analysed by Gemini — drives the
+  /// "AI working" overlay on the image box.
+  bool _aiAnalyzing = false;
+
   // Declare controllers
   late TextEditingController _nameController;
   late TextEditingController _priceController;
@@ -94,25 +98,45 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     final imageFile = formState.imageFile;
     if (imageFile == null || !await imageFile.exists()) return;
 
-    // Give the model the shop's own brands/categories so it answers with
-    // values that actually match the pickers.
-    final brandNames = <String>[];
-    final categoryNames = <String>[];
+    // "AI working" overlay over the photo while the request is in flight.
+    if (!mounted) return;
+    setState(() => _aiAnalyzing = true);
+    final ProductAiSuggestion? suggestion;
     try {
-      final brands = await ref.read(brandsProvider.future);
-      brandNames.addAll(brands.map((b) => b.name));
-    } catch (_) {}
-    try {
-      final categories = await ref.read(categoriesProvider.future);
-      categoryNames.addAll(categories.map((c) => c.name));
-    } catch (_) {}
+      // Give the model the shop's own brands/categories so it answers with
+      // values that actually match the pickers.
+      final brandNames = <String>[];
+      final categoryNames = <String>[];
+      try {
+        final brands = await ref.read(brandsProvider.future);
+        brandNames.addAll(brands.map((b) => b.name));
+      } catch (_) {}
+      try {
+        final categories = await ref.read(categoriesProvider.future);
+        categoryNames.addAll(categories.map((c) => c.name));
+      } catch (_) {}
 
-    final suggestion = await GeminiProductVision.analyzeProductImage(
-      imageFile.path,
-      brands: brandNames,
-      categories: categoryNames,
-    );
-    if (suggestion == null || !mounted) return;
+      suggestion = await GeminiProductVision.analyzeProductImage(
+        imageFile.path,
+        brands: brandNames,
+        categories: categoryNames,
+      );
+    } finally {
+      if (mounted) setState(() => _aiAnalyzing = false);
+    }
+
+    if (!mounted) return;
+    if (suggestion == null) {
+      // Failed request / offline / unreadable image — tell the user rather
+      // than failing silently with no fields touched.
+      AppFlushbar.warning(
+        context,
+        message:
+            'AI couldn\'t analyse the photo — check your internet and try again.',
+        duration: const Duration(seconds: 4),
+      );
+      return;
+    }
 
     final filled = <String>[];
 
@@ -153,6 +177,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       AppFlushbar.success(
         context,
         message: 'AI analysed the image and filled: ${filled.join(', ')}',
+        duration: const Duration(seconds: 3),
+      );
+    } else if (mounted) {
+      // Analysis worked but every field was already filled — say so, so the
+      // "is it done?" question never hangs silently.
+      AppFlushbar.info(
+        context,
+        message: 'AI analysed the image — all fields were already filled.',
         duration: const Duration(seconds: 3),
       );
     }
@@ -453,6 +485,50 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         ),
 
                         onPressed: () => formNotifier.updateImageFile(null),
+                      ),
+                    ),
+                  // "AI working" scrim: covers the photo with a spinner
+                  // while Gemini analyses it, so the button clearly shows
+                  // progress instead of silently hanging.
+                  if (_aiAnalyzing)
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(
+                                width: 34,
+                                height: 34,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 3,
+                                ),
+                              ),
+                              SizedBox(height: 10.h),
+                              Text(
+                                'AI is analysing your photo...',
+                                style: TextStyle(
+                                  fontSize: 13.spMin,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(height: 4.h),
+                              Text(
+                                'Filling name, brand & category automatically',
+                                style: TextStyle(
+                                  fontSize: 11.spMin,
+                                  color: Colors.white.withValues(alpha: 0.85),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                 ],
