@@ -1,9 +1,11 @@
+import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import '../../models/local_purchase_model.dart';
+import '../../res/assets/image_assets.dart';
 import '../../res/colors/app_color.dart';
 import '../../res/components/app_bar_widget.dart';
 import '../../res/components/app_flushbar.dart';
@@ -12,6 +14,8 @@ import '../../view_models/states/local_purchase_states.dart';
 import '../../view_models/services/keyboard/app_keyboard_service.dart';
 import '../../utils/app_sizes.dart';
 import '../../view_models/providers/local_purchase_provider.dart';
+import '../bills/widgets/data_table_widgets.dart'
+    show DataTableHeaderCell, TableDataCellText;
 import 'local_purchase_detail_view.dart';
 import 'local_purchase_form_view.dart';
 
@@ -30,20 +34,19 @@ class _LocalPurchaseListViewState extends ConsumerState<LocalPurchaseListView> {
   ///  * Ctrl+N opens the create form.
   ///  * Ctrl+P prints the single selected purchase (same PDF pipeline as the
   ///    detail screen, via [LocalPurchaseDetailView] with autoPrint).
-  late final AppKeyboardScope _keys = AppKeyboardScope(
-    'purchase-list',
-    (event) {
-      if (AppKeyboardScope.didPress(event, LogicalKeyboardKey.keyN, ctrl: true)) {
-        _openCreateForm();
-        return true;
-      }
-      if (AppKeyboardScope.didPress(event, LogicalKeyboardKey.keyP, ctrl: true)) {
-        _printSelectedAgreement();
-        return true;
-      }
-      return false;
-    },
-  );
+  late final AppKeyboardScope _keys = AppKeyboardScope('purchase-list', (
+    event,
+  ) {
+    if (AppKeyboardScope.didPress(event, LogicalKeyboardKey.keyN, ctrl: true)) {
+      _openCreateForm();
+      return true;
+    }
+    if (AppKeyboardScope.didPress(event, LogicalKeyboardKey.keyP, ctrl: true)) {
+      _printSelectedAgreement();
+      return true;
+    }
+    return false;
+  });
 
   @override
   void initState() {
@@ -93,8 +96,10 @@ class _LocalPurchaseListViewState extends ConsumerState<LocalPurchaseListView> {
         context,
         MaterialPageRoute(
           builder:
-              (_) =>
-                  LocalPurchaseDetailView(agreement: selected.first, autoPrint: true),
+              (_) => LocalPurchaseDetailView(
+                agreement: selected.first,
+                autoPrint: true,
+              ),
         ),
       );
     } else if (selected.isEmpty) {
@@ -381,61 +386,207 @@ class _LocalPurchaseListViewState extends ConsumerState<LocalPurchaseListView> {
     );
   }
 
+  /// Desktop table — the SAME styled [DataTable2] used by the Invoices
+  /// (bills) and Customers pages: shared header cells, striped rows,
+  /// selection checkboxes and the primary heading band.
   Widget _buildDataTable(
     LocalPurchaseState state,
     LocalPurchaseNotifier notifier,
   ) {
-    return SingleChildScrollView(
-      padding: EdgeInsets.symmetric(horizontal: 12.w),
-      child: DataTable(
-        columns: const [
-          DataColumn(label: Text('Date')),
-          DataColumn(label: Text('Seller')),
-          DataColumn(label: Text('Phone')),
-          DataColumn(label: Text('Items')),
-          DataColumn(label: Text('Total'), numeric: true),
-          DataColumn(label: Text('Payment')),
-          DataColumn(label: Text('Actions')),
-        ],
-        rows:
-            state.filteredAgreements.map((agreement) {
-              return DataRow(
-                selected: state.selectedAgreements[agreement.id] ?? false,
-                onSelectChanged:
-                    (selected) =>
-                        notifier.toggleSelection(agreement.id, selected),
-                cells: [
-                  DataCell(
-                    Text(DateFormat('dd MMM yyyy').format(agreement.dateTime)),
-                  ),
-                  DataCell(Text(agreement.sellerName)),
-                  DataCell(Text(agreement.sellerPhone ?? '-')),
-                  DataCell(Text('${agreement.items.length}')),
-                  DataCell(
-                    Text('Rs.${agreement.totalAmount.toStringAsFixed(0)}'),
-                  ),
-                  DataCell(Text(agreement.paymentType)),
-                  DataCell(
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.visibility, size: 18),
-                          onPressed: () => _openDetail(agreement),
-                          tooltip: 'View',
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.print, size: 18),
-                          onPressed: () => _printAgreement(agreement),
-                          tooltip: 'Print',
-                        ),
-                      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: 16.spMin,
+            vertical: 16.spMin,
+          ),
+          child: DataTable2(
+            dividerThickness: 0,
+            showCheckboxColumn: true,
+            headingCheckboxTheme: CheckboxThemeData(
+              fillColor: WidgetStateProperty.resolveWith(
+                (states) =>
+                    states.contains(WidgetState.selected)
+                        ? AppColors.primary
+                        : Colors.transparent,
+              ),
+              checkColor: WidgetStateProperty.all(Colors.white),
+              side: BorderSide(color: Colors.white, width: 2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            datarowCheckboxTheme: CheckboxThemeData(
+              fillColor: WidgetStateProperty.resolveWith(
+                (states) =>
+                    states.contains(WidgetState.selected)
+                        ? AppColors.primary
+                        : Colors.transparent,
+              ),
+              checkColor: WidgetStateProperty.all(Colors.white),
+              side: BorderSide(
+                color:
+                    Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black,
+                width: 1,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            columnSpacing: 0.5.spMin,
+            horizontalMargin: 0,
+            minWidth: constraints.maxWidth,
+            headingRowHeight: 40.spMin,
+            dataRowHeight: 40.spMin,
+            headingRowDecoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: AppColors.primaryLight2,
+            ),
+            dataTextStyle: TextStyle(fontSize: 12.spMin),
+            columns: [
+              DataColumn2(
+                label: DataTableHeaderCell(
+                  win11Icon: ImageAssets.win11DeliveryTime,
+                  icon: Icons.calendar_today,
+                  title: 'Date',
+                ),
+                size: ColumnSize.S,
+              ),
+              DataColumn2(
+                label: DataTableHeaderCell(
+                  win11Icon: ImageAssets.win11TestAccount,
+                  icon: Icons.person,
+                  title: 'Seller',
+                ),
+                size: ColumnSize.L,
+              ),
+              DataColumn2(
+                label: DataTableHeaderCell(
+                  win11Icon: ImageAssets.win11Phone,
+                  icon: Icons.phone,
+                  title: 'Phone',
+                ),
+                size: ColumnSize.M,
+              ),
+              DataColumn2(
+                label: DataTableHeaderCell(
+                  win11Icon: ImageAssets.win11Stock,
+                  icon: Icons.inventory_2_outlined,
+                  title: 'Items',
+                ),
+                size: ColumnSize.S,
+                numeric: true,
+              ),
+              DataColumn2(
+                label: DataTableHeaderCell(
+                  win11Icon: ImageAssets.win11Cash,
+                  icon: Icons.payments_outlined,
+                  title: 'Total',
+                ),
+                size: ColumnSize.M,
+                numeric: true,
+              ),
+              DataColumn2(
+                label: DataTableHeaderCell(
+                  win11Icon: ImageAssets.win11Card,
+                  icon: Icons.payment,
+                  title: 'Payment',
+                ),
+                size: ColumnSize.M,
+              ),
+              DataColumn2(
+                label: DataTableHeaderCell(
+                  win11Icon: ImageAssets.win11CircledMenu,
+                  icon: Icons.more_horiz,
+                  title: 'Actions',
+                ),
+                size: ColumnSize.S,
+              ),
+            ],
+            rows:
+                state.filteredAgreements.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final agreement = entry.value;
+                  final isSelected =
+                      state.selectedAgreements[agreement.id] ?? false;
+
+                  return DataRow2(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color:
+                          index.isEven
+                              ? Colors.transparent
+                              : Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.grey800
+                              : AppColors.primary.withValues(alpha: 0.1),
                     ),
-                  ),
-                ],
-              );
-            }).toList(),
-      ),
+                    selected: isSelected,
+                    onSelectChanged:
+                        (selected) =>
+                            notifier.toggleSelection(agreement.id, selected),
+                    onTap: () => _openDetail(agreement),
+                    cells: [
+                      DataCell(
+                        TableDataCellText(
+                          text: DateFormat(
+                            'dd MMM yyyy',
+                          ).format(agreement.dateTime),
+                        ),
+                      ),
+                      DataCell(
+                        TableDataCellText(
+                          text: agreement.sellerName,
+                          tooltip: true,
+                        ),
+                      ),
+                      DataCell(
+                        TableDataCellText(
+                          text: agreement.sellerPhone ?? 'N/A',
+                          tooltip: true,
+                        ),
+                      ),
+                      DataCell(
+                        TableDataCellText(text: '${agreement.items.length}'),
+                      ),
+                      DataCell(
+                        TableDataCellText(
+                          text:
+                              'Rs.${agreement.totalAmount.toStringAsFixed(0)}',
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      DataCell(
+                        TableDataCellText(
+                          text: agreement.paymentType,
+                          tooltip: true,
+                        ),
+                      ),
+                      DataCell(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.visibility, size: 18),
+                              onPressed: () => _openDetail(agreement),
+                              tooltip: 'View',
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.print, size: 18),
+                              onPressed: () => _printAgreement(agreement),
+                              tooltip: 'Print',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
+          ),
+        );
+      },
     );
   }
 
