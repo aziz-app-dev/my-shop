@@ -19,6 +19,7 @@ import '../../res/components/app_text_widgrt.dart';
 import '../../res/components/selection_bottom_sheet.dart';
 import '../../res/components/text_field_widget.dart';
 import '../../view_models/providers/add_prduct_provider.dart';
+import '../../view_models/providers/settings_provider.dart';
 import '../../view_models/states/add_product_states.dart';
 import '../../view_models/services/database/database_services.dart';
 import '../../view_models/services/gemini/gemini_product_vision.dart';
@@ -100,6 +101,21 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
     // "AI working" overlay over the photo while the request is in flight.
     if (!mounted) return;
+
+    // Key comes from Settings → General → AI (Gemini). Without it the AI
+    // feature is off — say so instead of a vague network warning.
+    final apiKey = ref.read(settingsProvider).geminiApiKey;
+    if (apiKey.trim().isEmpty) {
+      AppFlushbar.warning(
+        context,
+        message:
+            'AI analysis is off — add your Gemini API key in Settings → '
+            'General → AI (Gemini).',
+        duration: const Duration(seconds: 4),
+      );
+      return;
+    }
+
     setState(() => _aiAnalyzing = true);
     final ProductAiSuggestion? suggestion;
     try {
@@ -118,6 +134,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
       suggestion = await GeminiProductVision.analyzeProductImage(
         imageFile.path,
+        apiKey: apiKey,
         brands: brandNames,
         categories: categoryNames,
       );

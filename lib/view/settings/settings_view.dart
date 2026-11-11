@@ -18,6 +18,7 @@ import '../../res/components/app_icon.dart';
 import '../../res/components/text_field_widget.dart';
 import '../../utils/app_sizes.dart';
 import '../../view_models/providers/settings_provider.dart';
+import '../../view_models/services/gemini/gemini_product_vision.dart';
 import '../about/about_view.dart';
 import '../main/main_view.dart';
 import 'widgets/custom_tile.dart';
@@ -484,6 +485,9 @@ class SettingsPage extends ConsumerWidget {
                       );
                     },
                   ),
+                  // AI product-photo analysis (Gemini). Key is entered here
+                  // and stored locally — no key in the app = AI feature off.
+                  _GeminiApiCard(settings: settingsState),
                 ],
               ),
             ),
@@ -1127,99 +1131,6 @@ class SettingsPage extends ConsumerWidget {
               ),
             ),
             SizedBox(height: 16.spMin),
-            // Elevations ExpansionTile
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-              child: AppExpansionTile(
-                initiallyExpanded: false,
-                tilePadding: EdgeInsets.symmetric(horizontal: 16.spMin),
-                childrenPadding: EdgeInsets.all(16.spMin),
-                title: mdTextBold(text: 'Elevations'),
-                children: [
-                  ListTile(
-                    title: smTextBold(text: 'Card Elevation'),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Slider(
-                          value: settingsState.cardElevation,
-                          min: 0.0,
-                          max: 10.0,
-                          divisions: 20,
-                          label: settingsState.cardElevation.toStringAsFixed(1),
-                          onChanged: (value) {
-                            ref
-                                .read(settingsProvider.notifier)
-                                .setCardElevation(value);
-                          },
-                        ),
-                        smText(
-                          text:
-                              'Elevation: ${settingsState.cardElevation.toStringAsFixed(1)}',
-                        ),
-                      ],
-                    ),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 8.spMin),
-                  ),
-                  ListTile(
-                    title: smTextBold(text: 'AppBar Elevation'),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Slider(
-                          value: settingsState.appBarElevation,
-                          min: 0.0,
-                          max: 10.0,
-                          divisions: 20,
-                          label: settingsState.appBarElevation.toStringAsFixed(
-                            1,
-                          ),
-                          onChanged: (value) {
-                            ref
-                                .read(settingsProvider.notifier)
-                                .setAppBarElevation(value);
-                          },
-                        ),
-                        smText(
-                          text:
-                              'Elevation: ${settingsState.appBarElevation.toStringAsFixed(1)}',
-                        ),
-                      ],
-                    ),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 8.spMin),
-                  ),
-                  ListTile(
-                    title: smTextBold(text: 'Product Card Elevation'),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Slider(
-                          value: settingsState.productCardElevation,
-                          min: 0.0,
-                          max: 10.0,
-                          divisions: 20,
-                          label: settingsState.productCardElevation
-                              .toStringAsFixed(1),
-                          onChanged: (value) {
-                            ref
-                                .read(settingsProvider.notifier)
-                                .setProductCardElevation(value);
-                          },
-                        ),
-                        smText(
-                          text:
-                              'Elevation: ${settingsState.productCardElevation.toStringAsFixed(1)}',
-                        ),
-                      ],
-                    ),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 8.spMin),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 16.spMin),
             const _PurchaseTermsCard(),
             SizedBox(height: 16.spMin),
             // About & Help — in-app documentation of every feature, button
@@ -1683,6 +1594,218 @@ class _PurchaseTermsCardState extends ConsumerState<_PurchaseTermsCard> {
               fontSize: 12.spMin,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Settings card for the AI product-photo analysis (Gemini).
+///
+/// Paste a free API key from Google AI Studio, save it (stored only on this
+/// device in the settings box — never hard-coded in the app) and optionally
+/// test it live. While the field is empty, the AI feature stays off in the
+/// whole app: photo analysis simply refuses to run.
+class _GeminiApiCard extends ConsumerStatefulWidget {
+  final SettingsState settings;
+
+  const _GeminiApiCard({required this.settings});
+
+  @override
+  ConsumerState<_GeminiApiCard> createState() => _GeminiApiCardState();
+}
+
+class _GeminiApiCardState extends ConsumerState<_GeminiApiCard> {
+  late final TextEditingController _keyController;
+  bool _obscureKey = true;
+  bool _testing = false;
+
+  /// null = not tested yet; true/false = live test result.
+  bool? _testResult;
+
+  @override
+  void initState() {
+    super.initState();
+    _keyController = TextEditingController(text: widget.settings.geminiApiKey);
+  }
+
+  @override
+  void dispose() {
+    _keyController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    ref.read(settingsProvider.notifier).setGeminiApiKey(_keyController.text);
+    if (!mounted) return;
+    AppFlushbar.success(
+      context,
+      message:
+          _keyController.text.trim().isEmpty
+              ? 'API key removed — AI analysis is now off.'
+              : 'Gemini API key saved — AI analysis is on.',
+    );
+    setState(() => _testResult = null);
+  }
+
+  Future<void> _test() async {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _testing = true;
+      _testResult = null;
+    });
+    final ok = await GeminiProductVision.testApiKey(_keyController.text);
+    if (!mounted) return;
+    setState(() {
+      _testing = false;
+      _testResult = ok;
+    });
+    AppFlushbar.show(
+      context,
+      title: ok ? 'Key works' : 'Key failed',
+      message:
+          ok
+              ? 'Google accepted this key — AI photo analysis is ready.'
+              : _keyController.text.trim().isEmpty
+              ? 'No key entered yet. Paste a key from Google AI Studio first.'
+              : 'Google rejected this key (invalid/expired) or the device is '
+                  'offline. Check the key and your internet.',
+      type: ok ? FlushbarType.success : FlushbarType.error,
+      duration: const Duration(seconds: 4),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasKey = widget.settings.geminiApiKey.trim().isNotEmpty;
+    return Padding(
+      padding: EdgeInsets.only(top: 12.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.auto_awesome,
+                size: 18.spMin,
+                color: AppColors.primary,
+              ),
+              SizedBox(width: 6.w),
+              Expanded(
+                child: Text(
+                  'AI (Gemini) — Product Photo Analysis',
+                  style: TextStyle(
+                    fontSize: 14.spMin,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              // Live status chip: key present = AI on, empty = AI off.
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                decoration: BoxDecoration(
+                  color: (hasKey ? AppColors.success : AppColors.warning)
+                      .withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20.r),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      hasKey ? Icons.check_circle : Icons.cancel,
+                      size: 14.spMin,
+                      color: hasKey ? AppColors.success : AppColors.warning,
+                    ),
+                    SizedBox(width: 4.w),
+                    Text(
+                      hasKey ? 'AI working' : 'AI off',
+                      style: TextStyle(
+                        fontSize: 11.spMin,
+                        fontWeight: FontWeight.bold,
+                        color: hasKey ? AppColors.success : AppColors.warning,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          smText(
+            maxLines: 3,
+            text:
+                'Paste your free Gemini API key from Google AI Studio '
+                '(aistudio.google.com → Get API key). It stays on this '
+                'device only. Without a key the AI photo analysis in '
+                'Add Product stays off.',
+          ),
+          SizedBox(height: 10.h),
+          CustomTextField(
+            controller: _keyController,
+            label: 'Gemini API Key',
+            hintText: 'Paste your key here…',
+            isPassword: _obscureKey,
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscureKey
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                size: 20.spMin,
+                color:
+                    Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white70
+                        : Colors.black54,
+              ),
+              onPressed: () => setState(() => _obscureKey = !_obscureKey),
+            ),
+          ),
+          SizedBox(height: 10.h),
+          Row(
+            children: [
+              Expanded(
+                child: AppButton().primaryButton(
+                  text: 'Save Key',
+                  onPressed: _save,
+                  width: double.infinity,
+                  height: 36.spMin,
+                  fontSize: 12.spMin,
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: AppButton().secondaryButton(
+                  text: 'Test Key',
+                  onPressed: _test,
+                  ref: ref,
+                  isLoading: _testing,
+                  width: double.infinity,
+                  height: 36.spMin,
+                  fontSize: 12.spMin,
+                ),
+              ),
+            ],
+          ),
+          if (_testResult != null) ...[
+            SizedBox(height: 8.h),
+            Row(
+              children: [
+                Icon(
+                  _testResult! ? Icons.check_circle : Icons.error_outline,
+                  size: 16.spMin,
+                  color: _testResult! ? AppColors.success : AppColors.error,
+                ),
+                SizedBox(width: 6.w),
+                Expanded(
+                  child: smText(
+                    text:
+                        _testResult!
+                            ? 'Key verified — AI analysis is working.'
+                            : 'Key rejected — invalid, expired or no internet.',
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

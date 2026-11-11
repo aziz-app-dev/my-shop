@@ -145,6 +145,11 @@ class SettingsState {
   final int lowStockItemsCount;
   final List<String> sectionOrder;
 
+  /// Gemini API key for the AI product-photo analysis. Empty = AI disabled.
+  /// Entered and stored from Settings → General Settings → AI (Gemini); it
+  /// is never hard-coded in the source.
+  final String geminiApiKey;
+
   /// Terms & conditions used for NEW local purchase agreements. Configured in
   /// Settings → Purchase Agreement; not shown on the agreement form.
   final List<String> purchaseTerms;
@@ -195,6 +200,7 @@ class SettingsState {
     this.latestItemsCount = 6,
     this.latestServicesCount = 6,
     this.lowStockItemsCount = 6,
+    this.geminiApiKey = '',
     this.sectionOrder = const [
       'banner',
       'brands',
@@ -253,6 +259,7 @@ class SettingsState {
     int? lowStockItemsCount,
     List<String>? sectionOrder,
     List<String>? purchaseTerms,
+    String? geminiApiKey,
   }) {
     return SettingsState(
       isPrintEnabled: isPrintEnabled ?? this.isPrintEnabled,
@@ -310,6 +317,7 @@ class SettingsState {
       lowStockItemsCount: lowStockItemsCount ?? this.lowStockItemsCount,
       sectionOrder: sectionOrder ?? this.sectionOrder,
       purchaseTerms: purchaseTerms ?? this.purchaseTerms,
+      geminiApiKey: geminiApiKey ?? this.geminiApiKey,
     );
   }
 
@@ -361,6 +369,7 @@ class SettingsState {
       'lowStockItemsCount': lowStockItemsCount,
       'sectionOrder': sectionOrder,
       'purchaseTerms': purchaseTerms,
+      'geminiApiKey': geminiApiKey,
     };
   }
 
@@ -473,6 +482,7 @@ class SettingsState {
           map['purchaseTerms'] != null
               ? List<String>.from(map['purchaseTerms'])
               : kDefaultPurchaseTerms,
+      geminiApiKey: map['geminiApiKey'] as String? ?? '',
     );
   }
 }
@@ -511,6 +521,13 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
 
   void setPrintEnabled(bool value) {
     state = state.copyWith(isPrintEnabled: value);
+    _saveSettings();
+  }
+
+  /// Stores the Gemini API key entered in Settings. An empty string disables
+  /// the AI photo analysis everywhere in the app.
+  void setGeminiApiKey(String value) {
+    state = state.copyWith(geminiApiKey: value.trim());
     _saveSettings();
   }
 

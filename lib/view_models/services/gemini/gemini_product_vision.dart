@@ -4,10 +4,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
-// API key lives in a git-ignored local file so the secret never enters
-// version control (GitHub push-protection blocks committing it).
-import 'gemini_api_key_secret.dart';
-
 /// One AI suggestion parsed from a product photo.
 class ProductAiSuggestion {
   final String? name;
@@ -49,12 +45,12 @@ extension _NullIfEmpty on String {
 ///
 /// Auth uses the `x-goog-api-key` header. Models can retire or hit demand
 /// spikes, so a fallback chain is tried top-down.
+///
+/// The API key is NOT hard-coded: it is entered in Settings → General →
+/// AI (Gemini), persisted by [settingsProvider], and passed in by the caller.
+/// No key = the service refuses to run, so the AI feature is simply off.
 class GeminiProductVision {
   GeminiProductVision._();
-
-  /// Gemini API key (mounted from the git-ignored
-  /// `gemini_api_key_secret.dart` — see that file for the key holder).
-  static const String apiKey = geminiApiKey;
 
   /// Cheap, fast model first; verified working on the free tier.
   static const List<String> _models = [
@@ -68,14 +64,23 @@ class GeminiProductVision {
   /// was, so a missing key or network gap can never break the workflow.
   static Future<ProductAiSuggestion?> analyzeProductImage(
     String imagePath, {
+    required String apiKey,
     List<String> brands = const [],
     List<String> categories = const [],
   }) async {
+    if (apiKey.trim().isEmpty) {
+      debugPrint(
+        'GeminiProductVision: no API key configured (Settings → General → '
+        'AI) — AI analysis disabled.',
+      );
+      return null;
+    }
     for (final model in _models) {
       try {
         final result = await _callModel(
           model,
           imagePath,
+          apiKey: apiKey,
           brands: brands,
           categories: categories,
         );
@@ -88,9 +93,48 @@ class GeminiProductVision {
     return null;
   }
 
+  /// Lightweight key check for the Settings screen: sends a trivial text
+  /// request and reports whether the key is accepted. Returns `false`
+  /// (never throws) on empty key, network error or API rejection.
+  static Future<bool> testApiKey(String apiKey) async {
+    if (apiKey.trim().isEmpty) return false;
+    try {
+      final response = await http
+          .post(
+            Uri.parse(
+              'https://generativelanguage.googleapis.com/v1beta/models/'
+              '${_models.first}:generateContent',
+            ),
+            headers: {
+              'Content-Type': 'application/json; charset=utf-8',
+              'x-goog-api-key': apiKey.trim(),
+            },
+            body: utf8.encode(
+              jsonEncode({
+                'contents': [
+                  {
+                    'parts': [
+                      {'text': 'Reply with just the word OK'},
+                    ],
+                  },
+                ],
+                'generationConfig': {'maxOutputTokens': 10},
+              }),
+            ),
+          )
+          .timeout(const Duration(seconds: 20));
+      debugPrint('GeminiProductVision.testApiKey: ${response.statusCode}');
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('GeminiProductVision.testApiKey error: $e');
+      return false;
+    }
+  }
+
   static Future<ProductAiSuggestion?> _callModel(
     String model,
     String imagePath, {
+    required String apiKey,
     required List<String> brands,
     required List<String> categories,
   }) async {
