@@ -18,6 +18,7 @@ import '../../res/components/app_icon.dart';
 import '../../res/components/text_field_widget.dart';
 import '../../utils/app_sizes.dart';
 import '../../view_models/providers/settings_provider.dart';
+import '../../view_models/services/cloudinary/cloudinary_service.dart';
 import '../../view_models/services/gemini/gemini_product_vision.dart';
 import '../about/about_view.dart';
 import '../main/main_view.dart';
@@ -485,9 +486,26 @@ class SettingsPage extends ConsumerWidget {
                       );
                     },
                   ),
-                  // AI product-photo analysis (Gemini). Key is entered here
-                  // and stored locally — no key in the app = AI feature off.
+                ],
+              ),
+            ),
+            SizedBox(height: 16.spMin),
+            // API Keys Section — credentials for external cloud services
+            // (AI photo analysis, Cloudinary image hosting). Keys are stored
+            // on this device only; no key = that feature stays off.
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              child: AppExpansionTile(
+                initiallyExpanded: false,
+                tilePadding: EdgeInsets.symmetric(horizontal: 16.spMin),
+                childrenPadding: EdgeInsets.all(16.spMin),
+                title: mdTextBold(text: 'API Keys'),
+                children: [
                   _GeminiApiCard(settings: settingsState),
+                  SizedBox(height: 16.spMin),
+                  _CloudinaryCard(settings: settingsState),
                 ],
               ),
             ),
@@ -1801,6 +1819,226 @@ class _GeminiApiCardState extends ConsumerState<_GeminiApiCard> {
                         _testResult!
                             ? 'Key verified — AI analysis is working.'
                             : 'Key rejected — invalid, expired or no internet.',
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Settings card for Cloudinary — cloud image hosting.
+///
+/// Unsigned uploads need only the Cloud Name and an (unsigned) Upload
+/// Preset from the Cloudinary dashboard. Stored on this device only; with
+/// either value missing the cloud upload feature stays off.
+class _CloudinaryCard extends ConsumerStatefulWidget {
+  final SettingsState settings;
+
+  const _CloudinaryCard({required this.settings});
+
+  @override
+  ConsumerState<_CloudinaryCard> createState() => _CloudinaryCardState();
+}
+
+class _CloudinaryCardState extends ConsumerState<_CloudinaryCard> {
+  late final TextEditingController _cloudNameController;
+  late final TextEditingController _presetController;
+  bool _testing = false;
+
+  /// null = not tested yet; true/false = live test result.
+  bool? _testResult;
+
+  @override
+  void initState() {
+    super.initState();
+    _cloudNameController = TextEditingController(
+      text: widget.settings.cloudinaryCloudName,
+    );
+    _presetController = TextEditingController(
+      text: widget.settings.cloudinaryUploadPreset,
+    );
+  }
+
+  @override
+  void dispose() {
+    _cloudNameController.dispose();
+    _presetController.dispose();
+    super.dispose();
+  }
+
+  bool _hasBoth() =>
+      _cloudNameController.text.trim().isNotEmpty &&
+      _presetController.text.trim().isNotEmpty;
+
+  Future<void> _save() async {
+    final notifier = ref.read(settingsProvider.notifier);
+    notifier.setCloudinaryCloudName(_cloudNameController.text);
+    notifier.setCloudinaryUploadPreset(_presetController.text);
+    if (!mounted) return;
+    AppFlushbar.success(
+      context,
+      message:
+          _hasBoth()
+              ? 'Cloudinary saved — cloud image hosting is on.'
+              : 'Cloudinary removed — cloud image hosting is off.',
+    );
+    setState(() => _testResult = null);
+  }
+
+  Future<void> _test() async {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _testing = true;
+      _testResult = null;
+    });
+    final ok = await CloudinaryService.testCredentials(
+      cloudName: _cloudNameController.text,
+      uploadPreset: _presetController.text,
+    );
+    if (!mounted) return;
+    setState(() {
+      _testing = false;
+      _testResult = ok;
+    });
+    AppFlushbar.show(
+      context,
+      title: ok ? 'Cloudinary works' : 'Cloudinary failed',
+      message:
+          ok
+              ? 'A test upload succeeded — cloud image hosting is ready.'
+              : _hasBoth()
+              ? 'Cloudinary rejected the upload — check the cloud name and '
+                  'upload preset, or your internet.'
+              : 'Fill in both the cloud name and the upload preset first.',
+      type: ok ? FlushbarType.success : FlushbarType.error,
+      duration: const Duration(seconds: 4),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final configured =
+        widget.settings.cloudinaryCloudName.trim().isNotEmpty &&
+        widget.settings.cloudinaryUploadPreset.trim().isNotEmpty;
+    return Padding(
+      padding: EdgeInsets.only(top: 12.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.cloud_upload,
+                size: 18.spMin,
+                color: AppColors.primary,
+              ),
+              SizedBox(width: 6.w),
+              Expanded(
+                child: Text(
+                  'Cloudinary — Image Hosting',
+                  style: TextStyle(
+                    fontSize: 14.spMin,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              // Live status chip: both values present = on, otherwise off.
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                decoration: BoxDecoration(
+                  color: (configured ? AppColors.success : AppColors.warning)
+                      .withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20.r),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      configured ? Icons.check_circle : Icons.cancel,
+                      size: 14.spMin,
+                      color: configured ? AppColors.success : AppColors.warning,
+                    ),
+                    SizedBox(width: 4.w),
+                    Text(
+                      configured ? 'Connected' : 'Not set',
+                      style: TextStyle(
+                        fontSize: 11.spMin,
+                        fontWeight: FontWeight.bold,
+                        color:
+                            configured ? AppColors.success : AppColors.warning,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          smText(
+            maxLines: 3,
+            text:
+                'Cloudinary account for cloud image hosting. Get both values '
+                'free from the Cloudinary dashboard → Settings → Upload → '
+                'create an UNSIGNED upload preset. Stays on this device only.',
+          ),
+          SizedBox(height: 10.h),
+          CustomTextField(
+            controller: _cloudNameController,
+            label: 'Cloud Name',
+            hintText: 'e.g. my-shop-cloud',
+          ),
+          SizedBox(height: 10.h),
+          CustomTextField(
+            controller: _presetController,
+            label: 'Upload Preset (unsigned)',
+            hintText: 'e.g. shop_unsigned_preset',
+          ),
+          SizedBox(height: 10.h),
+          Row(
+            children: [
+              Expanded(
+                child: AppButton().primaryButton(
+                  text: 'Save',
+                  onPressed: _save,
+                  width: double.infinity,
+                  height: 36.spMin,
+                  fontSize: 12.spMin,
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: AppButton().secondaryButton(
+                  text: 'Test Upload',
+                  onPressed: _test,
+                  ref: ref,
+                  isLoading: _testing,
+                  width: double.infinity,
+                  height: 36.spMin,
+                  fontSize: 12.spMin,
+                ),
+              ),
+            ],
+          ),
+          if (_testResult != null) ...[
+            SizedBox(height: 8.h),
+            Row(
+              children: [
+                Icon(
+                  _testResult! ? Icons.check_circle : Icons.error_outline,
+                  size: 16.spMin,
+                  color: _testResult! ? AppColors.success : AppColors.error,
+                ),
+                SizedBox(width: 6.w),
+                Expanded(
+                  child: smText(
+                    text:
+                        _testResult!
+                            ? 'Test upload succeeded — Cloudinary is working.'
+                            : 'Test upload failed — wrong cloud name/preset or no internet.',
                   ),
                 ),
               ],

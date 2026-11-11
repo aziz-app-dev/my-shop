@@ -160,7 +160,7 @@ class _LocalPurchaseListViewState extends ConsumerState<LocalPurchaseListView> {
 
     return Scaffold(
       appBar: AppBarWidget.customAppBar(
-        title: 'Local Purchases',
+        title: 'Purchase',
         context: context,
         automaticallyImplyLeading: isMobile,
         backIcon: isMobile ? Icons.menu : null,
@@ -436,7 +436,9 @@ class _LocalPurchaseListViewState extends ConsumerState<LocalPurchaseListView> {
               ),
             ),
             columnSpacing: 0.5.spMin,
-            horizontalMargin: 0,
+            // Leading/trailing gap so the selection checkboxes don't touch
+            // the screen edge — same as the Invoices table.
+            horizontalMargin: 4.w,
             minWidth: constraints.maxWidth,
             headingRowHeight: 40.spMin,
             dataRowHeight: 40.spMin,

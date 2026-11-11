@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import '../services/database/database_services.dart';
+import '../services/cloudinary/cloudinary_service.dart';
 
 // Print format options
 enum PrintFormat {
@@ -146,9 +147,15 @@ class SettingsState {
   final List<String> sectionOrder;
 
   /// Gemini API key for the AI product-photo analysis. Empty = AI disabled.
-  /// Entered and stored from Settings → General Settings → AI (Gemini); it
-  /// is never hard-coded in the source.
+  /// Entered and stored from Settings → API Keys; it is never hard-coded
+  /// in the source.
   final String geminiApiKey;
+
+  /// Cloudinary account for cloud image hosting (product photos etc.).
+  /// Unsigned uploads need just the cloud name + an unsigned upload preset.
+  /// Empty = cloud upload disabled.
+  final String cloudinaryCloudName;
+  final String cloudinaryUploadPreset;
 
   /// Terms & conditions used for NEW local purchase agreements. Configured in
   /// Settings → Purchase Agreement; not shown on the agreement form.
@@ -201,6 +208,8 @@ class SettingsState {
     this.latestServicesCount = 6,
     this.lowStockItemsCount = 6,
     this.geminiApiKey = '',
+    this.cloudinaryCloudName = '',
+    this.cloudinaryUploadPreset = '',
     this.sectionOrder = const [
       'banner',
       'brands',
@@ -260,6 +269,8 @@ class SettingsState {
     List<String>? sectionOrder,
     List<String>? purchaseTerms,
     String? geminiApiKey,
+    String? cloudinaryCloudName,
+    String? cloudinaryUploadPreset,
   }) {
     return SettingsState(
       isPrintEnabled: isPrintEnabled ?? this.isPrintEnabled,
@@ -318,6 +329,9 @@ class SettingsState {
       sectionOrder: sectionOrder ?? this.sectionOrder,
       purchaseTerms: purchaseTerms ?? this.purchaseTerms,
       geminiApiKey: geminiApiKey ?? this.geminiApiKey,
+      cloudinaryCloudName: cloudinaryCloudName ?? this.cloudinaryCloudName,
+      cloudinaryUploadPreset:
+          cloudinaryUploadPreset ?? this.cloudinaryUploadPreset,
     );
   }
 
@@ -370,6 +384,8 @@ class SettingsState {
       'sectionOrder': sectionOrder,
       'purchaseTerms': purchaseTerms,
       'geminiApiKey': geminiApiKey,
+      'cloudinaryCloudName': cloudinaryCloudName,
+      'cloudinaryUploadPreset': cloudinaryUploadPreset,
     };
   }
 
@@ -483,6 +499,8 @@ class SettingsState {
               ? List<String>.from(map['purchaseTerms'])
               : kDefaultPurchaseTerms,
       geminiApiKey: map['geminiApiKey'] as String? ?? '',
+      cloudinaryCloudName: map['cloudinaryCloudName'] as String? ?? '',
+      cloudinaryUploadPreset: map['cloudinaryUploadPreset'] as String? ?? '',
     );
   }
 }
@@ -512,6 +530,13 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       // Banner was added during migration, save it
       await _saveSettings();
     }
+
+    // Push external-service credentials into their services so they work
+    // app-wide without any hard-coded keys.
+    CloudinaryService.configure(
+      cloudName: state.cloudinaryCloudName,
+      uploadPreset: state.cloudinaryUploadPreset,
+    );
   }
 
   Future<void> _saveSettings() async {
@@ -529,6 +554,26 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   void setGeminiApiKey(String value) {
     state = state.copyWith(geminiApiKey: value.trim());
     _saveSettings();
+  }
+
+  /// Stores the Cloudinary cloud name (Settings → API Keys).
+  void setCloudinaryCloudName(String value) {
+    state = state.copyWith(cloudinaryCloudName: value.trim());
+    _saveSettings();
+    CloudinaryService.configure(
+      cloudName: state.cloudinaryCloudName,
+      uploadPreset: state.cloudinaryUploadPreset,
+    );
+  }
+
+  /// Stores the Cloudinary unsigned upload preset (Settings → API Keys).
+  void setCloudinaryUploadPreset(String value) {
+    state = state.copyWith(cloudinaryUploadPreset: value.trim());
+    _saveSettings();
+    CloudinaryService.configure(
+      cloudName: state.cloudinaryCloudName,
+      uploadPreset: state.cloudinaryUploadPreset,
+    );
   }
 
   void setPrintFormat(PrintFormat format) {
