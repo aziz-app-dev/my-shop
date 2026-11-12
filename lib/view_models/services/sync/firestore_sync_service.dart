@@ -136,10 +136,13 @@ class FirestoreSyncService {
   void _startRealtime() {
     if (!_fb.isSignedIn) return; // Nothing to listen to while signed out.
     for (final name in FirebaseService.dataCollections) {
-      final sub = _fb.collection(name).snapshots().listen(
-        (snapshot) => _applySnapshot(name, snapshot),
-        onError: (e) => debugPrint('Realtime listen error ($name): $e'),
-      );
+      final sub = _fb
+          .collection(name)
+          .snapshots()
+          .listen(
+            (snapshot) => _applySnapshot(name, snapshot),
+            onError: (e) => debugPrint('Realtime listen error ($name): $e'),
+          );
       _realtimeSubs.add(sub);
     }
   }
@@ -151,6 +154,9 @@ class FirestoreSyncService {
     if (_disposed) return;
     for (final change in snapshot.docChanges) {
       try {
+        // Skip local writes echoed back before the server acknowledges them
+        // (they're already in Hive); the server-confirmed event re-fires.
+        if (change.doc.metadata.hasPendingWrites) continue;
         final id = change.doc.id;
         if (change.type == DocumentChangeType.removed) {
           await _hive.applyRemoteDelete(table: table, id: id);
@@ -191,7 +197,10 @@ class FirestoreSyncService {
     if (_flushing || _disposed || !_queue.isOpen) return;
     if (!_fb.isSignedIn) return; // Can't scope writes without a uid.
     _flushing = true;
-    status.value = status.value.copyWith(isSyncing: true, message: 'Syncing...');
+    status.value = status.value.copyWith(
+      isSyncing: true,
+      message: 'Syncing...',
+    );
 
     try {
       final ops = _queue.peekAllSorted();
@@ -200,10 +209,12 @@ class FirestoreSyncService {
           final id = (op.payload['id'] ?? op.id).toString();
           final col = _fb.collection(op.table);
           if (op.type == SyncOpType.upsert) {
-            await col.doc(id).set(
-              Map<String, dynamic>.from(op.payload),
-              SetOptions(merge: true),
-            );
+            await col
+                .doc(id)
+                .set(
+                  Map<String, dynamic>.from(op.payload),
+                  SetOptions(merge: true),
+                );
           } else {
             if (id.isNotEmpty) {
               await col.doc(id).delete();

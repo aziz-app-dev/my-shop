@@ -1,5 +1,7 @@
 // ignore_for_file: unnecessary_null_aware_assignments
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' hide Category;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1260,7 +1262,10 @@ class HiveService {
   Future<List<LocalPurchaseAgreement>> getLocalPurchases() async {
     final maps = _localPurchaseBox.values.toList();
     return maps
-        .map((map) => LocalPurchaseAgreement.fromMap(Map<String, dynamic>.from(map)))
+        .map(
+          (map) =>
+              LocalPurchaseAgreement.fromMap(Map<String, dynamic>.from(map)),
+        )
         .toList()
       ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
   }
@@ -1278,6 +1283,39 @@ class HiveService {
   }
 
   // ---- Sync helpers (remote apply + local enqueue) ----
+
+  /// Broadcast stream fired whenever a REMOTE change (made on another
+  /// device, delivered via Firestore realtime) is applied into local Hive.
+  /// The event value is the table name. UI providers listen to this to
+  /// reload their in-memory lists, so open screens update live.
+  final StreamController<String> _remoteDataChanges =
+      StreamController<String>.broadcast();
+
+  Stream<String> get remoteDataChanges => _remoteDataChanges.stream;
+
+  /// Resolves the Hive box for a synced table; null when not synced.
+  Box<Map>? _boxForTable(String table) {
+    switch (table) {
+      case 'products':
+        return _productBox;
+      case 'customers':
+        return _customerBox;
+      case 'bills':
+        return _billBox;
+      case 'brands':
+        return _brandBox;
+      case 'categories':
+        return _categoryBox;
+      case 'expenses':
+        return _expenseBox;
+      case 'repairs':
+        return _repairBox;
+      case 'localPurchases':
+        return _localPurchaseBox;
+      default:
+        return null;
+    }
+  }
 
   Future<void> enqueueUpsert(String table, Map<String, dynamic> payload) async {
     final op = SyncOp(
@@ -1303,6 +1341,7 @@ class HiveService {
 
   /// Apply a Firestore realtime upsert into local Hive.
   /// This expects the remote doc to use the same keys used by local `toMap()`.
+  /// Fires [remoteDataChanges] so the UI reloads live.
   Future<void> applyRemoteUpsert({
     required String table,
     required Map<String, dynamic> record,
@@ -1310,64 +1349,23 @@ class HiveService {
     final id = (record['id'] ?? '').toString();
     if (id.isEmpty) return;
 
-    switch (table) {
-      case 'products':
-        await _productBox.put(id, Map<String, dynamic>.from(record));
-        return;
-      case 'customers':
-        await _customerBox.put(id, Map<String, dynamic>.from(record));
-        return;
-      case 'bills':
-        await _billBox.put(id, Map<String, dynamic>.from(record));
-        return;
-      case 'brands':
-        await _brandBox.put(id, Map<String, dynamic>.from(record));
-        return;
-      case 'categories':
-        await _categoryBox.put(id, Map<String, dynamic>.from(record));
-        return;
-      case 'expenses':
-        await _expenseBox.put(id, Map<String, dynamic>.from(record));
-        return;
-      case 'localPurchases':
-        await _localPurchaseBox.put(id, Map<String, dynamic>.from(record));
-        return;
-      default:
-        return;
-    }
+    final box = _boxForTable(table);
+    if (box == null) return;
+    await box.put(id, Map<String, dynamic>.from(record));
+    _remoteDataChanges.add(table);
   }
 
   /// Apply a Firestore realtime delete into local Hive.
+  /// Fires [remoteDataChanges] so the UI reloads live.
   Future<void> applyRemoteDelete({
     required String table,
     required String id,
   }) async {
     if (id.isEmpty) return;
-    switch (table) {
-      case 'products':
-        await _productBox.delete(id);
-        return;
-      case 'customers':
-        await _customerBox.delete(id);
-        return;
-      case 'bills':
-        await _billBox.delete(id);
-        return;
-      case 'brands':
-        await _brandBox.delete(id);
-        return;
-      case 'categories':
-        await _categoryBox.delete(id);
-        return;
-      case 'expenses':
-        await _expenseBox.delete(id);
-        return;
-      case 'localPurchases':
-        await _localPurchaseBox.delete(id);
-        return;
-      default:
-        return;
-    }
+    final box = _boxForTable(table);
+    if (box == null) return;
+    await box.delete(id);
+    _remoteDataChanges.add(table);
   }
 }
 
