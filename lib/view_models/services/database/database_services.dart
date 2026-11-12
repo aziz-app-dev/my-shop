@@ -81,6 +81,9 @@ class HiveService {
     await Hive.openBox<Map>(_localPurchaseBoxName);
     await Hive.openBox<Map>(_syncQueueBoxName);
 
+    // Enqueue local settings changes so all devices share settings.
+    _watchSettingsForSync();
+
     // Initialize default brands if brands box is empty
     await _initializeDefaultBrands();
     // Initialize default categories if categories box is empty
@@ -1317,6 +1320,73 @@ class HiveService {
     }
   }
 
+  // ---- Settings sync ----
+
+  /// Keys of the settings box that are shared across devices. Everything
+  /// else (per-device push flags, seeding markers, etc.) stays local.
+  static const Set<String> _settingsSyncKeys = {
+    'settings',
+    _fieldConfigsKey,
+    _customerFieldConfigsKey,
+  };
+
+  /// Guard so settings applied from Firestore aren't echoed back up.
+  /// Static because several HiveService instances can exist app-wide.
+  static bool _applyingRemoteSettings = false;
+
+  /// Fields inside the shared "settings" map that are device-specific
+  /// (local file paths) and must not travel between devices.
+  static const Set<String> _deviceLocalSettingFields = {
+    'directoryPath',
+    'bannerImagePaths',
+  };
+
+  /// Copies a settings value with device-local fields removed so they
+  /// never overwrite another device's local paths.
+  dynamic _stripDeviceLocalFields(dynamic value) {
+    if (value is Map) {
+      final copy = Map<String, dynamic>.from(value);
+      copy.removeWhere(
+        (k, _) => _deviceLocalSettingFields.contains(k.toString()),
+      );
+      return copy;
+    }
+    return value;
+  }
+
+  /// Set once the settings write-watcher is attached (also static so
+  /// multiple HiveService instances don't attach duplicate listeners).
+  static bool _settingsWatchAttached = false;
+
+  /// Watches local settings writes and enqueues them so every device
+  /// shares the same settings (API keys, print config, field layouts...).
+  void _watchSettingsForSync() {
+    if (_settingsWatchAttached || !Hive.isBoxOpen(_settingsBoxName)) return;
+    _settingsWatchAttached = true;
+    Hive.box(_settingsBoxName).watch().listen((event) {
+      if (_applyingRemoteSettings) return;
+      final key = event.key?.toString() ?? '';
+      if (event.deleted || !_settingsSyncKeys.contains(key)) return;
+      final value = Hive.box(_settingsBoxName).get(key);
+      if (value == null) return;
+      enqueueUpsert('settings', {
+        'id': key,
+        'value': _stripDeviceLocalFields(value),
+      });
+    });
+  }
+
+  /// Wraps the shared settings keys as {id, value} records so the sync
+  /// machinery can treat the settings box like any other table.
+  Future<List<Map<String, dynamic>>> _localSettingsRecords() async {
+    final box = await getSettingsBox();
+    return [
+      for (final key in _settingsSyncKeys)
+        if (box.get(key) != null)
+          {'id': key, 'value': _stripDeviceLocalFields(box.get(key))},
+    ];
+  }
+
   Future<void> enqueueUpsert(String table, Map<String, dynamic> payload) async {
     final op = SyncOp(
       id: const Uuid().v4(),
@@ -1342,6 +1412,7 @@ class HiveService {
   /// Returns every local record of a synced table (used by the one-time
   /// initial cloud push so old local data gets shared).
   Future<List<Map<String, dynamic>>> getLocalRecords(String table) async {
+    if (table == 'settings') return _localSettingsRecords();
     final box = _boxForTable(table);
     if (box == null) return const [];
     return box.values.map((e) => Map<String, dynamic>.from(e)).toList();
@@ -1354,6 +1425,35 @@ class HiveService {
     required String table,
     required Map<String, dynamic> record,
   }) async {
+    if (table == 'settings') {
+      // Settings docs are wrapped as {id: key, value: ...}.
+      final key = (record['id'] ?? '').toString();
+      if (!_settingsSyncKeys.contains(key)) return;
+      var value = record['value'];
+      if (value == null) return;
+      if (key == 'settings' && value is Map) {
+        // Keep this device's own local fields (file paths) — everything
+        // else comes from the cloud.
+        final local = Hive.box(_settingsBoxName).get(key);
+        if (local is Map) {
+          final merged = Map<String, dynamic>.from(value);
+          for (final field in _deviceLocalSettingFields) {
+            if (local.containsKey(field)) merged[field] = local[field];
+          }
+          value = merged;
+        }
+      }
+      final box = await getSettingsBox();
+      _applyingRemoteSettings = true;
+      try {
+        await box.put(key, value);
+      } finally {
+        _applyingRemoteSettings = false;
+      }
+      _remoteDataChanges.add(table);
+      return;
+    }
+
     final id = (record['id'] ?? '').toString();
     if (id.isEmpty) return;
 
@@ -1370,6 +1470,8 @@ class HiveService {
     required String id,
   }) async {
     if (id.isEmpty) return;
+    // Settings keys are never deleted remotely — only overwritten.
+    if (table == 'settings') return;
     final box = _boxForTable(table);
     if (box == null) return;
     await box.delete(id);

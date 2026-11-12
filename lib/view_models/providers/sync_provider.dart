@@ -11,6 +11,7 @@ import 'home_page_provider.dart';
 import 'local_purchase_provider.dart';
 import 'product_view.dart';
 import 'repair_provider.dart';
+import 'settings_provider.dart' hide hiveServiceProvider;
 import '../services/database/database_services.dart';
 import '../services/sync/firestore_sync_service.dart';
 import '../services/sync/sync_queue.dart';
@@ -84,6 +85,11 @@ class SyncController {
             continue;
           case 'localPurchases':
             _ref.read(localPurchaseProvider.notifier).fetchAgreements();
+            continue;
+          case 'settings':
+            // Another device changed settings (API keys, print config...)
+            // — reload from Hive so open screens pick it up immediately.
+            _ref.read(settingsProvider.notifier).reloadFromBox();
             continue;
         }
       } catch (e) {

@@ -55,6 +55,7 @@ class FirebaseService {
     'expenses',
     'repairs',
     'localPurchases',
+    'settings',
   ];
 
   /// This shop's fixed cloud id (no per-user auth in this app).

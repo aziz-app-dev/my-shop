@@ -512,6 +512,11 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     _loadSettings();
   }
 
+  /// Reloads settings from Hive — called when another device changed them
+  /// (delivered by the sync system), so open screens pick the change up.
+  /// Also re-pushes API credentials into CloudinaryService.
+  Future<void> reloadFromBox() => _loadSettings();
+
   Future<void> _loadSettings() async {
     final settingsBox = await _hiveService.getSettingsBox();
     final directoryPath = await _hiveService.directoryPath;
