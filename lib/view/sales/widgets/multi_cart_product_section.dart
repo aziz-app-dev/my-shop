@@ -69,13 +69,6 @@ class _ProductsSectionWithSearchState
       );
     } else {
       ref.read(multiCartProvider.notifier).addToCart(product);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${product.name} added to cart'),
-          duration: const Duration(seconds: 1),
-          backgroundColor: AppColors.primary,
-        ),
-      );
     }
   }
 
@@ -124,15 +117,11 @@ class _ProductsSectionWithSearchState
     }
     if (_isNavPress(event, LogicalKeyboardKey.tab) ||
         _isNavPress(event, LogicalKeyboardKey.arrowRight)) {
-      _setKeyboardSelection(
-        selected == products.length - 1 ? 0 : selected + 1,
-      );
+      _setKeyboardSelection(selected == products.length - 1 ? 0 : selected + 1);
       return true;
     }
     if (_isNavPress(event, LogicalKeyboardKey.arrowLeft)) {
-      _setKeyboardSelection(
-        selected == 0 ? products.length - 1 : selected - 1,
-      );
+      _setKeyboardSelection(selected == 0 ? products.length - 1 : selected - 1);
       return true;
     }
     if (_isNavPress(event, LogicalKeyboardKey.arrowDown)) {
@@ -195,8 +184,7 @@ class _ProductsSectionWithSearchState
 
     // Tab inside the search box jumps into the product grid selection.
     _searchFocusNode.onKeyEvent = (node, event) {
-      if (event is KeyDownEvent &&
-          event.logicalKey == LogicalKeyboardKey.tab) {
+      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.tab) {
         final products = _liveProducts;
         if (products != null && products.isNotEmpty) {
           _setKeyboardSelection(0);
@@ -507,7 +495,12 @@ class _ProductsSectionWithSearchState
             // field height via IntrinsicHeight (no fixed-height SizedBox that
             // would clip the text field and overflow).
             Padding(
-              padding: EdgeInsets.fromLTRB(16.spMin, 12.spMin, 16.spMin, 6.spMin),
+              padding: EdgeInsets.fromLTRB(
+                16.spMin,
+                12.spMin,
+                16.spMin,
+                6.spMin,
+              ),
               child: IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -554,7 +547,8 @@ class _ProductsSectionWithSearchState
                                 size: 20.spMin,
                                 color:
                                     (searchState.selectedBrand != null ||
-                                            searchState.selectedCategory != null)
+                                            searchState.selectedCategory !=
+                                                null)
                                         ? AppColors.primary
                                         : (Theme.of(context).brightness ==
                                                 Brightness.dark
@@ -658,19 +652,18 @@ class _ProductsSectionWithSearchState
                           final double spacing = 8.spMin;
                           // Real column count of the grid — needed for
                           // Up/Down navigation.
-                          _gridColumns =
-                              ((constraints.maxWidth + spacing) ~/
-                                      (maxCardWidth + spacing))
-                                  .clamp(1, filteredProducts.length);
+                          _gridColumns = ((constraints.maxWidth + spacing) ~/
+                                  (maxCardWidth + spacing))
+                              .clamp(1, filteredProducts.length);
                           return GridView.builder(
                             padding: EdgeInsets.all(8.spMin),
                             gridDelegate:
                                 SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: maxCardWidth,
-                              childAspectRatio: 0.72,
-                              crossAxisSpacing: spacing,
-                              mainAxisSpacing: spacing,
-                            ),
+                                  maxCrossAxisExtent: maxCardWidth,
+                                  childAspectRatio: 0.72,
+                                  crossAxisSpacing: spacing,
+                                  mainAxisSpacing: spacing,
+                                ),
                             itemCount: filteredProducts.length,
                             itemBuilder: (context, index) {
                               final product = filteredProducts[index];

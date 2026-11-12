@@ -93,14 +93,12 @@ Future<void> scanAndFillCart({
   final result = await openBarcodeScanner(context, products: products);
   if (!context.mounted || result.entries.isEmpty) return;
 
-  var count = 0;
   for (final entry in result.entries) {
     final force =
         !entry.product.isService &&
         entry.product.stock != null &&
         entry.qty > entry.product.stock!;
     addToCart(entry.product, entry.qty, force);
-    count += entry.qty;
   }
 
   if (result.completePurchase) {
@@ -109,13 +107,8 @@ Future<void> scanAndFillCart({
     return;
   }
 
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text('$count item(s) added to cart'),
-      duration: const Duration(seconds: 2),
-      backgroundColor: AppColors.primary,
-    ),
-  );
+  // Item just lands in the cart silently — the visible cart panel/badge
+  // already shows what was added.
   onAdded?.call();
 }
 

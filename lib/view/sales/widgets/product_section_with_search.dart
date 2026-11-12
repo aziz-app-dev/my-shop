@@ -76,13 +76,6 @@ class _ProductsSectionWithSearchState
       );
     } else {
       ref.read(salesProvider.notifier).addToCart(product);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${product.name} added to cart'),
-          duration: const Duration(seconds: 1),
-          backgroundColor: AppColors.primary,
-        ),
-      );
     }
   }
 
@@ -310,10 +303,9 @@ class _ProductsSectionWithSearchState
         AppKeyboardScope.didPress(event, LogicalKeyboardKey.numpadEnter)) {
       if (HardwareKeyboard.instance.isControlPressed) return false;
       _addProductToCart(products[selected]);
-      _setKeyboardSelection((selected + _gridColumns).clamp(
-        0,
-        products.length - 1,
-      ));
+      _setKeyboardSelection(
+        (selected + _gridColumns).clamp(0, products.length - 1),
+      );
       return true;
     }
     // Escape clears the selection.
@@ -324,15 +316,11 @@ class _ProductsSectionWithSearchState
     // Tab / Right move forward, Left backward — both wrap around.
     if (_isNavPress(event, LogicalKeyboardKey.tab) ||
         _isNavPress(event, LogicalKeyboardKey.arrowRight)) {
-      _setKeyboardSelection(
-        selected == products.length - 1 ? 0 : selected + 1,
-      );
+      _setKeyboardSelection(selected == products.length - 1 ? 0 : selected + 1);
       return true;
     }
     if (_isNavPress(event, LogicalKeyboardKey.arrowLeft)) {
-      _setKeyboardSelection(
-        selected == 0 ? products.length - 1 : selected - 1,
-      );
+      _setKeyboardSelection(selected == 0 ? products.length - 1 : selected - 1);
       return true;
     }
     // Up / Down move a whole grid row.
@@ -400,8 +388,7 @@ class _ProductsSectionWithSearchState
     // Tab inside the search box jumps into the product grid selection, so the
     // user can walk the items with the keyboard instead of the mouse.
     _searchFocusNode.onKeyEvent = (node, event) {
-      if (event is KeyDownEvent &&
-          event.logicalKey == LogicalKeyboardKey.tab) {
+      if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.tab) {
         final products = _liveProducts;
         if (products != null && products.isNotEmpty) {
           _setKeyboardSelection(0);
@@ -842,10 +829,9 @@ class _ProductsSectionWithSearchState
                           // Real column count of the grid (matches Flutter's
                           // SliverGridDelegateWithMaxCrossAxisExtent math) —
                           // needed for Up/Down navigation.
-                          _gridColumns =
-                              ((constraints.maxWidth + spacing) ~/
-                                      (maxCardWidth + spacing))
-                                  .clamp(1, filteredProducts.length);
+                          _gridColumns = ((constraints.maxWidth + spacing) ~/
+                                  (maxCardWidth + spacing))
+                              .clamp(1, filteredProducts.length);
                           return GridView.builder(
                             padding: EdgeInsets.all(8.spMin),
                             gridDelegate:
