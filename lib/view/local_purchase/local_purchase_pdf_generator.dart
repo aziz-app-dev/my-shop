@@ -87,33 +87,13 @@ class LocalPurchasePDFGenerator {
                   style: const pw.TextStyle(fontSize: 10),
                 ),
               if (shopAddress != null && shopAddress!.isNotEmpty)
-                pw.Text(
-                  shopAddress!,
-                  style: const pw.TextStyle(fontSize: 9),
-                ),
+                pw.Text(shopAddress!, style: const pw.TextStyle(fontSize: 9)),
               if (shopPhone != null && shopPhone!.isNotEmpty)
                 pw.Text(
                   'Phone: $shopPhone',
                   style: const pw.TextStyle(fontSize: 9),
                 ),
             ],
-          ),
-        ),
-        pw.Container(
-          padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: pw.BoxDecoration(
-            color: PdfColors.blue50,
-            border: pw.Border.all(color: PdfColors.blue800),
-            borderRadius: pw.BorderRadius.circular(4),
-          ),
-          child: pw.Text(
-            'LOCAL PURCHASE\nAGREEMENT',
-            textAlign: pw.TextAlign.center,
-            style: pw.TextStyle(
-              fontSize: 11,
-              fontWeight: pw.FontWeight.bold,
-              color: PdfColors.blue800,
-            ),
           ),
         ),
       ],
@@ -137,15 +117,13 @@ class LocalPurchasePDFGenerator {
               pw.SizedBox(height: 4),
               _infoRow(
                 'Date:',
-                DateFormat('dd MMM yyyy').format(agreement.dateTime),
+                DateFormat('dd MMM yyyy, hh:mm a').format(agreement.dateTime),
               ),
             ],
           ),
           pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.end,
-            children: [
-              _infoRow('Payment Type:', agreement.paymentType),
-            ],
+            children: [_infoRow('Payment Type:', agreement.paymentType)],
           ),
         ],
       ),
@@ -185,16 +163,36 @@ class LocalPurchasePDFGenerator {
             ),
           ),
           pw.Divider(color: PdfColors.grey300),
-          _sellerInfoRow('Name:', agreement.sellerName),
-          if (agreement.sellerPhone != null &&
-              agreement.sellerPhone!.isNotEmpty)
-            _sellerInfoRow('Phone:', agreement.sellerPhone!),
-          if (agreement.sellerIdCard != null &&
-              agreement.sellerIdCard!.isNotEmpty)
-            _sellerInfoRow('ID Card No:', agreement.sellerIdCard!),
-          if (agreement.sellerAddress != null &&
-              agreement.sellerAddress!.isNotEmpty)
-            _sellerInfoRow('Address:', agreement.sellerAddress!),
+          // Two-column layout: left = Name + Phone, right = ID Card + Address.
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    _sellerInfoRow('Name:', agreement.sellerName),
+                    if (agreement.sellerPhone != null &&
+                        agreement.sellerPhone!.isNotEmpty)
+                      _sellerInfoRow('Phone:', agreement.sellerPhone!),
+                  ],
+                ),
+              ),
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    if (agreement.sellerIdCard != null &&
+                        agreement.sellerIdCard!.isNotEmpty)
+                      _sellerInfoRow('ID Card No:', agreement.sellerIdCard!),
+                    if (agreement.sellerAddress != null &&
+                        agreement.sellerAddress!.isNotEmpty)
+                      _sellerInfoRow('Address:', agreement.sellerAddress!),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -405,21 +403,17 @@ class LocalPurchasePDFGenerator {
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.center,
             children: [
-              pw.Container(
-                width: 180,
-                height: 0.5,
-                color: PdfColors.black,
-              ),
-              pw.SizedBox(height: 4),
+              pw.SizedBox(height: 8),
               pw.Text(
                 agreement.sellerSignature?.isNotEmpty == true
                     ? agreement.sellerSignature!
                     : 'Seller Signature',
                 style: pw.TextStyle(
                   fontSize: 9,
-                  fontWeight: agreement.sellerSignature?.isNotEmpty == true
-                      ? pw.FontWeight.bold
-                      : pw.FontWeight.normal,
+                  fontWeight:
+                      agreement.sellerSignature?.isNotEmpty == true
+                          ? pw.FontWeight.bold
+                          : pw.FontWeight.normal,
                 ),
               ),
               pw.Text(
@@ -438,11 +432,7 @@ class LocalPurchasePDFGenerator {
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.center,
             children: [
-              pw.Container(
-                width: 180,
-                height: 0.5,
-                color: PdfColors.black,
-              ),
+              pw.Container(width: 180, height: 0.5, color: PdfColors.black),
               pw.SizedBox(height: 4),
               pw.Text(
                 agreement.ownerSignature?.isNotEmpty == true
@@ -452,9 +442,10 @@ class LocalPurchasePDFGenerator {
                         : 'Owner Signature'),
                 style: pw.TextStyle(
                   fontSize: 9,
-                  fontWeight: agreement.ownerSignature?.isNotEmpty == true
-                      ? pw.FontWeight.bold
-                      : pw.FontWeight.normal,
+                  fontWeight:
+                      agreement.ownerSignature?.isNotEmpty == true
+                          ? pw.FontWeight.bold
+                          : pw.FontWeight.normal,
                 ),
               ),
               pw.Text(

@@ -189,14 +189,11 @@ class _LocalPurchaseDetailViewState
         title: 'Purchase Agreement',
         context: context,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            tooltip: 'Edit',
-            onPressed: _editAgreement,
-          ),
           PopupMenuButton<String>(
             onSelected: (value) {
               switch (value) {
+                case 'edit':
+                  _editAgreement();
                 case 'print':
                   _printAgreement();
                 case 'save':
@@ -209,6 +206,16 @@ class _LocalPurchaseDetailViewState
             },
             itemBuilder:
                 (ctx) => [
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit),
+                        SizedBox(width: 8),
+                        Text('Edit'),
+                      ],
+                    ),
+                  ),
                   const PopupMenuItem(
                     value: 'print',
                     child: Row(
