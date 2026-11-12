@@ -218,13 +218,19 @@ class FirestoreSyncService {
           continue;
         }
         final cloud = await _fb.collection(table).get();
-        if (cloud.docs.isNotEmpty) {
-          // Cloud already has rows for this table — the pull above brings
-          // them down; don't overwrite with possibly stale local data.
+        final cloudIds = cloud.docs.map((d) => d.id).toSet();
+        // Union-merge: upload only records the cloud doesn't have yet, so
+        // two devices with independent histories combine without ever
+        // overwriting each other's rows.
+        final missing =
+            records
+                .where((r) => !cloudIds.contains((r['id'] ?? '').toString()))
+                .toList();
+        if (missing.isEmpty) {
           await settings.put(flagKey, true);
           continue;
         }
-        final pushed = await _fb.pushLocalRecords(table, records);
+        final pushed = await _fb.pushLocalRecords(table, missing);
         await settings.put(flagKey, true);
         debugPrint('Initial push: $pushed "$table" records uploaded');
       }
