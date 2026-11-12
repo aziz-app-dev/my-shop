@@ -102,6 +102,9 @@ class FirestoreSyncService {
 
         if (online) {
           await flushQueue();
+          // The one-time initial push may have been skipped if the device
+          // looked offline at startup — retry whenever we come online.
+          await _pushMissingLocalData();
         }
       },
       onError: (Object e, StackTrace st) {
@@ -126,14 +129,13 @@ class FirestoreSyncService {
 
     _startRealtime();
 
-    if (online) {
-      // Push queued local writes up, then pull existing cloud rows down.
-      await flushQueue();
-      await pullAll();
-      // One-time bulk push of local data that predates the sync system
-      // (the cloud starts empty; established devices share their rows).
-      await _pushMissingLocalData();
-    }
+    // Push queued local writes up, pull existing cloud rows down, then
+    // one-time bulk push of local data that predates the sync system.
+    // Firestore calls fail gracefully when actually offline; the
+    // connectivity listener above retries the initial push later.
+    await flushQueue();
+    await pullAll();
+    await _pushMissingLocalData();
   }
 
   void _startRealtime() {
