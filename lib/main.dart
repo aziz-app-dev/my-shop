@@ -22,12 +22,27 @@ Future<void> main() async {
 
   // Initialize Firebase. Wrapped so a config hiccup can't white-screen the
   // whole (offline-first) app — local Hive still works without the cloud.
+  //
+  // On Android the google-services.json initializer creates the default
+  // [DEFAULT] app natively before Dart runs; if its project differs from
+  // ours, initializeApp throws duplicate-app and the app would silently
+  // keep talking to the WRONG project. Recover by deleting the default
+  // app and re-initializing with our options.
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
   } catch (e) {
-    debugPrint('Firebase init failed (continuing offline): $e');
+    debugPrint('Firebase init retry after: $e');
+    try {
+      await Firebase.app().delete();
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      debugPrint('Firebase re-initialized with app options');
+    } catch (e2) {
+      debugPrint('Firebase init failed (continuing offline): $e2');
+    }
   }
 
   // Initialize Hive with directory management
