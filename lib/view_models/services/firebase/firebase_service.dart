@@ -27,21 +27,22 @@ import '../../../models/items_model.dart';
 /// Models are stored using their own `toMap()` output so the exact same shape
 /// flows Hive <-> Firestore <-> backup (no separate cloud schema to maintain).
 ///
-/// Note: FirebaseAuth has been removed from this project. The `uid` property
-/// always returns null and `isSignedIn` always returns false. User data is
-/// stored anonymously without authentication.
+/// Note: FirebaseAuth has been removed from this project — this is a
+/// single-shop app with no sign-in. Every installation shares ONE fixed
+/// cloud scope ([shopId]) so data made on one device appears on the others
+/// automatically. Nothing to log in with; access is controlled by the
+/// Firestore security rules on `users/{shopId}/**`.
 class FirebaseService {
   FirebaseService._();
   static final FirebaseService instance = FirebaseService._();
 
-  /// Root document for the signed-in user. Throws if signed out — callers that
-  /// run before auth must guard with [isSignedIn].
+  /// Fixed cloud scope for this shop. All devices read/write the same
+  /// space — change it only to start a fresh cloud dataset.
+  static const String shopId = 'shop-main';
+
+  /// Root document for this shop's cloud data. Always available (no auth).
   DocumentReference<Map<String, dynamic>> get userDoc {
-    final id = uid;
-    if (id == null) {
-      throw StateError('FirebaseService.userDoc accessed while signed out');
-    }
-    return firestore.collection('users').doc(id);
+    return firestore.collection('users').doc(shopId);
   }
 
   /// Collection names that mirror the local Hive boxes and the sync tables.
@@ -54,10 +55,11 @@ class FirebaseService {
     'expenses',
   ];
 
-  /// Currently signed-in user's uid, or null if signed out.
-  String? get uid => null;
+  /// This shop's fixed cloud id (no per-user auth in this app).
+  String? get uid => shopId;
 
-  bool get isSignedIn => false;
+  /// Always true — the sync runs unconditionally (no sign-in system).
+  bool get isSignedIn => true;
 
   FirebaseFirestore get firestore => FirebaseFirestore.instance;
   FirebaseStorage get storage => FirebaseStorage.instance;
@@ -220,7 +222,9 @@ class FirebaseService {
     ];
 
     await _writeAll('brands', {for (final b in brands) b.id: b.toMap()});
-    await _writeAll('categories', {for (final c in categories) c.id: c.toMap()});
+    await _writeAll('categories', {
+      for (final c in categories) c.id: c.toMap(),
+    });
     await _writeAll('products', {for (final p in products) p.id: p.toMap()});
     await _writeAll('customers', {for (final c in customers) c.id: c.toMap()});
     await _writeAll('bills', {for (final b in bills) b.id: b.toMap()});
