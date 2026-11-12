@@ -27,7 +27,8 @@ class BillsState {
   BillsState({
     this.allBills = const [],
     this.filteredBills = const [],
-    this.sortAscending = true,
+    // Newest first — bills are shown latest-at-top by default.
+    this.sortAscending = false,
     this.sortColumnIndex = 1,
     this.statusFilter,
     this.paymentMethodFilter,
@@ -138,9 +139,10 @@ class BillsState {
       sortColumnIndex: sortColumnIndex ?? this.sortColumnIndex,
       statusFilter:
           clearStatusFilter ? null : (statusFilter ?? this.statusFilter),
-      paymentMethodFilter: clearPaymentMethodFilter
-          ? null
-          : (paymentMethodFilter ?? this.paymentMethodFilter),
+      paymentMethodFilter:
+          clearPaymentMethodFilter
+              ? null
+              : (paymentMethodFilter ?? this.paymentMethodFilter),
       customerFilter:
           clearCustomerFilter ? null : (customerFilter ?? this.customerFilter),
       totalAmountMin:
@@ -152,9 +154,10 @@ class BillsState {
       itemCountMax:
           clearItemCountRange ? null : (itemCountMax ?? this.itemCountMax),
       error: error ?? this.error,
-      dateRangeFilter: clearDateRangeFilter
-          ? null
-          : (dateRangeFilter ?? this.dateRangeFilter),
+      dateRangeFilter:
+          clearDateRangeFilter
+              ? null
+              : (dateRangeFilter ?? this.dateRangeFilter),
       selectedBills: selectedBills ?? this.selectedBills,
       selectAll: selectAll ?? this.selectAll,
       currentPage: currentPage ?? this.currentPage,

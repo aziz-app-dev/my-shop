@@ -130,6 +130,9 @@ class FirestoreSyncService {
       // Push queued local writes up, then pull existing cloud rows down.
       await flushQueue();
       await pullAll();
+      // One-time bulk push of local data that predates the sync system
+      // (the cloud starts empty; established devices share their rows).
+      await _pushMissingLocalData();
     }
   }
 
@@ -190,6 +193,41 @@ class FirestoreSyncService {
       } catch (e) {
         debugPrint('Initial pull failed for "$table": $e');
       }
+    }
+  }
+
+  /// One-time bulk push of existing local records into the cloud, per
+  /// table, so data that predates the sync system gets shared. Runs only
+  /// while the cloud side of that table is still empty (a fresh cloud);
+  /// once pushed — or skipped because the cloud already has rows — a
+  /// settings flag marks the table done.
+  Future<void> _pushMissingLocalData() async {
+    if (_disposed || !_fb.isSignedIn) return;
+    try {
+      final settings = await _hive.getSettingsBox();
+      for (final table in FirebaseService.dataCollections) {
+        if (_disposed) return;
+        final flagKey = 'cloudPushed_$table';
+        if (settings.get(flagKey, defaultValue: false) as bool) continue;
+
+        final records = await _hive.getLocalRecords(table);
+        if (records.isEmpty) {
+          await settings.put(flagKey, true);
+          continue;
+        }
+        final cloud = await _fb.collection(table).get();
+        if (cloud.docs.isNotEmpty) {
+          // Cloud already has rows for this table — the pull above brings
+          // them down; don't overwrite with possibly stale local data.
+          await settings.put(flagKey, true);
+          continue;
+        }
+        final pushed = await _fb.pushLocalRecords(table, records);
+        await settings.put(flagKey, true);
+        debugPrint('Initial push: $pushed "$table" records uploaded');
+      }
+    } catch (e) {
+      debugPrint('Initial local push failed: $e');
     }
   }
 

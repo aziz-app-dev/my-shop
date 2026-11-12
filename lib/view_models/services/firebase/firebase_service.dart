@@ -53,6 +53,8 @@ class FirebaseService {
     'customers',
     'bills',
     'expenses',
+    'repairs',
+    'localPurchases',
   ];
 
   /// This shop's fixed cloud id (no per-user auth in this app).
@@ -249,6 +251,29 @@ class FirebaseService {
       batch.set(col.doc(id), _sanitize(data));
     });
     await batch.commit();
+  }
+
+  /// Bulk-pushes existing local records into a cloud collection (merged by
+  /// id, so it never overwrites newer cloud rows). Used once per table to
+  /// share local data that predates the sync system. Returns how many
+  /// records were written.
+  Future<int> pushLocalRecords(
+    String collectionName,
+    List<Map<String, dynamic>> records,
+  ) async {
+    var count = 0;
+    final col = collection(collectionName);
+    for (var i = 0; i < records.length; i += 400) {
+      final batch = firestore.batch();
+      for (final rec in records.skip(i).take(400)) {
+        final id = (rec['id'] ?? '').toString();
+        if (id.isEmpty) continue;
+        batch.set(col.doc(id), _sanitize(rec), SetOptions(merge: true));
+        count++;
+      }
+      await batch.commit();
+    }
+    return count;
   }
 
   /// Delete every document in the signed-in user's data collections.

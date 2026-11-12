@@ -1339,6 +1339,14 @@ class HiveService {
     await _syncQueueBox.put(op.id, op.toMap());
   }
 
+  /// Returns every local record of a synced table (used by the one-time
+  /// initial cloud push so old local data gets shared).
+  Future<List<Map<String, dynamic>>> getLocalRecords(String table) async {
+    final box = _boxForTable(table);
+    if (box == null) return const [];
+    return box.values.map((e) => Map<String, dynamic>.from(e)).toList();
+  }
+
   /// Apply a Firestore realtime upsert into local Hive.
   /// This expects the remote doc to use the same keys used by local `toMap()`.
   /// Fires [remoteDataChanges] so the UI reloads live.

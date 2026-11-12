@@ -139,7 +139,9 @@ class BillsNotifier extends StateNotifier<BillsState> {
       });
     }
 
-    state = state.copyWith(filteredBills: filtered);
+    // Scroll pagination restarts from the top whenever the result set
+    // changes (search text or any filter).
+    state = state.copyWith(filteredBills: filtered, currentPage: 1);
   }
 
   void setStatusFilter(String? status) {
@@ -259,6 +261,15 @@ class BillsNotifier extends StateNotifier<BillsState> {
 
   void setCurrentPage(int page) {
     state = state.copyWith(currentPage: page);
+  }
+
+  /// Scroll pagination: advances one page; no-op when already at the end.
+  void loadNextPage() {
+    final totalPages =
+        (state.filteredBills.length / state.recordsPerPage).ceil();
+    if (state.currentPage < totalPages) {
+      state = state.copyWith(currentPage: state.currentPage + 1);
+    }
   }
 
   @override

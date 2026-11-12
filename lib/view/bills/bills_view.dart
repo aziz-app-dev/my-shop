@@ -159,7 +159,9 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Showing ${billsState.filteredBills.isNotEmpty ? (billsState.currentPage == (billsState.filteredBills.length / billsState.recordsPerPage).ceil() ? (billsState.filteredBills.length % billsState.recordsPerPage != 0 ? billsState.filteredBills.length % billsState.recordsPerPage : billsState.recordsPerPage) : billsState.recordsPerPage) : 0} of ${billsState.filteredBills.length} bills',
+                                // Scroll pagination loads more pages as the
+                                // user scrolls; this shows how much is loaded.
+                                'Showing ${((billsState.currentPage * billsState.recordsPerPage)).clamp(0, billsState.filteredBills.length)} of ${billsState.filteredBills.length} bills',
                                 style: TextStyle(
                                   fontSize: 12.spMin,
                                   color:
@@ -169,52 +171,6 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
                                           : AppColors.grey700),
                                 ),
                               ),
-                              if ((billsState.filteredBills.length /
-                                          billsState.recordsPerPage)
-                                      .ceil() >
-                                  1)
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      icon: AppIcon(
-                                        defaultIcon: Icons.arrow_back_ios,
-                                        win11IconPath: ImageAssets.win11Back,
-                                        size: 20.spMin,
-                                      ),
-                                      onPressed:
-                                          billsState.currentPage > 1
-                                              ? () =>
-                                                  billsNotifier.setCurrentPage(
-                                                    billsState.currentPage - 1,
-                                                  )
-                                              : null,
-                                    ),
-                                    Text(
-                                      'Page ${billsState.currentPage} of ${(billsState.filteredBills.length / billsState.recordsPerPage).ceil()}',
-                                      style: TextStyle(fontSize: 14.spMin),
-                                    ),
-                                    IconButton(
-                                      icon: AppIcon(
-                                        defaultIcon: Icons.arrow_forward_ios,
-                                        win11IconPath: ImageAssets.win11Forward,
-                                        size: 20.spMin,
-                                      ),
-                                      onPressed:
-                                          billsState.currentPage <
-                                                  (billsState
-                                                              .filteredBills
-                                                              .length /
-                                                          billsState
-                                                              .recordsPerPage)
-                                                      .ceil()
-                                              ? () =>
-                                                  billsNotifier.setCurrentPage(
-                                                    billsState.currentPage + 1,
-                                                  )
-                                              : null,
-                                    ),
-                                  ],
-                                ),
                             ],
                           ),
                         ),
