@@ -59,6 +59,7 @@ class HiveService {
   static const String _customerFieldConfigsKey =
       'customerFieldConfigs'; // New key for customer fields
   static const String _paymentMethodsKey = 'paymentMethods';
+  static const String _repairTypesKey = 'repairTypes';
 
   /// Fallback payment methods used until the shop owner customizes them in
   /// Settings. The union of the old checkout and purchase lists.
@@ -68,6 +69,19 @@ class HiveService {
     'Bank Transfer',
     'Cheque',
     'UPI / Digital',
+  ];
+
+  /// Fallback repair device/service types shown on the repair form until the
+  /// shop owner customizes them in Settings (Repair Settings). Defaults keep
+  /// the old electronics list so nothing changes on update.
+  static const List<String> defaultRepairTypes = [
+    'Laptop',
+    'Desktop',
+    'Phone',
+    'Tablet',
+    'Printer',
+    'Monitor',
+    'Other',
   ];
 
   Future<void> init() async {
@@ -844,6 +858,22 @@ class HiveService {
     await settingsBox.put(_paymentMethodsKey, methods);
   }
 
+  // Repair Types (Settings → Repair Settings → Repair Types)
+  Future<List<String>> getRepairTypes() async {
+    final settingsBox = await getSettingsBox();
+    final stored = settingsBox.get(_repairTypesKey);
+    if (stored is List) {
+      final types = stored.map((e) => e.toString()).toList();
+      if (types.isNotEmpty) return types;
+    }
+    return List<String>.from(defaultRepairTypes);
+  }
+
+  Future<void> saveRepairTypes(List<String> types) async {
+    final settingsBox = await getSettingsBox();
+    await settingsBox.put(_repairTypesKey, types);
+  }
+
   List<Product> getProducts() {
     return _productBox.values
         .map((e) => Product.fromMap(Map<String, dynamic>.from(e)))
@@ -1357,6 +1387,7 @@ class HiveService {
     _fieldConfigsKey,
     _customerFieldConfigsKey,
     _paymentMethodsKey,
+    _repairTypesKey,
   };
 
   /// Guard so settings applied from Firestore aren't echoed back up.
@@ -1688,6 +1719,15 @@ class DatabaseService {
 
   Future<void> savePaymentMethods(List<String> methods) async {
     await _hiveService.savePaymentMethods(methods);
+  }
+
+  // Repair Types
+  Future<List<String>> getRepairTypes() async {
+    return await _hiveService.getRepairTypes();
+  }
+
+  Future<void> saveRepairTypes(List<String> types) async {
+    await _hiveService.saveRepairTypes(types);
   }
 
   // Brand Management Methods

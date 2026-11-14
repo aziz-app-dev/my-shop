@@ -21,6 +21,7 @@ import '../../utils/image_picker_helper.dart';
 import '../../view_models/providers/customer_prvider.dart';
 import '../../view_models/providers/product_view.dart';
 import '../../view_models/providers/repair_provider.dart';
+import '../../view_models/services/database/database_services.dart';
 import '../brands/brand_management_view.dart' show brandsProvider;
 import '../home/rapper.dart';
 import '../widgets/cached_image_widget.dart';
@@ -62,15 +63,9 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
   final _estCostNode = FocusNode();
   final _advanceNode = FocusNode();
 
-  static const List<String> _deviceTypes = [
-    'Laptop',
-    'Desktop',
-    'Phone',
-    'Tablet',
-    'Printer',
-    'Monitor',
-    'Other',
-  ];
+  /// Repair type choices from Settings (Repair Settings → Repair Types).
+  /// Defaults until the saved list loads.
+  List<String> _deviceTypes = HiveService.defaultRepairTypes;
 
   String? _deviceType;
   String? _customerId;
@@ -137,6 +132,24 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
         r.customerId == null &&
         (name.isEmpty || name.toLowerCase() == 'walk-in');
     if (r != null) _items.addAll(r.items);
+    _loadDeviceTypes();
+  }
+
+  /// Loads the repair types saved in Settings (Repair Settings → Repair
+  /// Types). When editing a repair whose type was later removed from the
+  /// list, it is kept at the front so the saved value still shows.
+  Future<void> _loadDeviceTypes() async {
+    try {
+      final types = await DatabaseService().getRepairTypes();
+      if (!mounted) return;
+      final current = _deviceType;
+      if (current != null && !types.contains(current)) {
+        types.insert(0, current);
+      }
+      setState(() => _deviceTypes = types);
+    } catch (e) {
+      debugPrint('Failed to load repair types: $e');
+    }
   }
 
   @override
