@@ -20,6 +20,218 @@ import 'custom_tile.dart';
 import 'data_mange.dart';
 import 'home_screnn_mange.dart';
 
+/// Settings → Screen Management → Add Field. Lets the shop owner create a
+/// brand-new form field (text / dropdown / checkbox) for products or the
+/// checkout form. Returns the built [FieldConfig] (with `isCustom: true`)
+/// or null when cancelled.
+Future<FieldConfig?> showAddFieldDialog(BuildContext context) async {
+  final titleController = TextEditingController();
+  final hintController = TextEditingController();
+  final optionsController = TextEditingController();
+  WidgetType selectedType = WidgetType.textField;
+  bool isRequired = false;
+
+  return showDialog<FieldConfig>(
+    context: context,
+    builder:
+        (ctx) => StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              title: mdText(text: 'Add Field'),
+              content: SizedBox(
+                width: 380.spMin,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CustomTextField(
+                        label: 'Field name',
+                        hintText: 'e.g. Batch No, IMEI, Measurements',
+                        controller: titleController,
+                        autofocus: true,
+                      ),
+                      SizedBox(height: 12.spMin),
+                      mdTextBold(text: 'Field type'),
+                      SizedBox(height: 6.spMin),
+                      RadioGroup<WidgetType>(
+                        groupValue: selectedType,
+                        onChanged:
+                            (v) => setDialogState(() => selectedType = v!),
+                        child: Column(
+                          children:
+                              ListTile.divideTiles(
+                                context: ctx,
+                                tiles: [
+                                  RadioListTile<WidgetType>(
+                                    dense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    title: const Text('Text input'),
+                                    subtitle: const Text(
+                                      'Free text the user types',
+                                    ),
+                                    value: WidgetType.textField,
+                                  ),
+                                  RadioListTile<WidgetType>(
+                                    dense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    title: const Text('Dropdown'),
+                                    subtitle: const Text(
+                                      'Pick from a list of options',
+                                    ),
+                                    value: WidgetType.dropdown,
+                                  ),
+                                  RadioListTile<WidgetType>(
+                                    dense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    title: const Text('Checkbox'),
+                                    subtitle: const Text('Yes / no toggle'),
+                                    value: WidgetType.checkbox,
+                                  ),
+                                ],
+                              ).toList(),
+                        ),
+                      ),
+                      if (selectedType == WidgetType.dropdown) ...[
+                        SizedBox(height: 6.spMin),
+                        CustomTextField(
+                          label: 'Options (one per line)',
+                          hintText: 'Option 1\nOption 2\nOption 3',
+                          controller: optionsController,
+                          maxLines: 4,
+                        ),
+                      ],
+                      SizedBox(height: 12.spMin),
+                      CheckboxListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        title: const Text('Required'),
+                        value: isRequired,
+                        onChanged:
+                            (v) =>
+                                setDialogState(() => isRequired = v ?? false),
+                      ),
+                      SizedBox(height: 6.spMin),
+                      CustomTextField(
+                        label: 'Hint text (optional)',
+                        hintText: 'Shown inside the field',
+                        controller: hintController,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: mdText(text: 'Cancel'),
+                      ),
+                    ),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () {
+                          final title = titleController.text.trim();
+                          if (title.isEmpty) {
+                            AppFlushbar.error(
+                              ctx,
+                              message: 'Enter a field name first',
+                            );
+                            return;
+                          }
+                          final options =
+                              selectedType == WidgetType.dropdown
+                                  ? optionsController.text
+                                      .split('\n')
+                                      .map((e) => e.trim())
+                                      .where((e) => e.isNotEmpty)
+                                      .toList()
+                                  : null;
+                          if (selectedType == WidgetType.dropdown &&
+                              (options == null || options.isEmpty)) {
+                            AppFlushbar.error(
+                              ctx,
+                              message: 'Add at least one dropdown option',
+                            );
+                            return;
+                          }
+                          Navigator.pop(
+                            ctx,
+                            FieldConfig(
+                              title: title,
+                              isShow: true,
+                              isRequired: isRequired,
+                              hintText:
+                                  hintController.text.trim().isNotEmpty
+                                      ? hintController.text.trim()
+                                      : 'Enter $title',
+                              validatorText: '$title is required',
+                              widgetType: selectedType,
+                              options: options,
+                              isCustom: true,
+                            ),
+                          );
+                        },
+                        child: const Text('Add Field'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
+  );
+}
+
+/// Confirmation popup before a custom field is deleted.
+Future<bool> confirmDeleteField(BuildContext context, String title) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder:
+        (ctx) => AlertDialog(
+          title: mdText(text: 'Delete field?'),
+          content: smText(
+            maxLines: 6,
+            text:
+                'The "$title" field will be removed from the form and Settings. '
+                'Values already saved on existing records are kept but will no '
+                'longer be shown or editable.\n\nThis cannot be undone.',
+          ),
+          actions: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: mdText(text: 'Cancel'),
+                  ),
+                ),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('Delete'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+  );
+  return ok == true;
+}
+
 class ScreenManagementSection extends ConsumerWidget {
   final WidgetRef ref;
 
@@ -126,6 +338,22 @@ class _ProductFormFieldsPage extends ConsumerWidget {
             'Configure which fields to show in the product form',
             style: TextStyle(fontSize: 14.spMin, color: Colors.grey),
           ),
+          SizedBox(height: 12.spMin),
+          // Add a brand-new field for this business (custom fields are saved,
+          // rendered in the product form, and synced across devices).
+          OutlinedButton.icon(
+            onPressed: () async {
+              final config = await showAddFieldDialog(context);
+              if (config == null || !context.mounted) return;
+              productFormNotifier.addFieldConfig(config);
+              AppFlushbar.success(
+                context,
+                message: '"${config.title}" added to the product form',
+              );
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Add Field'),
+          ),
           SizedBox(height: 16.spMin),
           ...productFormState.fieldConfigs.entries
               .where((entry) => !['isBackup', 'warranty'].contains(entry.key))
@@ -133,6 +361,18 @@ class _ProductFormFieldsPage extends ConsumerWidget {
                 (entry) => _FieldConfigTile(
                   fieldName: entry.key,
                   fieldConfig: entry.value,
+                  onDelete:
+                      entry.value.isCustom
+                          ? () async {
+                            if (!await confirmDeleteField(
+                              context,
+                              entry.value.title,
+                            )) {
+                              return;
+                            }
+                            productFormNotifier.deleteFieldConfig(entry.key);
+                          }
+                          : null,
                   onShowChanged: (val) {
                     productFormNotifier.updateFieldConfig(
                       entry.key,
@@ -163,6 +403,12 @@ class _ProductFormFieldsPage extends ConsumerWidget {
                       validatorText: val,
                     );
                   },
+                  onOptionsChanged: (options) {
+                    productFormNotifier.updateFieldConfig(
+                      entry.key,
+                      options: options,
+                    );
+                  },
                 ),
               ),
         ],
@@ -189,12 +435,16 @@ class _CustomerFormFieldsPageState
   @override
   void initState() {
     super.initState();
-    // Initialize with current field configs
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final customerFormState = ref.read(customerFormProvider);
+    // Initialize with the SAVED field configs (including any custom fields
+    // the user added), not the provider's built-in defaults.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final saved =
+          await ref.read(databaseServiceProvider).getCustomerFieldConfigs();
+      if (!mounted) return;
+      ref.read(customerFormProvider.notifier).replaceAllFieldConfigs(saved);
       setState(() {
         _tempFieldConfigs = Map<String, FieldConfig>.from(
-          customerFormState.fieldConfigs,
+          ref.read(customerFormProvider).fieldConfigs,
         );
       });
     });
@@ -207,6 +457,7 @@ class _CustomerFormFieldsPageState
     String? hintText,
     String? validatorText,
     String? title,
+    List<String>? options,
   }) {
     setState(() {
       _tempFieldConfigs[fieldName] = _tempFieldConfigs[fieldName]!.copyWith(
@@ -215,6 +466,7 @@ class _CustomerFormFieldsPageState
         hintText: hintText,
         validatorText: validatorText,
         title: title,
+        options: options,
       );
       _hasChanges = true;
     });
@@ -237,6 +489,7 @@ class _CustomerFormFieldsPageState
           title: entry.value.title,
           hintText: entry.value.hintText,
           validatorText: entry.value.validatorText,
+          options: entry.value.options,
         );
       }
 
@@ -317,10 +570,52 @@ class _CustomerFormFieldsPageState
                   ),
                 ],
                 SizedBox(height: 16.spMin),
+                // Add a brand-new field for the checkout form (saved to the
+                // same synced config map as the built-in fields).
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final config = await showAddFieldDialog(context);
+                    if (config == null || !context.mounted) return;
+                    ref
+                        .read(customerFormProvider.notifier)
+                        .addFieldConfig(config);
+                    setState(() {
+                      _tempFieldConfigs = Map<String, FieldConfig>.from(
+                        ref.read(customerFormProvider).fieldConfigs,
+                      );
+                    });
+                    if (context.mounted) {
+                      AppFlushbar.success(
+                        context,
+                        message: '"${config.title}" added to the checkout form',
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Field'),
+                ),
+                SizedBox(height: 16.spMin),
                 ..._tempFieldConfigs.entries.map(
                   (entry) => _FieldConfigTile(
                     fieldName: entry.key,
                     fieldConfig: entry.value,
+                    onDelete:
+                        entry.value.isCustom
+                            ? () async {
+                              if (!await confirmDeleteField(
+                                context,
+                                entry.value.title,
+                              )) {
+                                return;
+                              }
+                              ref
+                                  .read(customerFormProvider.notifier)
+                                  .deleteFieldConfig(entry.key);
+                              setState(() {
+                                _tempFieldConfigs.remove(entry.key);
+                              });
+                            }
+                            : null,
                     onShowChanged: (val) {
                       _updateTempFieldConfig(entry.key, isShow: val);
                     },
@@ -335,6 +630,9 @@ class _CustomerFormFieldsPageState
                     },
                     onValidatorTextChanged: (val) {
                       _updateTempFieldConfig(entry.key, validatorText: val);
+                    },
+                    onOptionsChanged: (options) {
+                      _updateTempFieldConfig(entry.key, options: options);
                     },
                   ),
                 ),
@@ -385,6 +683,13 @@ class _FieldConfigTile extends StatefulWidget {
   final Function(String) onHintTextChanged;
   final Function(String) onValidatorTextChanged;
 
+  /// Called when the options of a custom dropdown field are edited.
+  final Function(List<String>)? onOptionsChanged;
+
+  /// Non-null only for user-created custom fields — tapping deletes the
+  /// field entirely.
+  final Future<void> Function()? onDelete;
+
   const _FieldConfigTile({
     required this.fieldName,
     required this.fieldConfig,
@@ -393,6 +698,8 @@ class _FieldConfigTile extends StatefulWidget {
     required this.onTitleChanged,
     required this.onHintTextChanged,
     required this.onValidatorTextChanged,
+    this.onOptionsChanged,
+    this.onDelete,
   });
 
   @override
@@ -403,6 +710,7 @@ class _FieldConfigTileState extends State<_FieldConfigTile> {
   late TextEditingController titleController;
   late TextEditingController hintTextController;
   late TextEditingController validatorTextController;
+  late TextEditingController optionsController;
 
   @override
   void initState() {
@@ -414,6 +722,9 @@ class _FieldConfigTileState extends State<_FieldConfigTile> {
     validatorTextController = TextEditingController(
       text: widget.fieldConfig.validatorText,
     );
+    optionsController = TextEditingController(
+      text: (widget.fieldConfig.options ?? const <String>[]).join('\n'),
+    );
   }
 
   @override
@@ -421,6 +732,7 @@ class _FieldConfigTileState extends State<_FieldConfigTile> {
     titleController.dispose();
     hintTextController.dispose();
     validatorTextController.dispose();
+    optionsController.dispose();
     super.dispose();
   }
 
@@ -459,13 +771,48 @@ class _FieldConfigTileState extends State<_FieldConfigTile> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  Text(
-                    'Field: ${widget.fieldName}',
-                    style: TextStyle(fontSize: 11.spMin, color: Colors.grey),
+                  Row(
+                    children: [
+                      Text(
+                        'Field: ${widget.fieldName}',
+                        style: TextStyle(
+                          fontSize: 11.spMin,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      if (widget.fieldConfig.isCustom) ...[
+                        SizedBox(width: 8.spMin),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6.spMin,
+                            vertical: 1.spMin,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6.r),
+                          ),
+                          child: Text(
+                            'Custom',
+                            style: TextStyle(
+                              fontSize: 9.spMin,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),
             ),
+            if (widget.onDelete != null)
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Delete field',
+                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                onPressed: widget.onDelete,
+              ),
           ],
         ),
         children: [
@@ -522,6 +869,28 @@ class _FieldConfigTileState extends State<_FieldConfigTile> {
               return null;
             },
           ),
+
+          // Editable choices for user-created dropdown fields.
+          if (widget.fieldConfig.isCustom &&
+              widget.fieldConfig.widgetType == WidgetType.dropdown) ...[
+            SizedBox(height: 15.spMin),
+            CustomTextField(
+              label: "Options (one per line)",
+              hintText: "Option 1\nOption 2",
+              controller: optionsController,
+              maxLines: 4,
+              onChange: (val) {
+                final options =
+                    (val ?? '')
+                        .split('\n')
+                        .map((e) => e.trim())
+                        .where((e) => e.isNotEmpty)
+                        .toList();
+                widget.onOptionsChanged?.call(options);
+                return null;
+              },
+            ),
+          ],
         ],
       ),
     );

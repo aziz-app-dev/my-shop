@@ -12,7 +12,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+import 'package:uuid/uuid.dart';
 import '../../models/coustomer_model.dart';
+import '../../res/assets/image_assets.dart';
+import '../../res/components/app_icon.dart';
 import '../../res/components/text_field_widget.dart';
 import '../../view_models/providers/sales_provider.dart';
 import '../../view_models/providers/checkout_provider.dart';
@@ -33,6 +36,9 @@ class CustomerFormState {
   final String? paymentMethod;
   final double? discount;
   final Map<String, FieldConfig> fieldConfigs;
+
+  /// Typed values for the user-defined custom fields, keyed by field key.
+  final Map<String, dynamic> customValues;
   final String? errorMessage;
   final bool isLoading;
 
@@ -45,6 +51,7 @@ class CustomerFormState {
     this.paymentMethod,
     this.discount,
     required this.fieldConfigs,
+    this.customValues = const {},
     this.errorMessage,
     this.isLoading = false,
   });
@@ -58,6 +65,7 @@ class CustomerFormState {
     String? paymentMethod,
     double? discount,
     Map<String, FieldConfig>? fieldConfigs,
+    Map<String, dynamic>? customValues,
     String? errorMessage,
     bool? isLoading,
   }) {
@@ -70,6 +78,7 @@ class CustomerFormState {
       paymentMethod: paymentMethod ?? this.paymentMethod,
       discount: discount ?? this.discount,
       fieldConfigs: fieldConfigs ?? this.fieldConfigs,
+      customValues: customValues ?? this.customValues,
       errorMessage: errorMessage,
       isLoading: isLoading ?? this.isLoading,
     );
@@ -185,6 +194,7 @@ class CustomerFormNotifier extends StateNotifier<CustomerFormState> {
     String? validatorText,
     String? title,
     WidgetType? widgetType,
+    List<String>? options,
   }) {
     // Ensure the fallback title resolves with the right widget type.
     final WidgetType effectiveType =
@@ -195,8 +205,10 @@ class CustomerFormNotifier extends StateNotifier<CustomerFormState> {
       isRequired: isRequired,
       hintText: hintText,
       validatorText: validatorText,
-      title: title == null ? null : _properTitle(title, fieldName, effectiveType),
+      title:
+          title == null ? null : _properTitle(title, fieldName, effectiveType),
       widgetType: widgetType,
+      options: options,
     );
     state = state.copyWith(fieldConfigs: updatedConfigs);
     _saveFieldConfigs(updatedConfigs);
@@ -208,6 +220,54 @@ class CustomerFormNotifier extends StateNotifier<CustomerFormState> {
     } catch (e) {
       state = state.copyWith(errorMessage: 'Failed to save field configs: $e');
     }
+  }
+
+  /// Replaces the whole config map with the saved one (Settings + custom
+  /// fields) WITHOUT persisting — used when a form first loads from storage.
+  void replaceAllFieldConfigs(Map<String, FieldConfig> configs) {
+    state = state.copyWith(
+      fieldConfigs: Map<String, FieldConfig>.from(configs),
+    );
+  }
+
+  /// Adds a user-defined custom field (Settings → Add Field) and persists it.
+  /// Returns the generated field key (e.g. "custom_1a2b3c4d").
+  String addFieldConfig(FieldConfig config) {
+    final key = 'custom_${const Uuid().v4().substring(0, 8)}';
+    final updatedConfigs = Map<String, FieldConfig>.from(state.fieldConfigs);
+    updatedConfigs[key] = config.copyWith(isCustom: true);
+    state = state.copyWith(fieldConfigs: updatedConfigs);
+    _saveFieldConfigs(updatedConfigs);
+    return key;
+  }
+
+  /// Removes a custom field from the checkout configuration.
+  void deleteFieldConfig(String fieldName) {
+    final updatedConfigs = Map<String, FieldConfig>.from(state.fieldConfigs);
+    updatedConfigs.remove(fieldName);
+    final updatedValues = Map<String, dynamic>.from(state.customValues);
+    updatedValues.remove(fieldName);
+    state = state.copyWith(
+      fieldConfigs: updatedConfigs,
+      customValues: updatedValues,
+    );
+    _saveFieldConfigs(updatedConfigs);
+  }
+
+  /// Stores the typed value of a custom field.
+  void updateCustomField(String fieldName, dynamic value) {
+    final updated = Map<String, dynamic>.from(state.customValues);
+    if (value == null || (value is String && value.trim().isEmpty)) {
+      updated.remove(fieldName);
+    } else {
+      updated[fieldName] = value;
+    }
+    state = state.copyWith(customValues: updated, errorMessage: null);
+  }
+
+  /// Replaces all custom field values at once (e.g. when clearing the form).
+  void updateCustomValues(Map<String, dynamic> values) {
+    state = state.copyWith(customValues: values, errorMessage: null);
   }
 }
 
@@ -262,18 +322,27 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
           !HardwareKeyboard.instance.isAltPressed;
 
       final isCtrlEnter =
-          AppKeyboardScope.didPress(event, LogicalKeyboardKey.enter,
-              ctrl: true) ||
-          AppKeyboardScope.didPress(event, LogicalKeyboardKey.numpadEnter,
-              ctrl: true);
+          AppKeyboardScope.didPress(
+            event,
+            LogicalKeyboardKey.enter,
+            ctrl: true,
+          ) ||
+          AppKeyboardScope.didPress(
+            event,
+            LogicalKeyboardKey.numpadEnter,
+            ctrl: true,
+          );
       if (isCtrlEnter && noShiftAlt) {
         _submitCheckout();
         return true;
       }
 
       // Ctrl+W → walk-in customer.
-      if (AppKeyboardScope.didPress(event, LogicalKeyboardKey.keyW,
-              ctrl: true) &&
+      if (AppKeyboardScope.didPress(
+            event,
+            LogicalKeyboardKey.keyW,
+            ctrl: true,
+          ) &&
           noShiftAlt) {
         _setCheckoutMode('walk-in');
         return true;
@@ -312,6 +381,11 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
       ref.read(checkoutProvider.notifier).loadCustomers(customers);
       final fieldConfigs =
           await ref.read(databaseServiceProvider).getCustomerFieldConfigs();
+      // Apply the whole saved map (including any user-added custom fields)
+      // before the per-key fixes below.
+      ref
+          .read(customerFormProvider.notifier)
+          .replaceAllFieldConfigs(fieldConfigs);
       ref
           .read(customerFormProvider.notifier)
           .updateFieldConfig(
@@ -424,6 +498,10 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
     phoneController.dispose();
     paidAmountController.dispose();
     discountController.dispose();
+    for (final controller in _customControllers.values) {
+      controller.dispose();
+    }
+    _customControllers.clear();
     _nameFocusNode.dispose();
     super.dispose();
   }
@@ -441,6 +519,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
       ref.read(customerFormProvider.notifier).updateName(randomBillId);
       ref.read(customerFormProvider.notifier).updateAddress('');
       ref.read(customerFormProvider.notifier).updatePhoneNumber('');
+      _clearCustomFields();
     } else if (mode == 'test-bill') {
       ref.read(checkoutProvider.notifier).toggleTestBill(true);
       final randomTestId =
@@ -451,6 +530,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
       ref.read(customerFormProvider.notifier).updateName(randomTestId);
       ref.read(customerFormProvider.notifier).updateAddress('');
       ref.read(customerFormProvider.notifier).updatePhoneNumber('');
+      _clearCustomFields();
     } else {
       // Customer mode
       ref.read(checkoutProvider.notifier).setCustomerMode();
@@ -460,6 +540,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
       ref.read(customerFormProvider.notifier).updateName('');
       ref.read(customerFormProvider.notifier).updateAddress('');
       ref.read(customerFormProvider.notifier).updatePhoneNumber('');
+      _clearCustomFields();
     }
   }
 
@@ -470,6 +551,17 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
     final checkoutState = ref.read(checkoutProvider);
     final isTestBill = checkoutState.isTestBill;
     final isWalkInMode = checkoutState.isWalkIn || isTestBill;
+    final customerFormState = ref.read(customerFormProvider);
+
+    // Only shown custom fields with a value are sent along; the sales screen
+    // merges them into the saved customer record.
+    final shownCustomFields = <String, dynamic>{
+      for (final entry in customerFormState.fieldConfigs.entries)
+        if (entry.key.startsWith('custom_') &&
+            entry.value.isShow &&
+            customerFormState.customValues[entry.key] != null)
+          entry.key: customerFormState.customValues[entry.key],
+    };
 
     if (isWalkInMode || nameController.text.trim().isEmpty) {
       // Walk-in / test bill: no customer record is saved.
@@ -489,6 +581,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
       'name': nameController.text.trim(),
       'address': addressController.text.trim(),
       'phoneNumber': phoneController.text.trim(),
+      'customFields': shownCustomFields,
       'isWalkIn': false,
       'isTestBill': false,
     };
@@ -498,9 +591,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
   /// data. Used by the "Save & Complete Sale" button AND the Ctrl+Enter
   /// shortcut, so both paths behave identically.
   void _submitCheckout() {
-    debugPrint(
-      '========== CHECKOUT: Save & Complete Sale ==========',
-    );
+    debugPrint('========== CHECKOUT: Save & Complete Sale ==========');
 
     if (!_formKey.currentState!.validate()) {
       debugPrint('ERROR: Form validation failed!');
@@ -511,8 +602,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
     final currentSalesState = ref.read(salesProvider);
     final customerFormState = ref.read(customerFormProvider);
     final totalAfterDiscount =
-        widget.totalAmount -
-        (customerFormState.discount ?? widget.discount);
+        widget.totalAmount - (customerFormState.discount ?? widget.discount);
 
     if (!currentSalesState.isPaid &&
         currentSalesState.paidAmount > totalAfterDiscount) {
@@ -591,9 +681,10 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
         if (isWalkIn) ...[
           SizedBox(height: 4.spMin),
           mdText(
-            text: isTestBill
-                ? 'Test bill - PDF only, no data saved'
-                : 'Walk-in customer - no data saved',
+            text:
+                isTestBill
+                    ? 'Test bill - PDF only, no data saved'
+                    : 'Walk-in customer - no data saved',
             color: isTestBill ? Colors.orange : Colors.grey,
           ),
         ],
@@ -642,114 +733,117 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: 220.spMin),
                 child: ListView.separated(
-                shrinkWrap: true,
-                padding: EdgeInsets.all(6.spMin),
-                itemCount: filteredCustomers.length,
-                separatorBuilder: (_, __) => SizedBox(height: 6.spMin),
-                itemBuilder: (context, index) {
-                  final customer = filteredCustomers[index];
-                  return Card(
-                    margin: EdgeInsets.zero,
-                    child: ListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12.spMin,
-                        vertical: 2.spMin,
+                  shrinkWrap: true,
+                  padding: EdgeInsets.all(6.spMin),
+                  itemCount: filteredCustomers.length,
+                  separatorBuilder: (_, __) => SizedBox(height: 6.spMin),
+                  itemBuilder: (context, index) {
+                    final customer = filteredCustomers[index];
+                    return Card(
+                      margin: EdgeInsets.zero,
+                      child: ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12.spMin,
+                          vertical: 2.spMin,
+                        ),
+                        title: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.person,
+                              size: 14.spMin,
+                              color:
+                                  Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.white
+                                      : Colors.black,
+                            ),
+                            SizedBox(width: 6.spMin),
+                            smText(
+                              text: customer.name,
+                              color:
+                                  Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.white
+                                      : Colors.black,
+                            ),
+                          ],
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(height: 2.spMin),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.location_city,
+                                  size: 14.spMin,
+                                  color:
+                                      Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? Colors.white
+                                          : Colors.black,
+                                ),
+                                SizedBox(width: 6.spMin),
+                                smText(
+                                  text: customer.address,
+                                  color:
+                                      Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? Colors.white
+                                          : Colors.black,
+                                ),
+                              ],
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.phone,
+                                  size: 14.spMin,
+                                  color:
+                                      Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? Colors.white
+                                          : Colors.black,
+                                ),
+                                SizedBox(width: 6.spMin),
+                                smText(
+                                  text: customer.phoneNumber,
+                                  color:
+                                      Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? Colors.white
+                                          : Colors.black,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        onTap: () {
+                          nameController.text = customer.name;
+                          addressController.text = customer.address;
+                          phoneController.text = customer.phoneNumber;
+                          ref.read(checkoutProvider.notifier).hideSuggestions();
+                          ref
+                              .read(customerFormProvider.notifier)
+                              .updateName(customer.name);
+                          ref
+                              .read(customerFormProvider.notifier)
+                              .updateAddress(customer.address);
+                          ref
+                              .read(customerFormProvider.notifier)
+                              .updatePhoneNumber(customer.phoneNumber);
+                          _applyCustomerCustomFields(customer);
+                        },
                       ),
-                      title: Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.person,
-                            size: 14.spMin,
-                            color:
-                                Theme.of(context).brightness == Brightness.dark
-                                    ? Colors.white
-                                    : Colors.black,
-                          ),
-                          SizedBox(width: 6.spMin),
-                          smText(
-                            text: customer.name,
-                            color:
-                                Theme.of(context).brightness == Brightness.dark
-                                    ? Colors.white
-                                    : Colors.black,
-                          ),
-                        ],
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(height: 2.spMin),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.location_city,
-                                size: 14.spMin,
-                                color:
-                                    Theme.of(context).brightness ==
-                                            Brightness.dark
-                                        ? Colors.white
-                                        : Colors.black,
-                              ),
-                              SizedBox(width: 6.spMin),
-                              smText(
-                                text: customer.address,
-                                color:
-                                    Theme.of(context).brightness ==
-                                            Brightness.dark
-                                        ? Colors.white
-                                        : Colors.black,
-                              ),
-                            ],
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.phone,
-                                size: 14.spMin,
-                                color:
-                                    Theme.of(context).brightness ==
-                                            Brightness.dark
-                                        ? Colors.white
-                                        : Colors.black,
-                              ),
-                              SizedBox(width: 6.spMin),
-                              smText(
-                                text: customer.phoneNumber,
-                                color:
-                                    Theme.of(context).brightness ==
-                                            Brightness.dark
-                                        ? Colors.white
-                                        : Colors.black,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      onTap: () {
-                        nameController.text = customer.name;
-                        addressController.text = customer.address;
-                        phoneController.text = customer.phoneNumber;
-                        ref.read(checkoutProvider.notifier).hideSuggestions();
-                        ref
-                            .read(customerFormProvider.notifier)
-                            .updateName(customer.name);
-                        ref
-                            .read(customerFormProvider.notifier)
-                            .updateAddress(customer.address);
-                        ref
-                            .read(customerFormProvider.notifier)
-                            .updatePhoneNumber(customer.phoneNumber);
-                      },
-                    ),
-                  );
-                },
+                    );
+                  },
                 ),
               ),
             ),
@@ -859,6 +953,139 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
                 return null;
               },
     );
+  }
+
+  // ---- User-defined custom fields (Settings → Screen Management → Add Field) ----
+
+  /// Controllers for the text-type custom fields, keyed by field key.
+  final Map<String, TextEditingController> _customControllers = {};
+
+  TextEditingController _customController(String key) {
+    return _customControllers.putIfAbsent(
+      key,
+      () => TextEditingController(
+        text:
+            ref.read(customerFormProvider).customValues[key]?.toString() ?? '',
+      ),
+    );
+  }
+
+  /// Builds every visible custom field for the checkout form, in the order
+  /// they were added in Settings.
+  List<Widget> _buildCustomFields(CustomerFormState state, bool isWalkIn) {
+    final widgets = <Widget>[];
+    for (final entry in state.fieldConfigs.entries) {
+      if (!entry.key.startsWith('custom_') || !entry.value.isShow) continue;
+      widgets.add(_buildCustomField(entry.key, entry.value, state, isWalkIn));
+      widgets.add(SizedBox(height: 24.spMin));
+    }
+    return widgets;
+  }
+
+  Widget _buildCustomField(
+    String key,
+    FieldConfig config,
+    CustomerFormState state,
+    bool isWalkIn,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final errorText =
+        config.validatorText.isNotEmpty
+            ? config.validatorText
+            : '${config.title} is required';
+
+    switch (config.widgetType) {
+      case WidgetType.dropdown:
+        final options = (config.options ?? const <String>[]).toList();
+        final current = state.customValues[key]?.toString();
+        return AppDropdown<String>(
+          label: config.title,
+          hintText: config.hintText,
+          items: options,
+          value: current != null && options.contains(current) ? current : null,
+          filled: true,
+          validator:
+              config.isRequired && !isWalkIn
+                  ? (value) =>
+                      (value == null || value.isEmpty) ? errorText : null
+                  : null,
+          onChanged:
+              isWalkIn
+                  ? null
+                  : (value) => ref
+                      .read(customerFormProvider.notifier)
+                      .updateCustomField(key, value),
+        );
+      case WidgetType.checkbox:
+        return CheckboxListTile(
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          controlAffinity: ListTileControlAffinity.leading,
+          title: Text(config.title, style: TextStyle(fontSize: 14.spMin)),
+          subtitle:
+              config.hintText.isNotEmpty
+                  ? Text(
+                    config.hintText,
+                    style: TextStyle(fontSize: 11.spMin, color: Colors.grey),
+                  )
+                  : null,
+          value: state.customValues[key] == true,
+          onChanged:
+              isWalkIn
+                  ? null
+                  : (value) => ref
+                      .read(customerFormProvider.notifier)
+                      .updateCustomField(key, value ?? false),
+        );
+      case WidgetType.imagePicker:
+      case WidgetType.textField:
+        return CustomTextField(
+          controller: _customController(key),
+          label: config.title,
+          hintText: config.hintText,
+          filled: true,
+          enabled: !isWalkIn,
+          readOnly: isWalkIn,
+          prefixIcon: AppIcon(
+            defaultIcon: Icons.label_outline,
+            win11IconPath: ImageAssets.win11Label,
+            size: 20.spMin,
+            color: isDark ? Colors.white : AppColors.lIconColor,
+          ),
+          validator:
+              config.isRequired && !isWalkIn
+                  ? (value) =>
+                      (value == null || value.trim().isEmpty) ? errorText : null
+                  : null,
+          onChange:
+              isWalkIn
+                  ? null
+                  : (value) {
+                    ref
+                        .read(customerFormProvider.notifier)
+                        .updateCustomField(key, value ?? '');
+                    return null;
+                  },
+        );
+    }
+  }
+
+  /// Fills the custom-field widgets from an existing customer record when it
+  /// is picked from the suggestions list.
+  void _applyCustomerCustomFields(Customer customer) {
+    final notifier = ref.read(customerFormProvider.notifier);
+    for (final entry in customer.customFields.entries) {
+      _customControllers[entry.key]?.text = entry.value?.toString() ?? '';
+      notifier.updateCustomField(entry.key, entry.value);
+    }
+  }
+
+  /// Clears every custom field (used when switching walk-in / test modes).
+  void _clearCustomFields() {
+    for (final controller in _customControllers.values) {
+      controller.clear();
+    }
+    ref.read(customerFormProvider.notifier).updateCustomValues(const {});
   }
 
   Widget _buildPaymentStatusField(
@@ -1102,6 +1329,8 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
           _buildPhoneField(customerFormState, isWalkIn),
           SizedBox(height: 24.spMin),
         ],
+        // User-defined custom fields (Settings → Add Field).
+        ..._buildCustomFields(customerFormState, isWalkIn),
         if (customerFormState.fieldConfigs['paymentStatus']!.isShow) ...[
           _buildPaymentStatusField(customerFormState, salesState),
           SizedBox(height: 24.spMin),
@@ -1170,6 +1399,8 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
           _buildAddressField(customerFormState, isWalkIn),
           SizedBox(height: 24.spMin),
         ],
+        // User-defined custom fields (Settings → Add Field).
+        ..._buildCustomFields(customerFormState, isWalkIn),
         if (customerFormState.fieldConfigs['paymentStatus']!.isShow ||
             customerFormState.fieldConfigs['paymentMethod']!.isShow)
           Row(
@@ -1258,11 +1489,12 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
                 ),
                 SizedBox(width: 4.spMin),
                 smText(
-                  text: checkoutState.isTestBill
-                      ? 'Test Bill'
-                      : checkoutState.isWalkIn
-                      ? 'Walk-in'
-                      : 'Customer',
+                  text:
+                      checkoutState.isTestBill
+                          ? 'Test Bill'
+                          : checkoutState.isWalkIn
+                          ? 'Walk-in'
+                          : 'Customer',
                   color:
                       Theme.of(context).brightness == Brightness.dark
                           ? Colors.white
@@ -1272,53 +1504,67 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
               ],
             ),
             onSelected: _setCheckoutMode,
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'customer',
-                child: Row(
-                  children: [
-                    Icon(TablerIcons.user, size: 18.spMin),
-                    SizedBox(width: 8.spMin),
-                    const Text('Customer'),
-                    if (!checkoutState.isWalkIn && !checkoutState.isTestBill)
-                      Padding(
-                        padding: EdgeInsets.only(left: 8.w),
-                        child: Icon(Icons.check, size: 16.spMin, color: Colors.green),
-                      ),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'walk-in',
-                child: Row(
-                  children: [
-                    Icon(TablerIcons.walk, size: 18.spMin),
-                    SizedBox(width: 8.spMin),
-                    const Text('Walk-in'),
-                    if (checkoutState.isWalkIn)
-                      Padding(
-                        padding: EdgeInsets.only(left: 8.w),
-                        child: Icon(Icons.check, size: 16.spMin, color: Colors.green),
-                      ),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'test-bill',
-                child: Row(
-                  children: [
-                    Icon(TablerIcons.test_pipe, size: 18.spMin),
-                    SizedBox(width: 8.spMin),
-                    const Text('Test Bill'),
-                    if (checkoutState.isTestBill)
-                      Padding(
-                        padding: EdgeInsets.only(left: 8.w),
-                        child: Icon(Icons.check, size: 16.spMin, color: Colors.green),
-                      ),
-                  ],
-                ),
-              ),
-            ],
+            itemBuilder:
+                (context) => [
+                  PopupMenuItem(
+                    value: 'customer',
+                    child: Row(
+                      children: [
+                        Icon(TablerIcons.user, size: 18.spMin),
+                        SizedBox(width: 8.spMin),
+                        const Text('Customer'),
+                        if (!checkoutState.isWalkIn &&
+                            !checkoutState.isTestBill)
+                          Padding(
+                            padding: EdgeInsets.only(left: 8.w),
+                            child: Icon(
+                              Icons.check,
+                              size: 16.spMin,
+                              color: Colors.green,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'walk-in',
+                    child: Row(
+                      children: [
+                        Icon(TablerIcons.walk, size: 18.spMin),
+                        SizedBox(width: 8.spMin),
+                        const Text('Walk-in'),
+                        if (checkoutState.isWalkIn)
+                          Padding(
+                            padding: EdgeInsets.only(left: 8.w),
+                            child: Icon(
+                              Icons.check,
+                              size: 16.spMin,
+                              color: Colors.green,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'test-bill',
+                    child: Row(
+                      children: [
+                        Icon(TablerIcons.test_pipe, size: 18.spMin),
+                        SizedBox(width: 8.spMin),
+                        const Text('Test Bill'),
+                        if (checkoutState.isTestBill)
+                          Padding(
+                            padding: EdgeInsets.only(left: 8.w),
+                            child: Icon(
+                              Icons.check,
+                              size: 16.spMin,
+                              color: Colors.green,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
           ),
         ],
       ),

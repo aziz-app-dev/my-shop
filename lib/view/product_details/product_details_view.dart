@@ -154,6 +154,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                           barcode: widget.product.barcode,
                           reorderLevel: widget.product.reorderLevel,
                           fieldConfigs: widget.product.fieldConfigs,
+                          customFields: widget.product.customFields,
                         );
 
                         await _dbService.updateProduct(updatedProduct);
@@ -271,7 +272,10 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                         SizedBox(width: 12.w),
                         Text(
                           'Delete Product',
-                          style: TextStyle(fontSize: 14.spMin, color: Colors.red),
+                          style: TextStyle(
+                            fontSize: 14.spMin,
+                            color: Colors.red,
+                          ),
                         ),
                       ],
                     ),

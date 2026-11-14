@@ -290,6 +290,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       _descriptionController.text = formState.description ?? '';
       _barcodeController.text = formState.barcode ?? '';
       _reorderController.text = formState.reorderLevel?.toString() ?? '';
+      // Re-seed custom field controllers for the new product.
+      for (final key in _customControllers.keys) {
+        _customControllers[key]!.text =
+            formState.customValues[key]?.toString() ?? '';
+      }
     }
   }
 
@@ -303,6 +308,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _descriptionController.dispose();
     _barcodeController.dispose();
     _reorderController.dispose();
+    for (final controller in _customControllers.values) {
+      controller.dispose();
+    }
+    _customControllers.clear();
     super.dispose();
   }
 
@@ -681,6 +690,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       _stockController.clear();
                       _descriptionController.clear();
                       _barcodeController.clear();
+                      for (final controller in _customControllers.values) {
+                        controller.clear();
+                      }
 
                       // Reset form state
                       formNotifier.resetForm();
@@ -1388,7 +1400,119 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       );
     }
 
+    // User-defined custom fields (Settings → Screen Management → Add Field),
+    // rendered last so they read as an "extra details" block.
+    for (final entry in fieldConfigs.entries) {
+      if (!entry.key.startsWith('custom_') || !entry.value.isShow) continue;
+      fields.add(
+        _buildCustomField(
+          entry.key,
+          entry.value,
+          formState,
+          formNotifier,
+          context,
+        ),
+      );
+    }
+
     return fields;
+  }
+
+  /// Controllers for the text-type custom fields, keyed by field key. Created
+  /// lazily so a field only exists while it is configured.
+  final Map<String, TextEditingController> _customControllers = {};
+
+  TextEditingController _customController(
+    String key,
+    ProductFormState formState,
+  ) {
+    return _customControllers.putIfAbsent(key, () {
+      final value = formState.customValues[key];
+      return TextEditingController(text: value?.toString() ?? '');
+    });
+  }
+
+  Widget _buildCustomField(
+    String key,
+    FieldConfig config,
+    ProductFormState formState,
+    ProductFormNotifier formNotifier,
+    BuildContext context,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final labelColor =
+        (formState.fieldErrors[key] ?? false) && config.isRequired
+            ? AppColors.error
+            : isDark
+            ? AppColors.dTFieldHintColor
+            : AppColors.lTFieldHintColor;
+    final errorText =
+        config.validatorText.isNotEmpty
+            ? config.validatorText
+            : '${config.title} is required';
+
+    switch (config.widgetType) {
+      case WidgetType.dropdown:
+        final options = (config.options ?? const <String>[]).toList();
+        final current = formState.customValues[key]?.toString();
+        return AppDropdown<String>(
+          label: config.title,
+          lableColor: labelColor,
+          hintText: config.hintText,
+          items: options,
+          value: current != null && options.contains(current) ? current : null,
+          filled: true,
+          validator:
+              config.isRequired
+                  ? (value) =>
+                      (value == null || value.isEmpty) ? errorText : null
+                  : null,
+          onChanged: (value) => formNotifier.updateCustomField(key, value),
+        );
+      case WidgetType.checkbox:
+        return CheckboxListTile(
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          controlAffinity: ListTileControlAffinity.leading,
+          title: Text(config.title, style: TextStyle(fontSize: 14.spMin)),
+          subtitle:
+              config.hintText.isNotEmpty
+                  ? Text(
+                    config.hintText,
+                    style: TextStyle(fontSize: 11.spMin, color: Colors.grey),
+                  )
+                  : null,
+          value: formState.customValues[key] == true,
+          onChanged:
+              (value) => formNotifier.updateCustomField(key, value ?? false),
+        );
+      case WidgetType.imagePicker:
+      case WidgetType.textField:
+        return CustomTextField(
+          controller: _customController(key, formState),
+          label: config.title,
+          lableColor: labelColor,
+          hintText: config.hintText,
+          filled: true,
+          prefixIcon: AppIcon(
+            win11IconPath: ImageAssets.win11Label,
+            defaultIcon: Icons.label_outline,
+            color: AppColors.primary.withValues(alpha: 0.7),
+            size: 20.spMin,
+          ),
+          validator:
+              config.isRequired
+                  ? (value) =>
+                      (value == null || value.trim().isEmpty) ? errorText : null
+                  : null,
+          onChange: (value) {
+            formNotifier.updateCustomField(key, value ?? '');
+            return null;
+          },
+          textInputAction: TextInputAction.next,
+          onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
+        );
+    }
   }
 }
 

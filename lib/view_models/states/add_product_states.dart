@@ -23,6 +23,8 @@ class ProductFormState {
   final int? reorderLevel;
   final Map<String, FieldConfig> fieldConfigs;
   final Map<String, bool> fieldErrors; // Added field errors state
+  /// Typed values for the user-defined custom fields, keyed by field key.
+  final Map<String, dynamic> customValues;
 
   ProductFormState({
     this.name,
@@ -45,44 +47,46 @@ class ProductFormState {
     this.reorderLevel,
     Map<String, FieldConfig>? fieldConfigs,
     Map<String, bool>? fieldErrors,
-  })  : fieldConfigs =
-            fieldConfigs ??
-            {
-              'name': FieldConfig.initial('name', WidgetType.textField),
-              'price': FieldConfig.initial('price', WidgetType.textField),
-              'imageFile': FieldConfig.initial(
-                'imageFile',
-                WidgetType.imagePicker,
-              ),
-              'warranty': FieldConfig.initial('warranty', WidgetType.dropdown),
-              'condition': FieldConfig.initial('condition', WidgetType.dropdown),
-              'brand': FieldConfig.initial('brand', WidgetType.textField),
-              'category': FieldConfig.initial('category', WidgetType.dropdown),
-              'description': FieldConfig.initial(
-                'description',
-                WidgetType.textField,
-              ),
-              'purchasePrice': FieldConfig.initial(
-                'purchasePrice',
-                WidgetType.textField,
-              ),
-              'stock': FieldConfig.initial('stock', WidgetType.textField),
-              'isBackup': FieldConfig.initial('isBackup', WidgetType.checkbox),
-              'barcode': FieldConfig.initial('barcode', WidgetType.textField),
-            },
-        fieldErrors =
-            fieldErrors ??
-            {
-              'name': false,
-              'price': false,
-              'purchasePrice': false,
-              'stock': false,
-              'condition': false,
-              'brand': false,
-              'category': false,
-              'description': false,
-              'barcode': false,
-            };
+    Map<String, dynamic>? customValues,
+  }) : fieldConfigs =
+           fieldConfigs ??
+           {
+             'name': FieldConfig.initial('name', WidgetType.textField),
+             'price': FieldConfig.initial('price', WidgetType.textField),
+             'imageFile': FieldConfig.initial(
+               'imageFile',
+               WidgetType.imagePicker,
+             ),
+             'warranty': FieldConfig.initial('warranty', WidgetType.dropdown),
+             'condition': FieldConfig.initial('condition', WidgetType.dropdown),
+             'brand': FieldConfig.initial('brand', WidgetType.textField),
+             'category': FieldConfig.initial('category', WidgetType.dropdown),
+             'description': FieldConfig.initial(
+               'description',
+               WidgetType.textField,
+             ),
+             'purchasePrice': FieldConfig.initial(
+               'purchasePrice',
+               WidgetType.textField,
+             ),
+             'stock': FieldConfig.initial('stock', WidgetType.textField),
+             'isBackup': FieldConfig.initial('isBackup', WidgetType.checkbox),
+             'barcode': FieldConfig.initial('barcode', WidgetType.textField),
+           },
+       fieldErrors =
+           fieldErrors ??
+           {
+             'name': false,
+             'price': false,
+             'purchasePrice': false,
+             'stock': false,
+             'condition': false,
+             'brand': false,
+             'category': false,
+             'description': false,
+             'barcode': false,
+           },
+       customValues = customValues ?? const {};
 
   ProductFormState copyWith({
     String? name,
@@ -105,6 +109,7 @@ class ProductFormState {
     int? reorderLevel,
     Map<String, FieldConfig>? fieldConfigs,
     Map<String, bool>? fieldErrors,
+    Map<String, dynamic>? customValues,
   }) {
     return ProductFormState(
       name: name ?? this.name,
@@ -127,6 +132,7 @@ class ProductFormState {
       reorderLevel: reorderLevel ?? this.reorderLevel,
       fieldConfigs: fieldConfigs ?? this.fieldConfigs,
       fieldErrors: fieldErrors ?? this.fieldErrors,
+      customValues: customValues ?? this.customValues,
     );
   }
 }

@@ -55,10 +55,16 @@ class _MultiCartSalesScreenState extends ConsumerState<MultiCartSalesScreen>
   late final AppKeyboardScope _saleKeys = AppKeyboardScope(
     'multi-cart-complete',
     (event) {
-      if (!AppKeyboardScope.didPress(event, LogicalKeyboardKey.enter,
-              ctrl: true) &&
-          !AppKeyboardScope.didPress(event, LogicalKeyboardKey.numpadEnter,
-              ctrl: true)) {
+      if (!AppKeyboardScope.didPress(
+            event,
+            LogicalKeyboardKey.enter,
+            ctrl: true,
+          ) &&
+          !AppKeyboardScope.didPress(
+            event,
+            LogicalKeyboardKey.numpadEnter,
+            ctrl: true,
+          )) {
         return false;
       }
       if (HardwareKeyboard.instance.isShiftPressed ||
@@ -253,6 +259,10 @@ class _MultiCartSalesScreenState extends ConsumerState<MultiCartSalesScreen>
     final name = customerData['name'] as String? ?? '';
     final address = customerData['address'] as String? ?? '';
     final phoneNumber = customerData['phoneNumber'] as String? ?? '';
+    // Values typed into the user-defined custom fields at checkout.
+    final customFields = Map<String, dynamic>.from(
+      customerData['customFields'] as Map? ?? const {},
+    );
 
     if (isWalkIn) {
       return Customer(
@@ -290,6 +300,9 @@ class _MultiCartSalesScreenState extends ConsumerState<MultiCartSalesScreen>
         ...existingCustomer.billIds,
         DateTime.now().millisecondsSinceEpoch.toString(),
       ],
+      // New values win; older saved custom values are kept for fields that
+      // weren't re-entered this visit.
+      customFields: {...existingCustomer.customFields, ...customFields},
     );
 
     if (mounted) {
@@ -373,6 +386,7 @@ class _MultiCartSalesScreenState extends ConsumerState<MultiCartSalesScreen>
           brand: product.brand,
           category: product.category,
           fieldConfigs: product.fieldConfigs,
+          customFields: product.customFields,
         );
         if (mounted) {
           await dbService.updateProduct(updatedProduct);
@@ -980,71 +994,74 @@ class _MultiCartSalesScreenState extends ConsumerState<MultiCartSalesScreen>
                       floatingActionButton:
                           isMobile
                               ? Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    _buildScanFab(context, ref),
-                                    if (activeCart != null &&
-                                        activeCart.cartItems.isNotEmpty) ...[
-                                      SizedBox(height: 12.spMin),
-                                      FloatingActionButton.extended(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder:
-                                          (context) => MobileMultiCartPage(
-                                            activeCart: activeCart,
-                                            onCompleteSale:
-                                                () => _completeSaleForCart(
-                                                  activeCart,
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  _buildScanFab(context, ref),
+                                  if (activeCart != null &&
+                                      activeCart.cartItems.isNotEmpty) ...[
+                                    SizedBox(height: 12.spMin),
+                                    FloatingActionButton.extended(
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder:
+                                                (
+                                                  context,
+                                                ) => MobileMultiCartPage(
+                                                  activeCart: activeCart,
+                                                  onCompleteSale:
+                                                      () =>
+                                                          _completeSaleForCart(
+                                                            activeCart,
+                                                          ),
                                                 ),
                                           ),
-                                    ),
-                                  );
-                                },
-                                backgroundColor: AppColors.primary,
-                                icon: Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    Icon(
-                                      TablerIcons.shopping_cart,
-                                      color: Colors.white,
-                                      size: 24.spMin,
-                                    ),
-                                    Positioned(
-                                      right: -8,
-                                      top: -8,
-                                      child: Container(
-                                        padding: EdgeInsets.all(4.h),
-                                        decoration: const BoxDecoration(
-                                          color: Colors.red,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Text(
-                                          '${activeCart.itemCount}',
-                                          style: TextStyle(
+                                        );
+                                      },
+                                      backgroundColor: AppColors.primary,
+                                      icon: Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          Icon(
+                                            TablerIcons.shopping_cart,
                                             color: Colors.white,
-                                            fontSize: 10.spMin,
-                                            fontWeight: FontWeight.bold,
+                                            size: 24.spMin,
                                           ),
+                                          Positioned(
+                                            right: -8,
+                                            top: -8,
+                                            child: Container(
+                                              padding: EdgeInsets.all(4.h),
+                                              decoration: const BoxDecoration(
+                                                color: Colors.red,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Text(
+                                                '${activeCart.itemCount}',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10.spMin,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      label: Text(
+                                        'Rs.${(activeCart.totalAmount - activeCart.discount).toStringAsFixed(0)}',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14.spMin,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ),
                                   ],
-                                ),
-                                label: Text(
-                                  'Rs.${(activeCart.totalAmount - activeCart.discount).toStringAsFixed(0)}',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14.spMin,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                      )
-                                    ],
-                                  ],
-                                )
+                                ],
+                              )
                               : null,
                     );
                   },

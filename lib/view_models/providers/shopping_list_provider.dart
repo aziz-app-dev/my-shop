@@ -269,6 +269,7 @@ class ShoppingListNotifier extends StateNotifier<ShoppingListState> {
               brand: product.brand,
               category: product.category,
               fieldConfigs: product.fieldConfigs,
+              customFields: product.customFields,
             );
 
             await _dbService.updateProduct(updatedProduct);

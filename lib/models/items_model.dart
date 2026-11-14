@@ -8,6 +8,14 @@ class FieldConfig {
   final String title;
   final WidgetType widgetType;
 
+  /// Choices for [WidgetType.dropdown] fields (user-defined custom fields).
+  final List<String>? options;
+
+  /// True when this field was added by the user in Settings → Screen
+  /// Management ("Add Field") rather than being a built-in form field.
+  /// Custom fields can be deleted; built-in ones cannot.
+  final bool isCustom;
+
   FieldConfig({
     required this.isShow,
     required this.isRequired,
@@ -15,6 +23,8 @@ class FieldConfig {
     required this.validatorText,
     required this.title,
     required this.widgetType,
+    this.options,
+    this.isCustom = false,
   });
 
   factory FieldConfig.initial(String fieldName, WidgetType widgetType) {
@@ -139,6 +149,8 @@ class FieldConfig {
       'validatorText': validatorText,
       'title': title,
       'widgetType': widgetType.toString(),
+      if (options != null) 'options': options,
+      if (isCustom) 'isCustom': isCustom,
     };
   }
 
@@ -153,6 +165,8 @@ class FieldConfig {
         (e) => e.toString() == map['widgetType'],
         orElse: () => WidgetType.textField,
       ),
+      options: (map['options'] as List?)?.map((e) => e.toString()).toList(),
+      isCustom: map['isCustom'] ?? false,
     );
   }
 
@@ -163,6 +177,8 @@ class FieldConfig {
     String? validatorText,
     String? title,
     WidgetType? widgetType,
+    List<String>? options,
+    bool? isCustom,
   }) {
     return FieldConfig(
       isShow: isShow ?? this.isShow,
@@ -171,6 +187,8 @@ class FieldConfig {
       validatorText: validatorText ?? this.validatorText,
       title: title ?? this.title,
       widgetType: widgetType ?? this.widgetType,
+      options: options ?? this.options,
+      isCustom: isCustom ?? this.isCustom,
     );
   }
 }
@@ -195,6 +213,11 @@ class Product {
   final int? reorderLevel;
   final Map<String, FieldConfig> fieldConfigs;
 
+  /// Values for the user-defined custom fields (keys are the custom field
+  /// keys from fieldConfigs, e.g. "custom_1a2b3c4d"). Persisted with the
+  /// product so custom data syncs like everything else.
+  final Map<String, dynamic> customFields;
+
   Product({
     required this.id,
     required this.name,
@@ -214,7 +237,9 @@ class Product {
     this.barcode,
     this.reorderLevel,
     Map<String, FieldConfig>? fieldConfigs,
-  }) : fieldConfigs =
+    Map<String, dynamic>? customFields,
+  }) : customFields = customFields ?? const {},
+       fieldConfigs =
            fieldConfigs ??
            {
              'name': FieldConfig.initial('name', WidgetType.textField),
@@ -264,7 +289,10 @@ class Product {
       'brand': FieldConfig.initial('brand', WidgetType.textField),
       'category': FieldConfig.initial('category', WidgetType.dropdown),
       'description': FieldConfig.initial('description', WidgetType.textField),
-      'purchasePrice': FieldConfig.initial('purchasePrice', WidgetType.textField),
+      'purchasePrice': FieldConfig.initial(
+        'purchasePrice',
+        WidgetType.textField,
+      ),
       'stock': FieldConfig.initial('stock', WidgetType.textField),
       'isBackup': FieldConfig.initial('isBackup', WidgetType.checkbox),
       'barcode': FieldConfig.initial('barcode', WidgetType.textField),
@@ -287,12 +315,14 @@ class Product {
       isService: _toBool(map['isService']),
       purchasePrice: (map['purchasePrice'] as num?)?.toDouble(),
       isBackup: _toBool(map['isBackup']),
-      createdAt: map['createdAt'] != null
-          ? DateTime.tryParse(map['createdAt'] as String) ?? DateTime.now()
-          : DateTime.now(),
-      updatedAt: map['updatedAt'] != null
-          ? DateTime.tryParse(map['updatedAt'] as String) ?? DateTime.now()
-          : DateTime.now(),
+      createdAt:
+          map['createdAt'] != null
+              ? DateTime.tryParse(map['createdAt'] as String) ?? DateTime.now()
+              : DateTime.now(),
+      updatedAt:
+          map['updatedAt'] != null
+              ? DateTime.tryParse(map['updatedAt'] as String) ?? DateTime.now()
+              : DateTime.now(),
       warranty: _toBool(map['warranty']),
       condition: map['condition'] as String?,
       brand: map['brand'] as String?,
@@ -300,6 +330,7 @@ class Product {
       barcode: map['barcode'] as String?,
       reorderLevel: map['reorderLevel'] as int?,
       fieldConfigs: defaultConfigs,
+      customFields: Map<String, dynamic>.from(map['customFields'] ?? {}),
     );
   }
 
@@ -325,6 +356,7 @@ class Product {
       'fieldConfigs': fieldConfigs.map(
         (key, value) => MapEntry(key, value.toMap()),
       ),
+      'customFields': customFields,
     };
   }
 }

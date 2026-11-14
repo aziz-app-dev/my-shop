@@ -144,8 +144,7 @@ class MobileProductDetailsView extends ConsumerWidget {
               filled: true,
               isDark: isDark,
             ),
-            if (hasBrand)
-              _badge(product.brand!, filled: false, isDark: isDark),
+            if (hasBrand) _badge(product.brand!, filled: false, isDark: isDark),
             if (hasCategory)
               _badge(product.category!, filled: false, isDark: isDark),
           ],
@@ -177,8 +176,7 @@ class MobileProductDetailsView extends ConsumerWidget {
         SizedBox(height: 16.spMin),
 
         // Description
-        if (product.description != null &&
-            product.description!.isNotEmpty) ...[
+        if (product.description != null && product.description!.isNotEmpty) ...[
           Text(
             'Description',
             style: TextStyle(
@@ -208,23 +206,24 @@ class MobileProductDetailsView extends ConsumerWidget {
   }
 
   Widget _badge(String text, {required bool filled, required bool isDark}) {
-    final Color fillColor = filled
-        ? (isDark ? Colors.white : Colors.black)
-        : Colors.transparent;
-    final Color textColor = filled
-        ? (isDark ? Colors.black : Colors.white)
-        : (isDark ? Colors.white : AppColors.grey800);
+    final Color fillColor =
+        filled ? (isDark ? Colors.white : Colors.black) : Colors.transparent;
+    final Color textColor =
+        filled
+            ? (isDark ? Colors.black : Colors.white)
+            : (isDark ? Colors.white : AppColors.grey800);
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12.spMin, vertical: 6.spMin),
       decoration: BoxDecoration(
         color: fillColor,
         borderRadius: BorderRadius.circular(8.spMin),
-        border: filled
-            ? null
-            : Border.all(
-                color: isDark ? AppColors.grey700 : AppColors.grey300,
-              ),
+        border:
+            filled
+                ? null
+                : Border.all(
+                  color: isDark ? AppColors.grey700 : AppColors.grey300,
+                ),
       ),
       child: Text(
         text,
@@ -272,6 +271,19 @@ class MobileProductDetailsView extends ConsumerWidget {
           isDark: isDark,
         ),
       ],
+      // User-defined custom fields (labelled with their Settings title).
+      for (final entry in product.fieldConfigs.entries)
+        if (entry.key.startsWith('custom_') &&
+            entry.value.isShow &&
+            product.customFields[entry.key] != null &&
+            product.customFields[entry.key].toString().isNotEmpty)
+          _metaItem(
+            icon: Icons.label_outline,
+            win11: ImageAssets.win11Label,
+            label: entry.value.title,
+            value: product.customFields[entry.key].toString(),
+            isDark: isDark,
+          ),
     ];
 
     if (!isWide) {
@@ -279,10 +291,7 @@ class MobileProductDetailsView extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (final item in items)
-            Padding(
-              padding: EdgeInsets.only(bottom: 14.spMin),
-              child: item,
-            ),
+            Padding(padding: EdgeInsets.only(bottom: 14.spMin), child: item),
         ],
       );
     }
@@ -299,8 +308,7 @@ class MobileProductDetailsView extends ConsumerWidget {
               Expanded(child: items[i]),
               SizedBox(width: 24.spMin),
               Expanded(
-                child:
-                    (i + 1) < items.length ? items[i + 1] : const SizedBox(),
+                child: (i + 1) < items.length ? items[i + 1] : const SizedBox(),
               ),
             ],
           ),

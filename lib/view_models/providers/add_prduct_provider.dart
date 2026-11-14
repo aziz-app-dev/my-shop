@@ -1,8 +1,10 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod/legacy.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:uuid/uuid.dart';
 import '../../models/items_model.dart';
 import '../../utils/image_picker_helper.dart';
 import '../services/database/database_services.dart';
@@ -40,8 +42,28 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
           reorderLevel: initialProduct?.reorderLevel,
           fieldConfigs:
               initialProduct?.fieldConfigs ?? _loadDefaultFieldConfigs(),
+          customValues: Map<String, dynamic>.from(
+            initialProduct?.customFields ?? const {},
+          ),
         ),
-      );
+      ) {
+    // The saved (global) field configs from Settings are the source of
+    // truth for the form layout — including any custom fields the user
+    // added. Load them over the defaults once ready.
+    _loadSavedFieldConfigs();
+  }
+
+  Future<void> _loadSavedFieldConfigs() async {
+    try {
+      final saved = await _databaseService.getFieldConfigs();
+      if (saved.isEmpty) return;
+      final merged = Map<String, FieldConfig>.from(state.fieldConfigs);
+      merged.addAll(saved);
+      state = state.copyWith(fieldConfigs: merged);
+    } catch (e) {
+      debugPrint('Failed to load saved field configs: $e');
+    }
+  }
 
   // Load default field configurations (could be from DatabaseService)
   static Map<String, FieldConfig> _loadDefaultFieldConfigs() {
@@ -140,9 +162,26 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
       'barcode':
           fieldConfigs['barcode']!.isRequired &&
           (state.barcode == null || state.barcode!.isEmpty),
+      // User-defined custom fields: required ones must be filled.
+      for (final entry in fieldConfigs.entries)
+        if (entry.key.startsWith('custom_') && entry.value.isShow)
+          entry.key:
+              entry.value.isRequired &&
+              !_customFieldValuePresent(
+                state.customValues[entry.key],
+                entry.value,
+              ),
     };
 
     state = state.copyWith(fieldErrors: fieldErrors);
+  }
+
+  /// True when a custom field value counts as "filled" for validation.
+  static bool _customFieldValuePresent(dynamic value, FieldConfig config) {
+    if (config.widgetType == WidgetType.checkbox) return value == true;
+    if (value == null) return false;
+    if (value is String) return value.trim().isNotEmpty;
+    return true;
   }
 
   void updateName(String name) {
@@ -244,6 +283,7 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
     String? validatorText,
     String? title,
     WidgetType? widgetType,
+    List<String>? options,
   }) {
     final updatedConfigs = Map<String, FieldConfig>.from(state.fieldConfigs);
     updatedConfigs[fieldName] = updatedConfigs[fieldName]!.copyWith(
@@ -253,6 +293,7 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
       validatorText: validatorText,
       title: title,
       widgetType: widgetType,
+      options: options,
     );
     state = state.copyWith(fieldConfigs: updatedConfigs);
     _saveFieldConfigs(updatedConfigs); // Persist changes
@@ -264,6 +305,42 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
     } catch (e) {
       state = state.copyWith(errorMessage: 'Failed to save field configs: $e');
     }
+  }
+
+  /// Adds a user-defined custom field (Settings → Add Field) and persists it.
+  /// Returns the generated field key (e.g. "custom_1a2b3c4d").
+  String addFieldConfig(FieldConfig config) {
+    final key = 'custom_${const Uuid().v4().substring(0, 8)}';
+    final updatedConfigs = Map<String, FieldConfig>.from(state.fieldConfigs);
+    updatedConfigs[key] = config.copyWith(isCustom: true);
+    state = state.copyWith(fieldConfigs: updatedConfigs);
+    _saveFieldConfigs(updatedConfigs);
+    return key;
+  }
+
+  /// Removes a custom field from the form configuration (its saved values
+  /// stay on existing products until they are re-saved, which is harmless).
+  void deleteFieldConfig(String fieldName) {
+    final updatedConfigs = Map<String, FieldConfig>.from(state.fieldConfigs);
+    updatedConfigs.remove(fieldName);
+    final updatedValues = Map<String, dynamic>.from(state.customValues);
+    updatedValues.remove(fieldName);
+    state = state.copyWith(
+      fieldConfigs: updatedConfigs,
+      customValues: updatedValues,
+    );
+    _saveFieldConfigs(updatedConfigs);
+  }
+
+  /// Stores the typed value of a custom field.
+  void updateCustomField(String fieldName, dynamic value) {
+    final updated = Map<String, dynamic>.from(state.customValues);
+    if (value == null || (value is String && value.trim().isEmpty)) {
+      updated.remove(fieldName);
+    } else {
+      updated[fieldName] = value;
+    }
+    state = state.copyWith(customValues: updated, errorMessage: null);
   }
 
   /// Pick an image from the gallery and copy it into the app's own images
@@ -286,7 +363,8 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
       if (!await imagesDir.exists()) {
         await imagesDir.create(recursive: true);
       }
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${path.basename(pickedFile.path)}';
+      final fileName =
+          '${DateTime.now().millisecondsSinceEpoch}_${path.basename(pickedFile.path)}';
       final savedFile = await pickedFile.copy('${imagesDir.path}/$fileName');
       state = state.copyWith(imageFile: savedFile);
     }
@@ -351,6 +429,25 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
       return false;
     }
 
+    // User-defined custom fields: block the submit when a required one is
+    // missing, showing that field's own error text.
+    for (final entry in fieldConfigs.entries) {
+      if (!entry.key.startsWith('custom_') || !entry.value.isShow) continue;
+      if (entry.value.isRequired &&
+          !_customFieldValuePresent(
+            state.customValues[entry.key],
+            entry.value,
+          )) {
+        state = state.copyWith(
+          errorMessage:
+              entry.value.validatorText.isNotEmpty
+                  ? entry.value.validatorText
+                  : '${entry.value.title} is required',
+        );
+        return false;
+      }
+    }
+
     state = state.copyWith(isLoading: true);
 
     try {
@@ -403,6 +500,7 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
         barcode: state.barcode,
         reorderLevel: state.reorderLevel,
         fieldConfigs: state.fieldConfigs,
+        customFields: state.customValues,
       );
 
       if (initialProduct == null) {
@@ -470,7 +568,10 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
       barcode: null,
       reorderLevel: null,
       fieldConfigs: _loadDefaultFieldConfigs(),
+      customValues: const {},
     );
+    // Re-apply the saved field configs so custom fields stay after a reset.
+    _loadSavedFieldConfigs();
   }
 }
 

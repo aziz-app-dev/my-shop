@@ -50,30 +50,35 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   /// Window-level shortcut scope: Ctrl+Enter fires the complete-sale action —
   /// the same as tapping the Complete button on the cart panel — which opens
   /// the customer & payment page for this sale.
-  late final AppKeyboardScope _saleKeys = AppKeyboardScope(
-    'sales-complete',
-    (event) {
-      if (!AppKeyboardScope.didPress(event, LogicalKeyboardKey.enter,
-              ctrl: true) &&
-          !AppKeyboardScope.didPress(event, LogicalKeyboardKey.numpadEnter,
-              ctrl: true)) {
-        return false;
-      }
-      // No surprise combos: Shift/Alt + Enter keeps other meanings.
-      if (HardwareKeyboard.instance.isShiftPressed ||
-          HardwareKeyboard.instance.isAltPressed) {
-        return false;
-      }
-      if (!mounted) return false;
-      // Only when this page is actually on top (not while the checkout or
-      // bill screen is open above it).
-      final route = ModalRoute.of(context);
-      if (route != null && !route.isCurrent) return false;
-      if (ref.read(salesProvider).cartItems.isEmpty) return false;
-      unawaited(_completeSale());
-      return true;
-    },
-  );
+  late final AppKeyboardScope _saleKeys = AppKeyboardScope('sales-complete', (
+    event,
+  ) {
+    if (!AppKeyboardScope.didPress(
+          event,
+          LogicalKeyboardKey.enter,
+          ctrl: true,
+        ) &&
+        !AppKeyboardScope.didPress(
+          event,
+          LogicalKeyboardKey.numpadEnter,
+          ctrl: true,
+        )) {
+      return false;
+    }
+    // No surprise combos: Shift/Alt + Enter keeps other meanings.
+    if (HardwareKeyboard.instance.isShiftPressed ||
+        HardwareKeyboard.instance.isAltPressed) {
+      return false;
+    }
+    if (!mounted) return false;
+    // Only when this page is actually on top (not while the checkout or
+    // bill screen is open above it).
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) return false;
+    if (ref.read(salesProvider).cartItems.isEmpty) return false;
+    unawaited(_completeSale());
+    return true;
+  });
 
   @override
   void initState() {
@@ -309,6 +314,10 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     final name = customerData['name'] as String? ?? '';
     final address = customerData['address'] as String? ?? '';
     final phoneNumber = customerData['phoneNumber'] as String? ?? '';
+    // Values typed into the user-defined custom fields at checkout.
+    final customFields = Map<String, dynamic>.from(
+      customerData['customFields'] as Map? ?? const {},
+    );
 
     if (isWalkIn) {
       // For walk-in customers, return a temporary customer object without saving
@@ -347,6 +356,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         ...existingCustomer.billIds,
         DateTime.now().millisecondsSinceEpoch.toString(),
       ],
+      // New values win; older saved custom values are kept for fields that
+      // weren't re-entered this visit.
+      customFields: {...existingCustomer.customFields, ...customFields},
     );
 
     if (mounted) {
@@ -428,6 +440,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           barcode: product.barcode,
           reorderLevel: product.reorderLevel,
           fieldConfigs: product.fieldConfigs,
+          customFields: product.customFields,
         );
         if (mounted) {
           await dbService.updateProduct(updatedProduct);
@@ -761,57 +774,59 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                       if (salesState.cartItems.isNotEmpty) ...[
                         SizedBox(height: 12.spMin),
                         FloatingActionButton.extended(
-                    onPressed: () async {
-                      final result =
-                          await showModalBottomSheet<Map<String, dynamic>>(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (context) => const MobileCartBottomSheet(),
-                          );
-                      // Process the checkout result if available
-                      if (result != null && mounted) {
-                        await _processCheckoutResult(result);
-                      }
-                    },
-                    backgroundColor: AppColors.primary,
-                    icon: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Icon(
-                          TablerIcons.shopping_cart,
-                          color: Colors.white,
-                          size: 24.spMin,
-                        ),
-                        Positioned(
-                          right: -8,
-                          top: -8,
-                          child: Container(
-                            padding: EdgeInsets.all(4.h),
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Text(
-                              '${salesState.cartItems.length}',
-                              style: TextStyle(
+                          onPressed: () async {
+                            final result = await showModalBottomSheet<
+                              Map<String, dynamic>
+                            >(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder:
+                                  (context) => const MobileCartBottomSheet(),
+                            );
+                            // Process the checkout result if available
+                            if (result != null && mounted) {
+                              await _processCheckoutResult(result);
+                            }
+                          },
+                          backgroundColor: AppColors.primary,
+                          icon: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Icon(
+                                TablerIcons.shopping_cart,
                                 color: Colors.white,
-                                fontSize: 10.spMin,
-                                fontWeight: FontWeight.bold,
+                                size: 24.spMin,
                               ),
+                              Positioned(
+                                right: -8,
+                                top: -8,
+                                child: Container(
+                                  padding: EdgeInsets.all(4.h),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Text(
+                                    '${salesState.cartItems.length}',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10.spMin,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          label: Text(
+                            'Rs.${(salesState.totalAmount - salesState.discount).toStringAsFixed(0)}',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14.spMin,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    label: Text(
-                      'Rs.${(salesState.totalAmount - salesState.discount).toStringAsFixed(0)}',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14.spMin,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
                         ),
                       ],
                     ],

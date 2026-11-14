@@ -13,6 +13,7 @@ import 'package:intl/intl.dart';
 import 'package:open_file/open_file.dart';
 import '../../models/bills_model.dart';
 import '../../models/coustomer_model.dart';
+import '../../models/items_model.dart';
 import '../../res/assets/image_assets.dart';
 import '../../res/components/app_bar_widget.dart';
 import '../../res/components/app_icon.dart';
@@ -44,6 +45,10 @@ class CustomerDetailsScreenState extends ConsumerState<CustomerDetailsScreen>
   final _formKey = GlobalKey<FormState>();
   late TabController _tabController;
 
+  /// Saved custom-field configs, loaded once so custom values can be shown
+  /// with their proper titles instead of raw keys.
+  Map<String, FieldConfig> _fieldConfigs = const {};
+
   @override
   void initState() {
     super.initState();
@@ -51,7 +56,17 @@ class CustomerDetailsScreenState extends ConsumerState<CustomerDetailsScreen>
     _addressController = TextEditingController(text: widget.customer.address);
     _phoneController = TextEditingController(text: widget.customer.phoneNumber);
     _tabController = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final configs =
+          await ref.read(databaseServiceProvider).getCustomerFieldConfigs();
+      if (mounted) {
+        setState(() => _fieldConfigs = configs);
+      }
+    });
   }
+
+  /// Human title for a custom field key (falls back to the raw key).
+  String _customFieldTitle(String key) => _fieldConfigs[key]?.title ?? key;
 
   @override
   void dispose() {
@@ -390,7 +405,10 @@ class CustomerDetailsScreenState extends ConsumerState<CustomerDetailsScreen>
         // Summary Cards at the top
         if (bills.isNotEmpty)
           Padding(
-            padding: EdgeInsets.symmetric(vertical: 12.spMin, horizontal: 4.spMin),
+            padding: EdgeInsets.symmetric(
+              vertical: 12.spMin,
+              horizontal: 4.spMin,
+            ),
             child: Row(
               children: [
                 Expanded(
@@ -1091,6 +1109,21 @@ class CustomerDetailsScreenState extends ConsumerState<CustomerDetailsScreen>
                           Icons.pending_actions_outlined,
                           win11IconPath: ImageAssets.win11Pending,
                         ),
+                        // User-defined custom fields (labelled with their
+                        // Settings title).
+                        for (final entry
+                            in widget.customer.customFields.entries)
+                          if (entry.value != null &&
+                              entry.value.toString().isNotEmpty) ...[
+                            SizedBox(height: 10.spMin),
+                            infoRow(
+                              context,
+                              _customFieldTitle(entry.key),
+                              entry.value.toString(),
+                              Icons.label_outline,
+                              win11IconPath: ImageAssets.win11Label,
+                            ),
+                          ],
                       ],
                     ),
           ),

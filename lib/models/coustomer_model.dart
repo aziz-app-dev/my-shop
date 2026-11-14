@@ -7,6 +7,10 @@ class Customer {
   final List<String> billIds; // List of bill IDs associated with this customer
   final double totalPendingAmount; // Total amount pending from all bills
   final double totalPaidAmount; // Total amount paid across all bills
+  /// Values for the user-defined custom fields added in Settings (keyed by
+  /// the custom field key, e.g. "custom_1a2b3c4d"). Persisted and synced
+  /// like every other customer field.
+  final Map<String, dynamic> customFields;
 
   Customer({
     required this.id,
@@ -17,6 +21,7 @@ class Customer {
     this.billIds = const [],
     this.totalPendingAmount = 0.0,
     this.totalPaidAmount = 0.0,
+    this.customFields = const {},
   });
 
   Map<String, dynamic> toMap() {
@@ -29,6 +34,7 @@ class Customer {
       'billIds': billIds,
       'totalPendingAmount': totalPendingAmount,
       'totalPaidAmount': totalPaidAmount,
+      'customFields': customFields,
     };
   }
 
@@ -40,8 +46,10 @@ class Customer {
       phoneNumber: map['phoneNumber'] as String? ?? '',
       visitCount: map['visitCount'] as int? ?? 0,
       billIds: List<String>.from(map['billIds'] ?? []),
-      totalPendingAmount: (map['totalPendingAmount'] as num?)?.toDouble() ?? 0.0,
+      totalPendingAmount:
+          (map['totalPendingAmount'] as num?)?.toDouble() ?? 0.0,
       totalPaidAmount: (map['totalPaidAmount'] as num?)?.toDouble() ?? 0.0,
+      customFields: Map<String, dynamic>.from(map['customFields'] ?? {}),
     );
   }
 
@@ -54,6 +62,7 @@ class Customer {
     List<String>? billIds,
     double? totalPendingAmount,
     double? totalPaidAmount,
+    Map<String, dynamic>? customFields,
   }) {
     return Customer(
       id: id ?? this.id,
@@ -64,6 +73,7 @@ class Customer {
       billIds: billIds ?? this.billIds,
       totalPendingAmount: totalPendingAmount ?? this.totalPendingAmount,
       totalPaidAmount: totalPaidAmount ?? this.totalPaidAmount,
+      customFields: customFields ?? this.customFields,
     );
   }
 }
