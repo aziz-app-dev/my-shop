@@ -18,6 +18,7 @@ import '../../../models/repair_model.dart';
 import '../../../models/user/user_model.dart';
 import '../../../models/expense_model.dart';
 import '../../../models/local_purchase_model.dart';
+import '../firebase/firebase_service.dart';
 import '../sync/sync_queue.dart';
 
 // Conditional import for path_provider (only used on non-web platforms)
@@ -1387,6 +1388,31 @@ class HiveService {
     ];
   }
 
+  /// Clears the local Hive boxes of the given synced tables (Settings →
+  /// Clear Data).
+  Future<void> clearTables(Set<String> tables) async {
+    for (final table in tables) {
+      final box = _boxForTable(table);
+      if (box != null) await box.clear();
+    }
+  }
+
+  /// Removes queued sync ops for the given tables so pending writes can't
+  /// resurrect data that was just cleared.
+  Future<void> purgeQueueForTables(Set<String> tables) async {
+    final keys = _syncQueueBox.keys.toList();
+    for (final key in keys) {
+      final map = _syncQueueBox.get(key);
+      if (map == null) continue;
+      final table = (map['table'] ?? '').toString();
+      if (tables.contains(table)) await _syncQueueBox.delete(key);
+    }
+  }
+
+  /// Fires the remote-change signal for a table so open screens reload
+  /// after a local clear (providers re-read the now-empty boxes).
+  void notifyDataCleared(String table) => _remoteDataChanges.add(table);
+
   Future<void> enqueueUpsert(String table, Map<String, dynamic> payload) async {
     final op = SyncOp(
       id: const Uuid().v4(),
@@ -1553,6 +1579,43 @@ class DatabaseService {
 
   Future<void> clearAllData() async {
     await _hiveService.clearAll();
+  }
+
+  /// Data groups offered in Settings → Clear Data, mapped to the synced
+  /// tables each group covers (products includes brands and categories).
+  static const Map<String, List<String>> dataGroupTables = {
+    'products': ['products', 'brands', 'categories'],
+    'bills': ['bills'],
+    'customers': ['customers'],
+    'expenses': ['expenses'],
+    'repairs': ['repairs'],
+    'purchases': ['localPurchases'],
+  };
+
+  /// Permanently deletes the selected data groups from BOTH this device
+  /// (Hive) and the cloud (Firestore), so realtime sync drops them on
+  /// every device. Queued-but-not-yet-synced writes are also discarded.
+  Future<void> clearDataGroups(Set<String> groups) async {
+    final tables = <String>{
+      for (final g in groups) ...(dataGroupTables[g] ?? const <String>[]),
+    };
+    if (tables.isEmpty) return;
+
+    // Cloud first: every device's realtime listener receives the removals
+    // and drops its local copy automatically.
+    for (final table in tables) {
+      try {
+        await FirebaseService.instance.clearCollection(table);
+      } catch (e) {
+        debugPrint('Cloud clear failed for "$table": $e');
+      }
+    }
+
+    await _hiveService.clearTables(tables);
+    await _hiveService.purgeQueueForTables(tables);
+    for (final table in tables) {
+      _hiveService.notifyDataCleared(table);
+    }
   }
 
   Future<void> setNewDirectory(String newPath) async {

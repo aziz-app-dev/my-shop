@@ -19,6 +19,7 @@ import '../../res/components/text_field_widget.dart';
 import '../../utils/app_sizes.dart';
 import '../../view_models/providers/settings_provider.dart';
 import '../../view_models/services/cloudinary/cloudinary_service.dart';
+import '../../view_models/services/database/database_services.dart';
 import '../../view_models/services/gemini/gemini_product_vision.dart';
 import '../about/about_view.dart';
 import '../main/main_view.dart';
@@ -71,6 +72,171 @@ class SettingsPage extends ConsumerWidget {
           context,
           message: 'Directory path updated and data migrated',
         );
+      }
+    }
+  }
+
+  /// Human-readable labels for the Clear Data groups.
+  static const Map<String, String> _clearGroupLabels = {
+    'products': 'Products (includes brands & categories)',
+    'bills': 'Bills / Receipts',
+    'customers': 'Customers',
+    'expenses': 'Expenses',
+    'repairs': 'Repairs',
+    'purchases': 'Purchase agreements',
+  };
+
+  /// Settings → Data → Clear Data: pick data groups with checkboxes, then
+  /// confirm before anything is deleted from this device and the cloud.
+  Future<void> _showClearDataDialog(BuildContext context, WidgetRef ref) async {
+    final groups = DatabaseService.dataGroupTables.keys.toList();
+    final selected = <String>{};
+
+    final picked = await showDialog<Set<String>>(
+      context: context,
+      builder:
+          (ctx) => StatefulBuilder(
+            builder: (ctx, setDialogState) {
+              final allSelected = selected.length == groups.length;
+              return AlertDialog(
+                title: mdText(text: 'Clear Data'),
+                content: SizedBox(
+                  width: 360.spMin,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      smText(
+                        text:
+                            'Choose what to delete permanently from this device and the cloud:',
+                      ),
+                      SizedBox(height: 8.spMin),
+                      CheckboxListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        title: mdTextBold(text: 'All data'),
+                        value: allSelected,
+                        onChanged: (val) {
+                          setDialogState(() {
+                            selected.clear();
+                            if (val == true) selected.addAll(groups);
+                          });
+                        },
+                      ),
+                      ...groups.map(
+                        (group) => CheckboxListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          controlAffinity: ListTileControlAffinity.leading,
+                          title: Text(
+                            _clearGroupLabels[group] ?? group,
+                            style: TextStyle(fontSize: 13.spMin),
+                          ),
+                          value: selected.contains(group),
+                          onChanged: (val) {
+                            setDialogState(() {
+                              val == true
+                                  ? selected.add(group)
+                                  : selected.remove(group);
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: mdText(text: 'Cancel'),
+                        ),
+                      ),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                          ),
+                          onPressed:
+                              selected.isEmpty
+                                  ? null
+                                  : () => Navigator.pop(ctx, Set.of(selected)),
+                          child: Text(
+                            'Delete',
+                            style: TextStyle(fontSize: 14.spMin),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+    );
+
+    if (picked == null || picked.isEmpty) return;
+    if (!context.mounted) return;
+
+    // Confirmation popup — nothing is deleted until this is accepted.
+    final isAll = picked.length == groups.length;
+    final names =
+        isAll
+            ? 'ALL data'
+            : picked.map((g) => _clearGroupLabels[g] ?? g).join(', ');
+    final ok = await showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: mdText(text: 'Confirm deletion'),
+            content: smText(
+              maxLines: 8,
+              text:
+                  'This will PERMANENTLY delete $names from this device and the '
+                  'cloud (all devices using the app). This cannot be undone.\n\n'
+                  'Are you sure?',
+            ),
+            actions: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: mdText(text: 'Cancel'),
+                    ),
+                  ),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: Text(
+                        'Yes, delete',
+                        style: TextStyle(fontSize: 14.spMin),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+    );
+
+    if (ok != true || !context.mounted) return;
+    try {
+      await ref.read(databaseServiceProvider).clearDataGroups(picked);
+      if (context.mounted) {
+        AppFlushbar.success(context, message: 'Selected data cleared');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        AppFlushbar.error(context, message: 'Failed to clear data: $e');
       }
     }
   }
@@ -1084,6 +1250,41 @@ class SettingsPage extends ConsumerWidget {
             SizedBox(height: 16.spMin),
             // Screen Management ExpansionTile
             ScreenManagementSection(ref: ref),
+            SizedBox(height: 16.spMin),
+            // Data Section — clear data (device + cloud) with confirmation
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              child: AppExpansionTile(
+                initiallyExpanded: false,
+                tilePadding: EdgeInsets.symmetric(horizontal: 16.spMin),
+                childrenPadding: EdgeInsets.all(16.spMin),
+                title: mdTextBold(text: 'Data'),
+                children: [
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      Icons.delete_sweep_outlined,
+                      size: 24.spMin,
+                      color: Colors.red,
+                    ),
+                    title: Text(
+                      'Clear Data',
+                      style: TextStyle(
+                        fontSize: 14.spMin,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Permanently delete selected data from this device and the cloud',
+                      style: TextStyle(fontSize: 11.spMin, color: Colors.grey),
+                    ),
+                    onTap: () => _showClearDataDialog(context, ref),
+                  ),
+                ],
+              ),
+            ),
             SizedBox(height: 16.spMin),
             // Desktop Side Bar ExpansionTile
             Card(

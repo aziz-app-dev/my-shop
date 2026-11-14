@@ -291,6 +291,23 @@ class FirebaseService {
     }
   }
 
+  /// Deletes every document in ONE data collection, batched by 400 so
+  /// large tables don't hit the batch limit. Used by Settings → Clear
+  /// Data. Throws on failure so the caller can warn the user.
+  Future<void> clearCollection(String collectionName) async {
+    if (!isSignedIn) return;
+    while (true) {
+      final snapshot = await collection(collectionName).limit(400).get();
+      if (snapshot.docs.isEmpty) break;
+      final batch = firestore.batch();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+      if (snapshot.docs.length < 400) break;
+    }
+  }
+
   /// Firestore can't store nested `DateTime` inside lists/maps reliably across
   /// the app's map shapes, and the app already serializes dates as ISO strings
   /// in `toMap()`. Convert any stray `DateTime` values to ISO strings so the
