@@ -953,6 +953,11 @@ class SettingsPage extends ConsumerWidget {
                     ),
                   ],
                   Divider(height: 24.spMin),
+                  // Payment Methods — the choices offered at checkout, bill
+                  // editing and purchases. Synced across devices like the
+                  // rest of Settings.
+                  const _PaymentMethodsEditor(),
+                  Divider(height: 24.spMin),
                   // Bank Details on Bills
                   _smallSwitchTile(
                     context: context,
@@ -2245,6 +2250,216 @@ class _CloudinaryCardState extends ConsumerState<_CloudinaryCard> {
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Settings → Bill Settings → Payment Methods. Lets the shop owner manage
+/// the list of payment choices (Cash, Online Pay, Bank Transfer, ...) that
+/// appears at checkout, on bill editing and on purchase forms. The list is
+/// stored in the settings box and synced across devices.
+class _PaymentMethodsEditor extends StatefulWidget {
+  const _PaymentMethodsEditor();
+
+  @override
+  State<_PaymentMethodsEditor> createState() => _PaymentMethodsEditorState();
+}
+
+class _PaymentMethodsEditorState extends State<_PaymentMethodsEditor> {
+  List<String> _methods = [];
+  bool _isLoading = true;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final methods = await DatabaseService().getPaymentMethods();
+    if (!mounted) return;
+    setState(() {
+      _methods = methods;
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _persist() async {
+    setState(() => _isSaving = true);
+    try {
+      await DatabaseService().savePaymentMethods(_methods);
+      if (mounted) {
+        AppFlushbar.success(
+          context,
+          message: 'Payment methods saved and synced',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppFlushbar.error(context, message: 'Failed to save: $e');
+      }
+    }
+    if (mounted) setState(() => _isSaving = false);
+  }
+
+  Future<void> _addMethod() async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: mdText(text: 'Add payment method'),
+            content: CustomTextField(
+              controller: controller,
+              label: 'Method name',
+              hintText: 'e.g. Cash, Card, Bank Transfer',
+              autofocus: true,
+              onFieldSubmitted: (value) {
+                final trimmed = (value ?? '').trim();
+                if (trimmed.isNotEmpty) Navigator.pop(ctx, trimmed);
+              },
+            ),
+            actions: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: mdText(text: 'Cancel'),
+                    ),
+                  ),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed:
+                          () => Navigator.pop(ctx, controller.text.trim()),
+                      child: const Text('Add'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+    );
+    if (name == null || name.isEmpty || !mounted) return;
+    if (_methods.any((m) => m.toLowerCase() == name.toLowerCase())) {
+      AppFlushbar.error(context, message: '"$name" is already in the list');
+      return;
+    }
+    setState(() => _methods.add(name));
+    await _persist();
+  }
+
+  Future<void> _removeMethod(int index) async {
+    final name = _methods[index];
+    final ok = await showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: mdText(text: 'Remove "$name"?'),
+            content: smText(
+              maxLines: 5,
+              text:
+                  'It will disappear from checkout, bill editing and purchase '
+                  'forms. Bills already saved with it keep their value.\n\n'
+                  'This cannot be undone.',
+            ),
+            actions: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: mdText(text: 'Cancel'),
+                    ),
+                  ),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Remove'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+    );
+    if (ok != true || !mounted) return;
+    if (_methods.length <= 1) {
+      AppFlushbar.error(context, message: 'Keep at least one payment method');
+      return;
+    }
+    setState(() => _methods.removeAt(index));
+    await _persist();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 8.spMin),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Payment Methods',
+                      style: TextStyle(
+                        fontSize: 14.spMin,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      'Choices offered at checkout, bill editing and purchases',
+                      style: TextStyle(fontSize: 12.spMin, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Add payment method',
+                icon: const Icon(Icons.add_circle_outline),
+                color: AppColors.primary,
+                onPressed: _isLoading ? null : _addMethod,
+              ),
+            ],
+          ),
+          SizedBox(height: 4.spMin),
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: CircularProgressIndicator(),
+            )
+          else
+            Wrap(
+              spacing: 8.spMin,
+              runSpacing: 8.spMin,
+              children: [
+                for (var i = 0; i < _methods.length; i++)
+                  InputChip(
+                    label: Text(
+                      _methods[i],
+                      style: TextStyle(fontSize: 12.spMin),
+                    ),
+                    onDeleted: _isSaving ? null : () => _removeMethod(i),
+                    deleteIconColor: Colors.red,
+                  ),
+              ],
+            ),
         ],
       ),
     );

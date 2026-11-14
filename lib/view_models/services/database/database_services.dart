@@ -58,6 +58,17 @@ class HiveService {
   static const String _fieldConfigsKey = 'fieldConfigs';
   static const String _customerFieldConfigsKey =
       'customerFieldConfigs'; // New key for customer fields
+  static const String _paymentMethodsKey = 'paymentMethods';
+
+  /// Fallback payment methods used until the shop owner customizes them in
+  /// Settings. The union of the old checkout and purchase lists.
+  static const List<String> defaultPaymentMethods = [
+    'Cash',
+    'Online Pay',
+    'Bank Transfer',
+    'Cheque',
+    'UPI / Digital',
+  ];
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
@@ -817,6 +828,22 @@ class HiveService {
     );
   }
 
+  // Payment Methods (Settings → Bill Settings → Payment Methods)
+  Future<List<String>> getPaymentMethods() async {
+    final settingsBox = await getSettingsBox();
+    final stored = settingsBox.get(_paymentMethodsKey);
+    if (stored is List) {
+      final methods = stored.map((e) => e.toString()).toList();
+      if (methods.isNotEmpty) return methods;
+    }
+    return List<String>.from(defaultPaymentMethods);
+  }
+
+  Future<void> savePaymentMethods(List<String> methods) async {
+    final settingsBox = await getSettingsBox();
+    await settingsBox.put(_paymentMethodsKey, methods);
+  }
+
   List<Product> getProducts() {
     return _productBox.values
         .map((e) => Product.fromMap(Map<String, dynamic>.from(e)))
@@ -1329,6 +1356,7 @@ class HiveService {
     'settings',
     _fieldConfigsKey,
     _customerFieldConfigsKey,
+    _paymentMethodsKey,
   };
 
   /// Guard so settings applied from Firestore aren't echoed back up.
@@ -1651,6 +1679,15 @@ class DatabaseService {
 
   Future<Map<String, FieldConfig>> getCustomerFieldConfigs() async {
     return await _hiveService.getCustomerFieldConfigs();
+  }
+
+  // Payment Methods
+  Future<List<String>> getPaymentMethods() async {
+    return await _hiveService.getPaymentMethods();
+  }
+
+  Future<void> savePaymentMethods(List<String> methods) async {
+    await _hiveService.savePaymentMethods(methods);
   }
 
   // Brand Management Methods

@@ -12,6 +12,7 @@ import '../../res/components/text_field_widget.dart';
 import '../../utils/app_sizes.dart';
 import '../../view_models/providers/local_purchase_provider.dart';
 import '../../view_models/providers/settings_provider.dart';
+import '../../view_models/services/database/database_services.dart';
 import '../../view_models/services/keyboard/app_keyboard_service.dart';
 
 class LocalPurchaseFormView extends ConsumerStatefulWidget {
@@ -58,12 +59,9 @@ class _LocalPurchaseFormViewState extends ConsumerState<LocalPurchaseFormView> {
   final List<TextEditingController> _itemQtyControllers = [];
   final List<TextEditingController> _itemPriceControllers = [];
 
-  final List<String> _paymentTypes = [
-    'Cash',
-    'Bank Transfer',
-    'Cheque',
-    'UPI / Digital',
-  ];
+  /// Payment type choices from Settings (Bill Settings → Payment Methods).
+  /// Defaults until the saved list loads.
+  List<String> _paymentTypes = HiveService.defaultPaymentMethods;
 
   bool get _isEditing => widget.agreement != null;
 
@@ -97,6 +95,24 @@ class _LocalPurchaseFormViewState extends ConsumerState<LocalPurchaseFormView> {
       _addEmptyItem();
     }
     AppKeyboardScope.register(_keys);
+    _loadPaymentTypes();
+  }
+
+  /// Loads the payment choices saved in Settings (Bill Settings → Payment
+  /// Methods) so purchase forms follow the same list as checkout. When
+  /// editing a record whose type was removed from the list, it is kept at
+  /// the front so the saved choice still shows.
+  Future<void> _loadPaymentTypes() async {
+    try {
+      final methods = await DatabaseService().getPaymentMethods();
+      if (!mounted) return;
+      if (!methods.contains(_paymentType)) {
+        methods.insert(0, _paymentType);
+      }
+      setState(() => _paymentTypes = methods);
+    } catch (e) {
+      debugPrint('Failed to load payment methods: $e');
+    }
   }
 
   /// Adds a new blank item row (Ctrl+I / "Add Item" button).

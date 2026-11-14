@@ -17,9 +17,9 @@ import '../../res/components/app_text_widgrt.dart';
 import '../../res/components/text_field_widget.dart';
 import '../../utils/payment_calculator.dart';
 import '../../view_models/providers/bills_provider.dart';
-import '../../view_models/providers/sales_provider.dart';
 import '../../view_models/providers/edit_bill_provider.dart';
 import '../../view_models/providers/reminder_provider.dart';
+import '../../view_models/services/database/database_services.dart';
 import '../home/rapper.dart';
 import '../sales/check_out_view.dart';
 import '../../res/components/app_button.dart';
@@ -45,6 +45,10 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
 
   /// Optional payment-due date+time for the reminder system (pending bills).
   DateTime? _dueDate;
+
+  /// Payment method choices from Settings (Bill Settings → Payment
+  /// Methods). Defaults until the saved list loads.
+  List<String> _paymentMethods = HiveService.defaultPaymentMethods;
 
   @override
   void initState() {
@@ -85,6 +89,9 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
       // Update field configurations
       final fieldConfigs =
           await ref.read(databaseServiceProvider).getCustomerFieldConfigs();
+      final paymentMethods =
+          await ref.read(databaseServiceProvider).getPaymentMethods();
+      if (mounted) setState(() => _paymentMethods = paymentMethods);
       ref
           .read(customerFormProvider.notifier)
           .updateFieldConfig(
@@ -520,7 +527,13 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
       filled: true,
       label: customerFormState.fieldConfigs['paymentMethod']!.title,
       hintText: customerFormState.fieldConfigs['paymentMethod']!.hintText,
-      items: ['Cash', 'Online Pay'],
+      // Keep the bill's saved method selectable even if it was later
+      // removed from the Settings list.
+      items:
+          paymentMethodController.text.isNotEmpty &&
+                  !_paymentMethods.contains(paymentMethodController.text)
+              ? [paymentMethodController.text, ..._paymentMethods]
+              : _paymentMethods,
       value:
           paymentMethodController.text.isEmpty
               ? null
@@ -674,10 +687,7 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            mdText(
-              text: 'Pending Amount:',
-              color: Colors.grey,
-            ),
+            mdText(text: 'Pending Amount:', color: Colors.grey),
             mdText(
               text: 'Rs.${pendingAmount.toStringAsFixed(0)}',
               color: pendingAmount > 0 ? Colors.red : Colors.green,
@@ -689,10 +699,7 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              smText(
-                text: 'Payment Progress:',
-                color: Colors.grey,
-              ),
+              smText(text: 'Payment Progress:', color: Colors.grey),
               smText(
                 text: '${paymentPercentage.toStringAsFixed(1)}%',
                 color: paymentPercentage >= 100 ? Colors.green : Colors.orange,
@@ -735,9 +742,10 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
   /// a due date lets the reminder system alert on that date and time.
   Widget _buildDueDateField() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final label = _dueDate == null
-        ? 'Set payment reminder (optional)'
-        : DateFormat('dd MMM yyyy,  hh:mm a').format(_dueDate!);
+    final label =
+        _dueDate == null
+            ? 'Set payment reminder (optional)'
+            : DateFormat('dd MMM yyyy,  hh:mm a').format(_dueDate!);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -751,7 +759,9 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
             decoration: BoxDecoration(
               color: isDark ? AppColors.dTFieldColor : AppColors.lTFieldColor,
               borderRadius: BorderRadius.circular(8.r),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.5),
+              ),
             ),
             child: Row(
               children: [
@@ -765,9 +775,10 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
                 Expanded(
                   child: mdText(
                     text: label,
-                    color: _dueDate == null
-                        ? AppColors.grey500
-                        : (isDark ? Colors.white : Colors.black),
+                    color:
+                        _dueDate == null
+                            ? AppColors.grey500
+                            : (isDark ? Colors.white : Colors.black),
                   ),
                 ),
                 if (_dueDate != null)

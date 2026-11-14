@@ -359,6 +359,10 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
   final OverlayPortalController _suggestionsPortal = OverlayPortalController();
   double _nameFieldWidth = 0;
 
+  /// Payment method choices from Settings (Bill Settings → Payment
+  /// Methods). Defaults until the saved list loads.
+  List<String> _paymentMethods = HiveService.defaultPaymentMethods;
+
   @override
   void initState() {
     super.initState();
@@ -379,6 +383,9 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final customers = await ref.read(databaseServiceProvider).getCustomers();
       ref.read(checkoutProvider.notifier).loadCustomers(customers);
+      final paymentMethods =
+          await ref.read(databaseServiceProvider).getPaymentMethods();
+      if (mounted) setState(() => _paymentMethods = paymentMethods);
       final fieldConfigs =
           await ref.read(databaseServiceProvider).getCustomerFieldConfigs();
       // Apply the whole saved map (including any user-added custom fields)
@@ -1127,7 +1134,13 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
     return AppDropdown<String>(
       label: customerFormState.fieldConfigs['paymentMethod']!.title,
       hintText: customerFormState.fieldConfigs['paymentMethod']!.hintText,
-      items: ['Cash', 'Online Pay'],
+      // Keep the currently selected method selectable even if it was later
+      // removed from the Settings list.
+      items:
+          salesState.paymentMethod != null &&
+                  !_paymentMethods.contains(salesState.paymentMethod)
+              ? [salesState.paymentMethod!, ..._paymentMethods]
+              : _paymentMethods,
       value: salesState.paymentMethod,
       onChanged: (value) {
         ref.read(salesProvider.notifier).setPaymentMethod(value);
