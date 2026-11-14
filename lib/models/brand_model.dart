@@ -18,8 +18,10 @@ class Brand {
       id: map['id'],
       name: map['name'],
       imageUrl: map['imageUrl'],
-      createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt']) : null,
-      updatedAt: map['updatedAt'] != null ? DateTime.parse(map['updatedAt']) : null,
+      createdAt:
+          map['createdAt'] != null ? DateTime.parse(map['createdAt']) : null,
+      updatedAt:
+          map['updatedAt'] != null ? DateTime.parse(map['updatedAt']) : null,
     );
   }
 

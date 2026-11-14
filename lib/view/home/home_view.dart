@@ -63,8 +63,7 @@ class HomePageState extends ConsumerState<HomePage> {
       },
       // Land on the Sales page — the items are already in the cart there.
       onAdded:
-          () =>
-              ref.read(selectedIndexProvider.notifier).state = kSalesIndex,
+          () => ref.read(selectedIndexProvider.notifier).state = kSalesIndex,
       // "Complete Purchase" on the scanner: jump to the sales tab and let
       // the sale view open its checkout with the just-committed items
       // (one-shot pendingCheckout flag).
@@ -191,54 +190,60 @@ class HomePageState extends ConsumerState<HomePage> {
           AppSizes.isMobile(context)
               ? null
               : Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: 'productFab',
-            onPressed: () => _openAddItem(isService: false),
-            icon: AppIcon(
-              win11IconPath: ImageAssets.win11OpenBox,
-              defaultIcon: Icons.inventory_2,
-            ),
-            label: Text(
-              'Add Product',
-              style: TextStyle(fontSize: 13.spMin, fontWeight: FontWeight.w600),
-            ),
-          ),
-          SizedBox(height: 12.spMin),
-          FloatingActionButton.extended(
-            heroTag: 'serviceFab',
-            onPressed: () => _openAddItem(isService: true),
-            icon: AppIcon(
-              win11IconPath: ImageAssets.win11Services,
-              defaultIcon: Icons.build,
-            ),
-            label: Text(
-              'Add Services',
-              style: TextStyle(fontSize: 13.spMin, fontWeight: FontWeight.w600),
-            ),
-          ),
-          if (showShoppingList) ...[
-            SizedBox(height: 12.spMin),
-            FloatingActionButton.extended(
-              heroTag: 'shoppingListFab',
-              onPressed: _openShoppingList,
-              icon: AppIcon(
-                defaultIcon: Icons.shopping_bag,
-                win11IconPath: ImageAssets.win11List,
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  FloatingActionButton.extended(
+                    heroTag: 'productFab',
+                    onPressed: () => _openAddItem(isService: false),
+                    icon: AppIcon(
+                      win11IconPath: ImageAssets.win11OpenBox,
+                      defaultIcon: Icons.inventory_2,
+                    ),
+                    label: Text(
+                      'Add Product',
+                      style: TextStyle(
+                        fontSize: 13.spMin,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 12.spMin),
+                  FloatingActionButton.extended(
+                    heroTag: 'serviceFab',
+                    onPressed: () => _openAddItem(isService: true),
+                    icon: AppIcon(
+                      win11IconPath: ImageAssets.win11Services,
+                      defaultIcon: Icons.build,
+                    ),
+                    label: Text(
+                      'Add Services',
+                      style: TextStyle(
+                        fontSize: 13.spMin,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  if (showShoppingList) ...[
+                    SizedBox(height: 12.spMin),
+                    FloatingActionButton.extended(
+                      heroTag: 'shoppingListFab',
+                      onPressed: _openShoppingList,
+                      icon: AppIcon(
+                        defaultIcon: Icons.shopping_bag,
+                        win11IconPath: ImageAssets.win11List,
+                      ),
+                      label: Text(
+                        'Shopping List',
+                        style: TextStyle(
+                          fontSize: 13.spMin,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              label: Text(
-                'Shopping List',
-                style: TextStyle(
-                  fontSize: 13.spMin,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
       body:
           homeState.isLoading
               ? const Center(child: CircularProgressIndicator())

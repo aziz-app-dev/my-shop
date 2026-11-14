@@ -28,13 +28,11 @@ class _AnimatedExpansionIconState extends State<AnimatedExpansionIcon>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    );
-    _iconTurns = Tween<double>(begin: 0.0, end: 0.5).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-    );
+    _controller = AnimationController(duration: widget.duration, vsync: this);
+    _iconTurns = Tween<double>(
+      begin: 0.0,
+      end: 0.5,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
 
     if (widget.isExpanded) {
       _controller.value = 1.0;

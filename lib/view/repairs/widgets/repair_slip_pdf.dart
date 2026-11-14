@@ -1,3 +1,4 @@
+import '../../../utils/currency_service.dart';
 import 'dart:typed_data';
 
 import 'package:intl/intl.dart';
@@ -34,7 +35,7 @@ class RepairSlipPdfGenerator {
 
   static const PdfColor _accent = PdfColor.fromInt(0xFFff6701);
 
-  String _rs(double v) => 'Rs. ${_money.format(v)}';
+  String _rs(double v) => '${CurrencyService.symbol}${_money.format(v)}';
 
   String get _shortId =>
       repair.id.length >= 8 ? repair.id.substring(0, 8) : repair.id;
@@ -139,11 +140,12 @@ class RepairSlipPdfGenerator {
                 ),
               pw.SizedBox(height: 2),
               if (shopAddress != null && shopAddress!.isNotEmpty)
-                pw.Text(shopAddress!,
-                    style: const pw.TextStyle(fontSize: 9)),
+                pw.Text(shopAddress!, style: const pw.TextStyle(fontSize: 9)),
               if (shopPhone != null && shopPhone!.isNotEmpty)
-                pw.Text('Phone: ${shopPhone!}',
-                    style: const pw.TextStyle(fontSize: 9)),
+                pw.Text(
+                  'Phone: ${shopPhone!}',
+                  style: const pw.TextStyle(fontSize: 9),
+                ),
             ],
           ),
         ),
@@ -213,9 +215,10 @@ class RepairSlipPdfGenerator {
         children: [
           pw.SizedBox(
             width: 52,
-            child: pw.Text('$k:',
-                style: const pw.TextStyle(
-                    fontSize: 9, color: PdfColors.grey700)),
+            child: pw.Text(
+              '$k:',
+              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+            ),
           ),
           pw.Expanded(
             child: pw.Text(
@@ -250,8 +253,11 @@ class RepairSlipPdfGenerator {
   }
 
   pw.Widget _itemsTable() {
-    pw.Widget cell(String text,
-        {pw.TextAlign align = pw.TextAlign.left, bool header = false}) {
+    pw.Widget cell(
+      String text, {
+      pw.TextAlign align = pw.TextAlign.left,
+      bool header = false,
+    }) {
       return pw.Padding(
         padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: pw.Text(
@@ -310,7 +316,8 @@ class RepairSlipPdfGenerator {
               label,
               style: pw.TextStyle(
                 fontSize: emphasize ? 11 : 10,
-                fontWeight: emphasize ? pw.FontWeight.bold : pw.FontWeight.normal,
+                fontWeight:
+                    emphasize ? pw.FontWeight.bold : pw.FontWeight.normal,
                 color: emphasize ? _accent : PdfColors.grey800,
               ),
             ),
@@ -399,8 +406,10 @@ class RepairSlipPdfGenerator {
       children: [
         pw.Container(width: 150, height: 0.7, color: PdfColors.grey600),
         pw.SizedBox(height: 3),
-        pw.Text(label,
-            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+        pw.Text(
+          label,
+          style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+        ),
       ],
     );
   }

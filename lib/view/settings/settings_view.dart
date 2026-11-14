@@ -30,6 +30,77 @@ class SettingsPage extends ConsumerWidget {
   final VoidCallback openDrawer;
   const SettingsPage({super.key, required this.openDrawer});
 
+  /// Edit dialog for the shop's currency symbol. Saved through
+  /// settingsProvider so it syncs across devices and applies app-wide via
+  /// [CurrencyService].
+  Future<void> _showCurrencyDialog(
+    BuildContext context,
+    WidgetRef ref,
+    SettingsState settingsState,
+  ) async {
+    final controller = TextEditingController(
+      text: settingsState.currencySymbol,
+    );
+    final newSymbol = await showDialog<String>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: mdText(text: 'Change Currency'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CustomTextField(
+                  controller: controller,
+                  label: 'Currency symbol',
+                  hintText: 'e.g. Rs., \$, €, ₹, DA',
+                  autofocus: true,
+                ),
+                SizedBox(height: 8.spMin),
+                smText(
+                  maxLines: 3,
+                  text:
+                      'Shown on every amount in the app — bills, products, '
+                      'dashboard and printed receipts.',
+                ),
+              ],
+            ),
+            actions: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: mdText(text: 'Cancel'),
+                    ),
+                  ),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed:
+                          () => Navigator.pop(ctx, controller.text.trim()),
+                      child: const Text('Save'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+    );
+    if (newSymbol == null) return; // Cancelled
+    ref.read(settingsProvider.notifier).setCurrencySymbol(newSymbol);
+    AppFlushbar.success(
+      context,
+      message:
+          newSymbol.trim().isEmpty
+              ? 'Currency kept as Rs.'
+              : 'Currency changed to $newSymbol',
+    );
+  }
+
   Future<void> _pickNewDirectory(BuildContext context, WidgetRef ref) async {
     final result = await FilePicker.platform.getDirectoryPath();
     final currentPath = ref.read(settingsProvider).directoryPath;
@@ -408,6 +479,32 @@ class SettingsPage extends ConsumerWidget {
                 childrenPadding: EdgeInsets.all(16.spMin),
                 title: mdTextBold(text: 'General Settings'),
                 children: [
+                  // Currency — shown on every amount in the app (bills,
+                  // products, dashboard, PDFs and thermal receipts) and
+                  // synced across devices.
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'Currency',
+                      style: TextStyle(fontSize: 14.spMin),
+                    ),
+                    subtitle: Text(
+                      'Symbol shown on all amounts (current: '
+                      '${settingsState.currencySymbol})',
+                      style: TextStyle(fontSize: 12.spMin, color: Colors.grey),
+                    ),
+                    trailing: IconButton(
+                      icon: AppIcon(
+                        defaultIcon: Icons.edit,
+                        win11IconPath: ImageAssets.win11EditPencil,
+                        size: 18.spMin,
+                      ),
+                      onPressed:
+                          () =>
+                              _showCurrencyDialog(context, ref, settingsState),
+                    ),
+                  ),
+                  Divider(height: 24.spMin),
                   // ✅ Reusable Switch Tile Widget Pattern
                   _smallSwitchTile(
                     context: context,

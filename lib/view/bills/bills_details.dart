@@ -1,5 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 
+import '../../utils/currency_service.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:desktopapp/res/assets/image_assets.dart';
@@ -618,7 +619,8 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
             MainTxtRow(val: paidAmount.toStringAsFixed(2), txt: 'Paid Amount:'),
             MainTxtRow(
               valWidget: mdTextBold(
-                text: 'Rs.${pendingAmount.toStringAsFixed(2)}',
+                text:
+                    '${CurrencyService.symbol}${pendingAmount.toStringAsFixed(2)}',
                 color: pendingAmount > 0 ? Colors.orange : Colors.green,
               ),
               txt: 'Pending Amount:',
@@ -699,8 +701,10 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                         striped: index.isOdd,
                         name: item.name,
                         qty: qty.toString(),
-                        unitPrice: 'Rs.${item.price.toStringAsFixed(2)}',
-                        total: 'Rs.${itemTotal.toStringAsFixed(2)}',
+                        unitPrice:
+                            '${CurrencyService.symbol}${item.price.toStringAsFixed(2)}',
+                        total:
+                            '${CurrencyService.symbol}${itemTotal.toStringAsFixed(2)}',
                       );
                     }),
                     // Summary block, visually separated from the item rows.
@@ -715,19 +719,22 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                     _summaryRow(
                       isDark: isDark,
                       label: 'Subtotal',
-                      value: 'Rs.${widget.bill.totalAmount.toStringAsFixed(2)}',
+                      value:
+                          '${CurrencyService.symbol}${widget.bill.totalAmount.toStringAsFixed(2)}',
                     ),
                     if (discount > 0)
                       _summaryRow(
                         isDark: isDark,
                         label: 'Discount',
-                        value: '-Rs.${discount.toStringAsFixed(2)}',
+                        value:
+                            '-${CurrencyService.symbol}${discount.toStringAsFixed(2)}',
                         valueColor: AppColors.error,
                       ),
                     _summaryRow(
                       isDark: isDark,
                       label: 'Total',
-                      value: 'Rs.${totalAfterDiscount.toStringAsFixed(2)}',
+                      value:
+                          '${CurrencyService.symbol}${totalAfterDiscount.toStringAsFixed(2)}',
                       emphasize: true,
                     ),
                   ],

@@ -1,3 +1,4 @@
+import '../../utils/currency_service.dart';
 import 'package:desktopapp/res/colors/app_color.dart';
 import 'package:desktopapp/res/components/app_button.dart';
 import 'package:desktopapp/res/components/app_text_widgrt.dart';
@@ -236,7 +237,7 @@ class _MobileCartBottomSheetState extends ConsumerState<MobileCartBottomSheet> {
                         mdText(text: 'Subtotal'),
                         mdText(
                           text:
-                              'Rs.${salesState.totalAmount.toStringAsFixed(2)}',
+                              '${CurrencyService.symbol}${salesState.totalAmount.toStringAsFixed(2)}',
                         ),
                       ],
                     ),
@@ -248,7 +249,7 @@ class _MobileCartBottomSheetState extends ConsumerState<MobileCartBottomSheet> {
                           mdText(text: 'Discount'),
                           mdText(
                             text:
-                                '-Rs.${salesState.discount.toStringAsFixed(2)}',
+                                '-${CurrencyService.symbol}${salesState.discount.toStringAsFixed(2)}',
                             color: Colors.red,
                           ),
                         ],
@@ -262,7 +263,7 @@ class _MobileCartBottomSheetState extends ConsumerState<MobileCartBottomSheet> {
                         lgTextBold(text: 'Total'),
                         lgTextBold(
                           text:
-                              'Rs.${(salesState.totalAmount - salesState.discount).toStringAsFixed(2)}',
+                              '${CurrencyService.symbol}${(salesState.totalAmount - salesState.discount).toStringAsFixed(2)}',
                           color: AppColors.primary,
                         ),
                       ],

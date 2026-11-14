@@ -3,6 +3,7 @@
 //
 // Extracted so there is ONE camera page and ONE "what happens after a scan"
 // behavior instead of duplicated private copies in the two product sections.
+import '../../../utils/currency_service.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -434,7 +435,7 @@ class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
                                     ],
                                   ),
                                   subtitle: Text(
-                                    'Rs.${product.price.toStringAsFixed(2)}'
+                                    '${CurrencyService.symbol}${product.price.toStringAsFixed(2)}'
                                     '    '
                                     '${product.brand ?? product.category ?? ''}',
                                     maxLines: 1,
@@ -772,7 +773,7 @@ class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
                         ),
                       ),
                       Text(
-                        'Subtotal: Rs.${_totalPrice.toStringAsFixed(2)}',
+                        'Subtotal: ${CurrencyService.symbol}${_totalPrice.toStringAsFixed(2)}',
                         style: TextStyle(
                           fontSize: 12.spMin,
                           color: isDark ? Colors.white70 : Colors.black87,
@@ -793,7 +794,7 @@ class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
                         ),
                       ),
                       Text(
-                        'Rs.${_totalPrice.toStringAsFixed(2)}',
+                        '${CurrencyService.symbol}${_totalPrice.toStringAsFixed(2)}',
                         style: TextStyle(
                           fontSize: 14.spMin,
                           fontWeight: FontWeight.bold,
@@ -930,7 +931,7 @@ class _BarcodeScannerPageState extends ConsumerState<BarcodeScannerPage> {
                 ),
                 SizedBox(height: 2.h),
                 Text(
-                  'Rs.${entry.product.price.toStringAsFixed(0)} × ${entry.qty} = Rs.${entry.lineTotal.toStringAsFixed(0)}',
+                  '${CurrencyService.symbol}${entry.product.price.toStringAsFixed(0)} × ${entry.qty} = ${CurrencyService.symbol}${entry.lineTotal.toStringAsFixed(0)}',
                   style: TextStyle(
                     fontSize: 12.spMin,
                     color: isDark ? Colors.white70 : Colors.black87,

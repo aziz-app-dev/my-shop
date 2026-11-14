@@ -1,3 +1,4 @@
+import '../../../utils/currency_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -80,7 +81,7 @@ Widget _buildTopSellingItemsChartContent(
                   getTooltipItem: (group, groupIndex, rod, rodIndex) {
                     final item = items[group.x.toInt()];
                     return BarTooltipItem(
-                      '${item.name}\nSold: ${item.quantitySold}\nRevenue: Rs.${item.totalRevenue.toStringAsFixed(0)}',
+                      '${item.name}\nSold: ${item.quantitySold}\nRevenue: ${CurrencyService.symbol}${item.totalRevenue.toStringAsFixed(0)}',
                       TextStyle(
                         color: isDark ? Colors.white : Colors.black,
                         fontSize: 11.spMin,
@@ -440,7 +441,7 @@ Widget _buildCategoryProfitChartContent(
                                   ),
                                 ),
                                 Text(
-                                  'Rs.${category.profit.toStringAsFixed(0)}',
+                                  '${CurrencyService.symbol}${category.profit.toStringAsFixed(0)}',
                                   style: TextStyle(
                                     fontSize: 10.spMin,
                                     fontWeight: FontWeight.bold,
@@ -729,7 +730,7 @@ Widget _buildSalesStockTrendChartContent(
                     return spots.map((spot) {
                       final day = spot.x.toInt() + 1;
                       return LineTooltipItem(
-                        'Day $day\nRs.${spot.y.toStringAsFixed(0)}',
+                        'Day $day\n${CurrencyService.symbol}${spot.y.toStringAsFixed(0)}',
                         TextStyle(
                           color: isDark ? Colors.white : Colors.black,
                           fontSize: 11.spMin,
@@ -803,7 +804,7 @@ Widget _buildProfitCard({
         ),
         SizedBox(height: 4.spMin),
         Text(
-          'Rs.${value.toStringAsFixed(0)}',
+          '${CurrencyService.symbol}${value.toStringAsFixed(0)}',
           style: TextStyle(
             fontSize: 16.spMin,
             fontWeight: FontWeight.bold,
@@ -843,7 +844,7 @@ Widget _buildProfitItemRow({
           ),
         ),
         Text(
-          '${isProfit ? '+' : ''}Rs.${profit.toStringAsFixed(0)}',
+          '${isProfit ? '+' : ''}${CurrencyService.symbol}${profit.toStringAsFixed(0)}',
           style: TextStyle(
             fontSize: 11.spMin,
             fontWeight: FontWeight.bold,

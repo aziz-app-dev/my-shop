@@ -29,9 +29,10 @@ class MultiCartItemWidget extends StatelessWidget {
         constraints: BoxConstraints(minHeight: 60.spMin),
         padding: EdgeInsets.all(4.h),
         decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? AppColors.dCardColor
-              : AppColors.primaryLight1,
+          color:
+              Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.dCardColor
+                  : AppColors.primaryLight1,
           borderRadius: const BorderRadius.all(Radius.circular(6)),
         ),
         child: Row(
@@ -46,28 +47,30 @@ class MultiCartItemWidget extends StatelessWidget {
                 children: [
                   entry.key.imageUrl != null && entry.key.imageUrl!.isNotEmpty
                       ? ClipRRect(
-                          borderRadius:
-                              const BorderRadius.all(Radius.circular(6)),
-                          child: Image.file(
-                            File(entry.key.imageUrl!),
-                            fit: BoxFit.cover,
-                            width: 50.spMin,
-                            height: 50.spMin,
-                            // Decode at thumbnail size — camera images are
-                            // several MP and decoding full-size in a scrolled
-                            // list causes jank on phones.
-                            cacheWidth: 128,
-                            errorBuilder: (context, error, stackTrace) => Icon(
-                              Icons.broken_image,
-                              size: 40.spMin,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        )
-                      : SizedBox(
-                          width: 15.w,
-                          child: Icon(Icons.shopping_bag, size: 25.spMin),
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(6),
                         ),
+                        child: Image.file(
+                          File(entry.key.imageUrl!),
+                          fit: BoxFit.cover,
+                          width: 50.spMin,
+                          height: 50.spMin,
+                          // Decode at thumbnail size — camera images are
+                          // several MP and decoding full-size in a scrolled
+                          // list causes jank on phones.
+                          cacheWidth: 128,
+                          errorBuilder:
+                              (context, error, stackTrace) => Icon(
+                                Icons.broken_image,
+                                size: 40.spMin,
+                                color: Colors.grey,
+                              ),
+                        ),
+                      )
+                      : SizedBox(
+                        width: 15.w,
+                        child: Icon(Icons.shopping_bag, size: 25.spMin),
+                      ),
                   Expanded(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -101,22 +104,26 @@ class MultiCartItemWidget extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ActionIcon(
-                    onTap: () => ref
-                        .read(multiCartProvider.notifier)
-                        .removeFromCart(entry.key),
+                    onTap:
+                        () => ref
+                            .read(multiCartProvider.notifier)
+                            .removeFromCart(entry.key),
                     icon: Icons.remove,
                   ),
                   Consumer(
                     builder: (context, ref, _) {
-                      final currentCart = ref.watch(multiCartProvider).activeCart;
-                      final currentValue = currentCart?.cartItems[entry.key] ?? 0;
+                      final currentCart =
+                          ref.watch(multiCartProvider).activeCart;
+                      final currentValue =
+                          currentCart?.cartItems[entry.key] ?? 0;
                       return smText(text: '$currentValue');
                     },
                   ),
                   ActionIcon(
-                    onTap: () => ref
-                        .read(multiCartProvider.notifier)
-                        .addToCart(entry.key),
+                    onTap:
+                        () => ref
+                            .read(multiCartProvider.notifier)
+                            .addToCart(entry.key),
                     icon: Icons.add,
                   ),
                 ],
@@ -138,9 +145,10 @@ class ActionIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark
-            ? AppColors.grey800
-            : AppColors.primaryLight4,
+        color:
+            Theme.of(context).brightness == Brightness.dark
+                ? AppColors.grey800
+                : AppColors.primaryLight4,
         borderRadius: const BorderRadius.all(Radius.circular(4)),
       ),
       child: InkWell(onTap: onTap, child: Icon(icon, size: 14.spMin)),

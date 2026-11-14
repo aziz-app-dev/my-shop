@@ -210,10 +210,11 @@ class LocalPurchaseNotifier extends StateNotifier<LocalPurchaseState> {
   }
 
   Future<void> deleteSelected() async {
-    final selected = state.selectedAgreements.entries
-        .where((entry) => entry.value)
-        .map((entry) => entry.key)
-        .toList();
+    final selected =
+        state.selectedAgreements.entries
+            .where((entry) => entry.value)
+            .map((entry) => entry.key)
+            .toList();
 
     for (final id in selected) {
       await _dbService.deleteLocalPurchase(id);
@@ -235,10 +236,7 @@ class LocalPurchaseNotifier extends StateNotifier<LocalPurchaseState> {
   }
 
   void clearSelections() {
-    state = state.copyWith(
-      selectedAgreements: {},
-      isSelectionMode: false,
-    );
+    state = state.copyWith(selectedAgreements: {}, isSelectionMode: false);
   }
 
   void setSelectionMode(bool enabled) {
@@ -257,6 +255,6 @@ class LocalPurchaseNotifier extends StateNotifier<LocalPurchaseState> {
 
 final localPurchaseProvider =
     StateNotifierProvider<LocalPurchaseNotifier, LocalPurchaseState>((ref) {
-  final dbService = ref.read(databaseServiceProvider);
-  return LocalPurchaseNotifier(dbService);
-});
+      final dbService = ref.read(databaseServiceProvider);
+      return LocalPurchaseNotifier(dbService);
+    });

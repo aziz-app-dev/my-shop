@@ -100,9 +100,7 @@ class ProductDetailsNotifier extends StateNotifier<ProductDetailsState> {
         }
 
         final services =
-            allProducts
-                .where((p) => p.isService && p.id != product.id)
-                .toList()
+            allProducts.where((p) => p.isService && p.id != product.id).toList()
               ..sort(
                 (a, b) =>
                     (salesCount[b.id] ?? 0).compareTo(salesCount[a.id] ?? 0),

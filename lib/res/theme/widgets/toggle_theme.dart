@@ -32,15 +32,14 @@ class ThemeToggleButton extends StatelessWidget {
             spacing: 10.w,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                size: 25.spMin,
-              ),
+              Icon(icon, size: 25.spMin),
               // SizedBox(width: 10.w),
               Text(
                 title,
-                style:
-                    TextStyle(fontSize: 16.spMin, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  fontSize: 16.spMin,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),

@@ -23,8 +23,11 @@ class ShoppingListState {
     if (searchQuery.isEmpty) return items;
 
     return items.where((item) {
-      return item.productName.toLowerCase().contains(searchQuery.toLowerCase()) ||
-          (item.brand?.toLowerCase().contains(searchQuery.toLowerCase()) ?? false);
+      return item.productName.toLowerCase().contains(
+            searchQuery.toLowerCase(),
+          ) ||
+          (item.brand?.toLowerCase().contains(searchQuery.toLowerCase()) ??
+              false);
     }).toList();
   }
 

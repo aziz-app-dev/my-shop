@@ -1,3 +1,4 @@
+import '../../../utils/currency_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -179,7 +180,7 @@ Widget _buildSalesLineChartContent(
                     return touchedSpots.map((spot) {
                       final day = dailySales[spot.x.toInt()].date;
                       return LineTooltipItem(
-                        '${DateFormat('MMM d').format(day)}\nRs.${spot.y.toStringAsFixed(0)}',
+                        '${DateFormat('MMM d').format(day)}\n${CurrencyService.symbol}${spot.y.toStringAsFixed(0)}',
                         TextStyle(
                           color: isDark ? Colors.white : Colors.black,
                           fontSize: 12.spMin,

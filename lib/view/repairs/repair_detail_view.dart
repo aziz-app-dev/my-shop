@@ -1,3 +1,4 @@
+import '../../utils/currency_service.dart';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -122,18 +123,27 @@ class RepairActionsMenu extends ConsumerWidget {
             break;
         }
       },
-      itemBuilder: (context) => [
-        _menuItem('edit', TablerIcons.edit, 'Edit'),
-        _menuItem(
-          'toggle',
-          completed ? TablerIcons.rotate : TablerIcons.circle_check,
-          completed ? 'Reopen repair' : 'Mark as completed',
-        ),
-        _menuItem('save_slip', TablerIcons.file_type_pdf, 'Save Slip (PDF)'),
-        _menuItem('share_slip', TablerIcons.share, 'Share Slip'),
-        _menuItem('delete', TablerIcons.trash, 'Delete',
-            iconColor: AppColors.error),
-      ],
+      itemBuilder:
+          (context) => [
+            _menuItem('edit', TablerIcons.edit, 'Edit'),
+            _menuItem(
+              'toggle',
+              completed ? TablerIcons.rotate : TablerIcons.circle_check,
+              completed ? 'Reopen repair' : 'Mark as completed',
+            ),
+            _menuItem(
+              'save_slip',
+              TablerIcons.file_type_pdf,
+              'Save Slip (PDF)',
+            ),
+            _menuItem('share_slip', TablerIcons.share, 'Share Slip'),
+            _menuItem(
+              'delete',
+              TablerIcons.trash,
+              'Delete',
+              iconColor: AppColors.error,
+            ),
+          ],
     );
   }
 
@@ -253,7 +263,12 @@ class RepairDetailBody extends StatelessWidget {
     ];
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(16.spMin, 12.spMin, 16.spMin, bottomPadding.spMin),
+      padding: EdgeInsets.fromLTRB(
+        16.spMin,
+        12.spMin,
+        16.spMin,
+        bottomPadding.spMin,
+      ),
       children: [
         _Header(repair: repair, isDark: isDark),
         SizedBox(height: 16.spMin),
@@ -304,11 +319,7 @@ class RepairDetailEmpty extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            TablerIcons.click,
-            size: 48.spMin,
-            color: Colors.grey[400],
-          ),
+          Icon(TablerIcons.click, size: 48.spMin, color: Colors.grey[400]),
           SizedBox(height: 12.spMin),
           Text(
             message,
@@ -365,10 +376,7 @@ void confirmDeleteRepair(
                 if (popScreenAfter) Navigator.pop(context); // leave detail
                 AppFlushbar.success(context, message: 'Repair deleted');
               },
-              child: Text(
-                'Delete',
-                style: TextStyle(color: AppColors.error),
-              ),
+              child: Text('Delete', style: TextStyle(color: AppColors.error)),
             ),
           ],
         ),
@@ -430,14 +438,16 @@ class _Header extends StatelessWidget {
                           Icon(
                             TablerIcons.phone,
                             size: 13.spMin,
-                            color: isDark ? AppColors.grey300 : Colors.grey[500],
+                            color:
+                                isDark ? AppColors.grey300 : Colors.grey[500],
                           ),
                           SizedBox(width: 4.spMin),
                           Text(
                             repair.clientPhone,
                             style: TextStyle(
                               fontSize: 12.spMin,
-                              color: isDark ? AppColors.grey300 : Colors.grey[600],
+                              color:
+                                  isDark ? AppColors.grey300 : Colors.grey[600],
                             ),
                           ),
                         ],
@@ -514,7 +524,7 @@ class _Header extends StatelessWidget {
         ),
         SizedBox(height: 4.spMin),
         Text(
-          'Rs ${value.toStringAsFixed(0)}',
+          '${CurrencyService.symbol}${value.toStringAsFixed(0)}',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: emphasize ? 16.spMin : 14.spMin,
@@ -759,10 +769,7 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             child: Text(
               value.trim().isEmpty ? '—' : value,
-              style: TextStyle(
-                fontSize: 12.spMin,
-                fontWeight: FontWeight.w500,
-              ),
+              style: TextStyle(fontSize: 12.spMin, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -850,7 +857,10 @@ class _CostSection extends StatelessWidget {
       children: [
         _costRow('Estimated cost', repair.estimatedCost, null),
         _costRow('Advance paid', repair.advancePaid, AppColors.success),
-        Divider(height: 18.spMin, color: AppColors.border.withValues(alpha: 0.6)),
+        Divider(
+          height: 18.spMin,
+          color: AppColors.border.withValues(alpha: 0.6),
+        ),
         _costRow(
           'Balance due',
           repair.balanceDue,
@@ -861,7 +871,12 @@ class _CostSection extends StatelessWidget {
     );
   }
 
-  Widget _costRow(String label, double value, Color? color, {bool bold = false}) {
+  Widget _costRow(
+    String label,
+    double value,
+    Color? color, {
+    bool bold = false,
+  }) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 4.spMin),
       child: Row(
@@ -873,13 +888,11 @@ class _CostSection extends StatelessWidget {
               fontSize: 12.spMin,
               fontWeight: bold ? FontWeight.bold : FontWeight.normal,
               color:
-                  bold
-                      ? null
-                      : (isDark ? AppColors.grey300 : Colors.grey[700]),
+                  bold ? null : (isDark ? AppColors.grey300 : Colors.grey[700]),
             ),
           ),
           Text(
-            'Rs ${value.toStringAsFixed(0)}',
+            '${CurrencyService.symbol}${value.toStringAsFixed(0)}',
             style: TextStyle(
               fontSize: bold ? 14.spMin : 13.spMin,
               fontWeight: FontWeight.bold,
@@ -987,7 +1000,7 @@ class _ItemsSection extends StatelessWidget {
                 Expanded(
                   flex: 3,
                   child: Text(
-                    'Rs ${item.price.toStringAsFixed(0)}',
+                    '${CurrencyService.symbol}${item.price.toStringAsFixed(0)}',
                     textAlign: TextAlign.right,
                     style: TextStyle(
                       fontSize: 12.spMin,
@@ -998,7 +1011,7 @@ class _ItemsSection extends StatelessWidget {
                 Expanded(
                   flex: 3,
                   child: Text(
-                    'Rs ${item.total.toStringAsFixed(0)}',
+                    '${CurrencyService.symbol}${item.total.toStringAsFixed(0)}',
                     textAlign: TextAlign.right,
                     style: TextStyle(
                       fontSize: 12.spMin,
@@ -1025,7 +1038,7 @@ class _ItemsSection extends StatelessWidget {
                 ),
               ),
               Text(
-                'Rs ${repair.itemsTotal.toStringAsFixed(0)}',
+                '${CurrencyService.symbol}${repair.itemsTotal.toStringAsFixed(0)}',
                 style: TextStyle(
                   fontSize: 14.spMin,
                   fontWeight: FontWeight.bold,
@@ -1067,4 +1080,3 @@ class _TimelineSection extends StatelessWidget {
       '${d.day.toString().padLeft(2, '0')}/'
       '${d.month.toString().padLeft(2, '0')}/${d.year}';
 }
-

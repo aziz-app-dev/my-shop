@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import '../../utils/currency_service.dart';
 import '../services/database/database_services.dart';
 import '../services/cloudinary/cloudinary_service.dart';
 
@@ -161,6 +162,11 @@ class SettingsState {
   /// Settings → Purchase Agreement; not shown on the agreement form.
   final List<String> purchaseTerms;
 
+  /// Currency symbol shown on all amounts (bills, products, dashboard).
+  /// Configured in Settings → General Settings; part of the synced settings
+  /// map so every device shows the same currency. Defaults to `Rs.`.
+  final String currencySymbol;
+
   SettingsState({
     this.isPrintEnabled = false,
     this.printFormat = PrintFormat.pdf, // Default to PDF
@@ -220,6 +226,7 @@ class SettingsState {
       'lowStock',
     ],
     this.purchaseTerms = kDefaultPurchaseTerms,
+    this.currencySymbol = 'Rs.',
   });
 
   SettingsState copyWith({
@@ -271,6 +278,7 @@ class SettingsState {
     String? geminiApiKey,
     String? cloudinaryCloudName,
     String? cloudinaryUploadPreset,
+    String? currencySymbol,
   }) {
     return SettingsState(
       isPrintEnabled: isPrintEnabled ?? this.isPrintEnabled,
@@ -332,6 +340,7 @@ class SettingsState {
       cloudinaryCloudName: cloudinaryCloudName ?? this.cloudinaryCloudName,
       cloudinaryUploadPreset:
           cloudinaryUploadPreset ?? this.cloudinaryUploadPreset,
+      currencySymbol: currencySymbol ?? this.currencySymbol,
     );
   }
 
@@ -386,6 +395,7 @@ class SettingsState {
       'geminiApiKey': geminiApiKey,
       'cloudinaryCloudName': cloudinaryCloudName,
       'cloudinaryUploadPreset': cloudinaryUploadPreset,
+      'currencySymbol': currencySymbol,
     };
   }
 
@@ -501,6 +511,7 @@ class SettingsState {
       geminiApiKey: map['geminiApiKey'] as String? ?? '',
       cloudinaryCloudName: map['cloudinaryCloudName'] as String? ?? '',
       cloudinaryUploadPreset: map['cloudinaryUploadPreset'] as String? ?? '',
+      currencySymbol: map['currencySymbol'] as String? ?? 'Rs.',
     );
   }
 }
@@ -542,6 +553,10 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       cloudName: state.cloudinaryCloudName,
       uploadPreset: state.cloudinaryUploadPreset,
     );
+
+    // Keep the static currency holder in sync (used by PDF/thermal
+    // generators that can't watch Riverpod).
+    CurrencyService.update(state.currencySymbol);
   }
 
   Future<void> _saveSettings() async {
@@ -551,6 +566,15 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
 
   void setPrintEnabled(bool value) {
     state = state.copyWith(isPrintEnabled: value);
+    _saveSettings();
+  }
+
+  /// Stores the currency symbol chosen in Settings and applies it globally
+  /// (all amounts, PDFs and thermal receipts read it through
+  /// [CurrencyService]).
+  void setCurrencySymbol(String value) {
+    state = state.copyWith(currencySymbol: value.trim());
+    CurrencyService.update(value);
     _saveSettings();
   }
 

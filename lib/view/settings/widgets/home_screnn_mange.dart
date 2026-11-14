@@ -759,9 +759,10 @@ class HomePageSettingsPage extends ConsumerWidget {
       }
       final dir = Directory(p.join(baseDir, 'banners'));
       if (!dir.existsSync()) dir.createSync(recursive: true);
-      final String ext = p.extension(image.path).isEmpty
-          ? '.jpg'
-          : p.extension(image.path).toLowerCase();
+      final String ext =
+          p.extension(image.path).isEmpty
+              ? '.jpg'
+              : p.extension(image.path).toLowerCase();
       final dest = p.join(
         dir.path,
         'banner_${DateTime.now().millisecondsSinceEpoch}$ext',

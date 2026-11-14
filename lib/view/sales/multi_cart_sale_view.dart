@@ -1,5 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 
+import '../../utils/currency_service.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:desktopapp/res/colors/app_color.dart';
@@ -1051,7 +1052,7 @@ class _MultiCartSalesScreenState extends ConsumerState<MultiCartSalesScreen>
                                         ],
                                       ),
                                       label: Text(
-                                        'Rs.${(activeCart.totalAmount - activeCart.discount).toStringAsFixed(0)}',
+                                        '${CurrencyService.symbol}${(activeCart.totalAmount - activeCart.discount).toStringAsFixed(0)}',
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontSize: 14.spMin,

@@ -68,8 +68,7 @@ class LocalPurchaseState {
       error: clearError ? null : (error ?? this.error),
       selectedAgreements: selectedAgreements ?? this.selectedAgreements,
       isSelectionMode: isSelectionMode ?? this.isSelectionMode,
-      searchQuery:
-          clearSearchQuery ? null : (searchQuery ?? this.searchQuery),
+      searchQuery: clearSearchQuery ? null : (searchQuery ?? this.searchQuery),
     );
   }
 }

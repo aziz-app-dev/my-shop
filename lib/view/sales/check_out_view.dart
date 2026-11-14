@@ -1,5 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 
+import '../../utils/currency_service.dart';
 import 'dart:math'; // Added for random generation
 import 'package:desktopapp/res/colors/app_color.dart';
 import 'package:desktopapp/res/components/app_bar_widget.dart';
@@ -1167,7 +1168,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
     return CustomTextField(
       controller: discountController,
       hintText:
-          '${customerFormState.fieldConfigs['discount']!.hintText} (max: Rs.${widget.totalAmount.toStringAsFixed(0)})',
+          '${customerFormState.fieldConfigs['discount']!.hintText} (max: ${CurrencyService.symbol}${widget.totalAmount.toStringAsFixed(0)})',
       label: customerFormState.fieldConfigs['discount']!.title,
       keyboardType: TextInputType.number,
       prefixIcon: Icon(
@@ -1188,7 +1189,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
             return 'Enter a valid number';
           }
           if (amt > widget.totalAmount) {
-            return 'Cannot exceed total: Rs.${widget.totalAmount.toStringAsFixed(0)}';
+            return 'Cannot exceed total: ${CurrencyService.symbol}${widget.totalAmount.toStringAsFixed(0)}';
           }
           if (amt < 0) {
             return 'Discount cannot be negative';
@@ -1216,7 +1217,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
         CustomTextField(
           controller: paidAmountController,
           hintText:
-              '${customerFormState.fieldConfigs['paidAmount']!.hintText} (max: Rs.${totalAfterDiscount.toStringAsFixed(0)})',
+              '${customerFormState.fieldConfigs['paidAmount']!.hintText} (max: ${CurrencyService.symbol}${totalAfterDiscount.toStringAsFixed(0)})',
           label: customerFormState.fieldConfigs['paidAmount']!.title,
           keyboardType: TextInputType.number,
           prefixIcon: Icon(
@@ -1239,7 +1240,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
                 return 'Enter a valid number';
               }
               if (amt > totalAfterDiscount) {
-                return 'Cannot exceed total: Rs.${totalAfterDiscount.toStringAsFixed(0)}';
+                return 'Cannot exceed total: ${CurrencyService.symbol}${totalAfterDiscount.toStringAsFixed(0)}';
               }
               if (amt < 0) {
                 return 'Amount cannot be negative';
@@ -1284,7 +1285,8 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
                   children: [
                     mdText(text: 'Pending Amount:', color: Colors.grey),
                     mdText(
-                      text: 'Rs.${pendingAmount.toStringAsFixed(0)}',
+                      text:
+                          '${CurrencyService.symbol}${pendingAmount.toStringAsFixed(0)}',
                       color: pendingAmount > 0 ? Colors.red : Colors.green,
                     ),
                   ],

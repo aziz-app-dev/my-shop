@@ -28,14 +28,8 @@ class _AnimatedChartWrapperState extends State<AnimatedChartWrapper>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    );
-    _animation = CurvedAnimation(
-      parent: _controller,
-      curve: widget.curve,
-    );
+    _controller = AnimationController(duration: widget.duration, vsync: this);
+    _animation = CurvedAnimation(parent: _controller, curve: widget.curve);
 
     if (widget.animate) {
       // Start animation after the first frame
@@ -95,10 +89,7 @@ class _AnimatedValueState extends State<AnimatedValue>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    );
+    _controller = AnimationController(duration: widget.duration, vsync: this);
     _updateAnimation();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -112,10 +103,7 @@ class _AnimatedValueState extends State<AnimatedValue>
     _animation = Tween<double>(
       begin: _previousValue,
       end: widget.value,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: widget.curve,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: widget.curve));
   }
 
   @override

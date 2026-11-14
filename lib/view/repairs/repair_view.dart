@@ -194,8 +194,10 @@ class _SplitLayout extends ConsumerWidget {
           // detail pane). Clamp so it never gets too narrow or too wide.
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final listPaneWidth =
-                  (constraints.maxWidth * 0.34).clamp(300.0, 400.0);
+              final listPaneWidth = (constraints.maxWidth * 0.34).clamp(
+                300.0,
+                400.0,
+              );
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [

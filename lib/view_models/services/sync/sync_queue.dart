@@ -90,4 +90,3 @@ class SyncQueue {
 
   int get length => _box.isOpen ? _box.length : 0;
 }
-

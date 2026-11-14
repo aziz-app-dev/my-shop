@@ -1,3 +1,4 @@
+import '../../utils/currency_service.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -95,8 +96,7 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
 
   bool get _isEditing => widget.existing != null;
 
-  double get _itemsTotal =>
-      _items.fold(0.0, (sum, i) => sum + i.total);
+  double get _itemsTotal => _items.fold(0.0, (sum, i) => sum + i.total);
 
   @override
   void initState() {
@@ -114,14 +114,16 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
     _problemController = TextEditingController(text: r?.problem ?? '');
     _accessoriesController = TextEditingController(text: r?.accessories ?? '');
     _estCostController = TextEditingController(
-      text: (r != null && r.estimatedCost > 0)
-          ? r.estimatedCost.toStringAsFixed(0)
-          : '',
+      text:
+          (r != null && r.estimatedCost > 0)
+              ? r.estimatedCost.toStringAsFixed(0)
+              : '',
     );
     _advanceController = TextEditingController(
-      text: (r != null && r.advancePaid > 0)
-          ? r.advancePaid.toStringAsFixed(0)
-          : '',
+      text:
+          (r != null && r.advancePaid > 0)
+              ? r.advancePaid.toStringAsFixed(0)
+              : '',
     );
     _deviceType = (r?.deviceType.isNotEmpty ?? false) ? r!.deviceType : null;
     _customerId = r?.customerId;
@@ -130,7 +132,8 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
     _expectedDate = r?.expectedDate;
     // An existing repair with no linked customer and no real name is a walk-in.
     final name = r?.clientName.trim() ?? '';
-    _isWalkIn = r != null &&
+    _isWalkIn =
+        r != null &&
         r.customerId == null &&
         (name.isEmpty || name.toLowerCase() == 'walk-in');
     if (r != null) _items.addAll(r.items);
@@ -201,19 +204,22 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
 
     // Always place two fields side by side in a row.
     Widget row2(Widget a, Widget b) => Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: a),
-            SizedBox(width: 16.spMin),
-            Expanded(child: b),
-          ],
-        );
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: a),
+        SizedBox(width: 16.spMin),
+        Expanded(child: b),
+      ],
+    );
 
     // Pair two fields into a row on wide screens; stack them on mobile.
-    Widget pairOr(Widget a, Widget b) => twoCol ? row2(a, b) : Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [a, gap(), b],
-        );
+    Widget pairOr(Widget a, Widget b) =>
+        twoCol
+            ? row2(a, b)
+            : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [a, gap(), b],
+            );
 
     final model = CustomTextField(
       controller: _modelController,
@@ -293,8 +299,11 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
           label: 'Reported Problem',
           hintText: 'e.g. Not turning on, screen cracked',
           maxLines: 3,
-          validator: (v) =>
-              (v == null || v.trim().isEmpty) ? 'Describe the problem' : null,
+          validator:
+              (v) =>
+                  (v == null || v.trim().isEmpty)
+                      ? 'Describe the problem'
+                      : null,
         ),
         gap(),
         CustomTextField(
@@ -319,11 +328,7 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
     final costSec = _section(
       icon: TablerIcons.cash,
       title: 'Cost & Dates',
-      children: [
-        row2(estCost, advance),
-        gap(),
-        row2(received, expected),
-      ],
+      children: [row2(estCost, advance), gap(), row2(received, expected)],
     );
 
     final submit = Padding(
@@ -359,9 +364,7 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
   }) {
     return Card(
       margin: EdgeInsets.only(bottom: 16.spMin),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.r),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       child: Padding(
         padding: EdgeInsets.all(16.spMin),
         child: Column(
@@ -422,11 +425,12 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
                 ...List.generate(_items.length, (i) {
                   final item = _items[i];
                   return Container(
-                    color: i.isOdd
-                        ? (isDark
-                            ? Colors.white.withValues(alpha: 0.03)
-                            : Colors.black.withValues(alpha: 0.02))
-                        : null,
+                    color:
+                        i.isOdd
+                            ? (isDark
+                                ? Colors.white.withValues(alpha: 0.03)
+                                : Colors.black.withValues(alpha: 0.02))
+                            : null,
                     padding: EdgeInsets.symmetric(
                       horizontal: 12.spMin,
                       vertical: 8.spMin,
@@ -447,7 +451,7 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
-                                '${item.quantity} × Rs ${item.price.toStringAsFixed(0)}',
+                                '${item.quantity} × ${CurrencyService.symbol}${item.price.toStringAsFixed(0)}',
                                 style: TextStyle(
                                   fontSize: 11.spMin,
                                   color: Colors.grey[600],
@@ -457,7 +461,7 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
                           ),
                         ),
                         Text(
-                          'Rs ${item.total.toStringAsFixed(0)}',
+                          '${CurrencyService.symbol}${item.total.toStringAsFixed(0)}',
                           style: TextStyle(
                             fontSize: 12.spMin,
                             fontWeight: FontWeight.bold,
@@ -497,7 +501,7 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
                         ),
                       ),
                       Text(
-                        'Rs ${_itemsTotal.toStringAsFixed(0)}',
+                        '${CurrencyService.symbol}${_itemsTotal.toStringAsFixed(0)}',
                         style: TextStyle(
                           fontSize: 14.spMin,
                           fontWeight: FontWeight.bold,
@@ -523,18 +527,22 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
   void _showAddItemSheet() {
     showDialog(
       context: context,
-      builder: (_) => Dialog(
-        insetPadding: EdgeInsets.symmetric(horizontal: 24.spMin, vertical: 24.spMin),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.spMin),
-        ),
-        child: _AddRepairItemSheet(
-          onAdd: (item) {
-            setState(() => _items.add(item));
-            _syncEstimatedCostToItems();
-          },
-        ),
-      ),
+      builder:
+          (_) => Dialog(
+            insetPadding: EdgeInsets.symmetric(
+              horizontal: 24.spMin,
+              vertical: 24.spMin,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16.spMin),
+            ),
+            child: _AddRepairItemSheet(
+              onAdd: (item) {
+                setState(() => _items.add(item));
+                _syncEstimatedCostToItems();
+              },
+            ),
+          ),
     );
   }
 
@@ -552,13 +560,14 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
               icon: TablerIcons.walk,
               label: 'Walk-in',
               selected: _isWalkIn,
-              onTap: () => setState(() {
-                _isWalkIn = true;
-                _showSuggestions = false;
-                _customerId = null;
-                _nameController.clear();
-                _phoneController.clear();
-              }),
+              onTap:
+                  () => setState(() {
+                    _isWalkIn = true;
+                    _showSuggestions = false;
+                    _customerId = null;
+                    _nameController.clear();
+                    _phoneController.clear();
+                  }),
             ),
             SizedBox(width: 8.spMin),
             _custTypeChip(
@@ -607,9 +616,10 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
           padding: EdgeInsets.symmetric(vertical: 12.spMin),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected
-                ? AppColors.primary.withValues(alpha: 0.15)
-                : Colors.transparent,
+            color:
+                selected
+                    ? AppColors.primary.withValues(alpha: 0.15)
+                    : Colors.transparent,
             borderRadius: BorderRadius.circular(10.spMin),
             border: Border.all(
               color: selected ? AppColors.primary : AppColors.border,
@@ -651,7 +661,11 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
       ),
       child: Row(
         children: [
-          Icon(TablerIcons.info_circle, size: 16.spMin, color: AppColors.primary),
+          Icon(
+            TablerIcons.info_circle,
+            size: 16.spMin,
+            color: AppColors.primary,
+          ),
           SizedBox(width: 8.spMin),
           Expanded(
             child: Text(
@@ -686,9 +700,11 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
             size: 18.spMin,
             color: AppColors.primary,
           ),
-          validator: (v) => (v == null || v.trim().isEmpty)
-              ? 'Customer name is required'
-              : null,
+          validator:
+              (v) =>
+                  (v == null || v.trim().isEmpty)
+                      ? 'Customer name is required'
+                      : null,
           onChange: (v) {
             setState(() {
               // Editing the name unlinks any previously picked customer.
@@ -718,10 +734,9 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
     if (matches.isEmpty) return const SizedBox.shrink();
     return _suggestionsScrollBox(
       itemCount: matches.length,
-      itemBuilder: (context, i) => _suggestionRow(
-        matches[i],
-        showDivider: i != matches.length - 1,
-      ),
+      itemBuilder:
+          (context, i) =>
+              _suggestionRow(matches[i], showDivider: i != matches.length - 1),
     );
   }
 
@@ -790,10 +805,9 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
     if (matches.isEmpty) return const SizedBox.shrink();
     return _suggestionsScrollBox(
       itemCount: matches.length,
-      itemBuilder: (context, i) => _brandRow(
-        matches[i],
-        showDivider: i != matches.length - 1,
-      ),
+      itemBuilder:
+          (context, i) =>
+              _brandRow(matches[i], showDivider: i != matches.length - 1),
     );
   }
 
@@ -810,9 +824,10 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
         height: _suggestionRowH.spMin,
         padding: EdgeInsets.symmetric(horizontal: 12.spMin),
         decoration: BoxDecoration(
-          border: showDivider
-              ? Border(bottom: BorderSide(color: AppColors.border))
-              : null,
+          border:
+              showDivider
+                  ? Border(bottom: BorderSide(color: AppColors.border))
+                  : null,
         ),
         child: Row(
           children: [
@@ -835,10 +850,7 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
     );
   }
 
-  Widget _suggestionRow(
-    Customer c, {
-    required bool showDivider,
-  }) {
+  Widget _suggestionRow(Customer c, {required bool showDivider}) {
     return InkWell(
       onTap: () {
         setState(() {
@@ -853,9 +865,10 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
         height: _suggestionRowH.spMin,
         padding: EdgeInsets.symmetric(horizontal: 12.spMin),
         decoration: BoxDecoration(
-          border: showDivider
-              ? Border(bottom: BorderSide(color: AppColors.border))
-              : null,
+          border:
+              showDivider
+                  ? Border(bottom: BorderSide(color: AppColors.border))
+                  : null,
         ),
         child: Row(
           children: [
@@ -906,7 +919,8 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
   }
 
   Widget _photoPicker() {
-    final hasImage = _imagePath != null &&
+    final hasImage =
+        _imagePath != null &&
         _imagePath!.isNotEmpty &&
         File(_imagePath!).existsSync();
     // Tap anywhere on the box to pick a photo; a corner ✕ removes it.
@@ -918,9 +932,7 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
         decoration: BoxDecoration(
           color: AppColors.primary.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(12.spMin),
-          border: Border.all(
-            color: AppColors.primary.withValues(alpha: 0.35),
-          ),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
@@ -987,9 +999,8 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
     bool allowClear = false,
     VoidCallback? onClear,
   }) {
-    final text = value == null
-        ? 'Not set'
-        : '${value.day}/${value.month}/${value.year}';
+    final text =
+        value == null ? 'Not set' : '${value.day}/${value.month}/${value.year}';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1014,8 +1025,10 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
             if (picked != null) onPick(picked);
           },
           child: Container(
-            padding:
-                EdgeInsets.symmetric(horizontal: 12.spMin, vertical: 12.spMin),
+            padding: EdgeInsets.symmetric(
+              horizontal: 12.spMin,
+              vertical: 12.spMin,
+            ),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8.spMin),
               border: Border.all(color: Colors.grey),
@@ -1061,26 +1074,26 @@ class _CreateRepairViewState extends ConsumerState<CreateRepairView> {
               updatedAt: now,
             ))
         .copyWith(
-      // Walk-in: take nothing (no linked customer, generic name). Registered:
-      // save the linked/typed customer + phone.
-      customerId: _isWalkIn ? null : _customerId,
-      clearCustomerId: _isWalkIn,
-      clientName: _isWalkIn ? 'Walk-in' : _nameController.text.trim(),
-      clientPhone: _isWalkIn ? '' : _phoneController.text.trim(),
-      deviceType: _deviceType ?? '',
-      brand: _brandController.text.trim(),
-      model: _modelController.text.trim(),
-      serialNumber: _serialController.text.trim(),
-      imageUrl: _imagePath,
-      problem: _problemController.text.trim(),
-      accessories: _accessoriesController.text.trim(),
-      items: List<RepairItem>.from(_items),
-      estimatedCost: estCost,
-      advancePaid: advance,
-      receivedDate: _receivedDate,
-      expectedDate: _expectedDate,
-      updatedAt: now,
-    );
+          // Walk-in: take nothing (no linked customer, generic name). Registered:
+          // save the linked/typed customer + phone.
+          customerId: _isWalkIn ? null : _customerId,
+          clearCustomerId: _isWalkIn,
+          clientName: _isWalkIn ? 'Walk-in' : _nameController.text.trim(),
+          clientPhone: _isWalkIn ? '' : _phoneController.text.trim(),
+          deviceType: _deviceType ?? '',
+          brand: _brandController.text.trim(),
+          model: _modelController.text.trim(),
+          serialNumber: _serialController.text.trim(),
+          imageUrl: _imagePath,
+          problem: _problemController.text.trim(),
+          accessories: _accessoriesController.text.trim(),
+          items: List<RepairItem>.from(_items),
+          estimatedCost: estCost,
+          advancePaid: advance,
+          receivedDate: _receivedDate,
+          expectedDate: _expectedDate,
+          updatedAt: now,
+        );
 
     final notifier = ref.read(repairProvider.notifier);
     if (_isEditing) {
@@ -1345,9 +1358,12 @@ class _AddRepairItemSheetState extends ConsumerState<_AddRepairItemSheet> {
                   height: rowH,
                   padding: EdgeInsets.symmetric(horizontal: 10.spMin),
                   decoration: BoxDecoration(
-                    border: i != matches.length - 1
-                        ? Border(bottom: BorderSide(color: AppColors.border))
-                        : null,
+                    border:
+                        i != matches.length - 1
+                            ? Border(
+                              bottom: BorderSide(color: AppColors.border),
+                            )
+                            : null,
                   ),
                   child: Row(
                     children: [
@@ -1373,7 +1389,7 @@ class _AddRepairItemSheetState extends ConsumerState<_AddRepairItemSheet> {
                               ),
                             ),
                             Text(
-                              'Rs ${p.price.toStringAsFixed(0)}',
+                              '${CurrencyService.symbol}${p.price.toStringAsFixed(0)}',
                               style: TextStyle(
                                 fontSize: 11.spMin,
                                 color: Colors.grey[600],
@@ -1402,9 +1418,10 @@ class _AddRepairItemSheetState extends ConsumerState<_AddRepairItemSheet> {
           padding: EdgeInsets.symmetric(vertical: 10.spMin),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected
-                ? AppColors.primary.withValues(alpha: 0.15)
-                : Colors.transparent,
+            color:
+                selected
+                    ? AppColors.primary.withValues(alpha: 0.15)
+                    : Colors.transparent,
             borderRadius: BorderRadius.circular(8.spMin),
             border: Border.all(
               color: selected ? AppColors.primary : AppColors.border,
@@ -1432,9 +1449,8 @@ class _AddRepairItemSheetState extends ConsumerState<_AddRepairItemSheet> {
     }
     widget.onAdd(
       RepairItem(
-        productId: (!_custom && _selectedProduct != null)
-            ? _selectedProduct!.id
-            : '',
+        productId:
+            (!_custom && _selectedProduct != null) ? _selectedProduct!.id : '',
         name: name,
         price: price,
         quantity: _qty,

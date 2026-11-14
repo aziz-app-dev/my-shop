@@ -1,5 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 
+import '../../utils/currency_service.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:desktopapp/res/colors/app_color.dart';
@@ -454,7 +455,8 @@ class CustomerDetailsScreenState extends ConsumerState<CustomerDetailsScreen>
                         ),
                         SizedBox(height: 6.spMin),
                         mdTextBold(
-                          text: 'Rs.${totalPaid.toStringAsFixed(2)}',
+                          text:
+                              '${CurrencyService.symbol}${totalPaid.toStringAsFixed(2)}',
                           color: Colors.white,
                         ),
                       ],
@@ -506,7 +508,8 @@ class CustomerDetailsScreenState extends ConsumerState<CustomerDetailsScreen>
                           ),
                           SizedBox(height: 6.spMin),
                           mdTextBold(
-                            text: 'Rs.${totalPending.toStringAsFixed(2)}',
+                            text:
+                                '${CurrencyService.symbol}${totalPending.toStringAsFixed(2)}',
                             color: Colors.white,
                           ),
                         ],
@@ -638,7 +641,7 @@ class CustomerDetailsScreenState extends ConsumerState<CustomerDetailsScreen>
                                 text:
                                     isPaid
                                         ? 'PAID'
-                                        : 'Rs.${pendingAmount.toStringAsFixed(2)} Due',
+                                        : '${CurrencyService.symbol}${pendingAmount.toStringAsFixed(2)} Due',
                                 color: isPaid ? Colors.green : Colors.orange,
                               ),
                             ),
@@ -745,7 +748,7 @@ class CustomerDetailsScreenState extends ConsumerState<CustomerDetailsScreen>
                                       flex: 1,
                                       child: smText(
                                         text:
-                                            'Rs.${item.price.toStringAsFixed(2)}',
+                                            '${CurrencyService.symbol}${item.price.toStringAsFixed(2)}',
                                         textAlign: TextAlign.right,
                                       ),
                                     ),
@@ -753,7 +756,7 @@ class CustomerDetailsScreenState extends ConsumerState<CustomerDetailsScreen>
                                       flex: 1,
                                       child: smText(
                                         text:
-                                            'Rs.${itemSubtotal.toStringAsFixed(2)}',
+                                            '${CurrencyService.symbol}${itemSubtotal.toStringAsFixed(2)}',
                                         textAlign: TextAlign.right,
                                       ),
                                     ),
@@ -780,7 +783,7 @@ class CustomerDetailsScreenState extends ConsumerState<CustomerDetailsScreen>
                                         smText(text: 'Subtotal:'),
                                         smText(
                                           text:
-                                              'Rs.${subtotal.toStringAsFixed(2)}',
+                                              '${CurrencyService.symbol}${subtotal.toStringAsFixed(2)}',
                                         ),
                                       ],
                                     ),
@@ -799,7 +802,7 @@ class CustomerDetailsScreenState extends ConsumerState<CustomerDetailsScreen>
                                           ),
                                           smText(
                                             text:
-                                                '- Rs.${bill.discount.toStringAsFixed(2)}',
+                                                '- ${CurrencyService.symbol}${bill.discount.toStringAsFixed(2)}',
                                             color: Colors.green,
                                           ),
                                         ],
@@ -816,7 +819,7 @@ class CustomerDetailsScreenState extends ConsumerState<CustomerDetailsScreen>
                                         mdTextBold(text: 'Total:'),
                                         mdTextBold(
                                           text:
-                                              'Rs.${finalAmount.toStringAsFixed(2)}',
+                                              '${CurrencyService.symbol}${finalAmount.toStringAsFixed(2)}',
                                         ),
                                       ],
                                     ),
@@ -835,7 +838,7 @@ class CustomerDetailsScreenState extends ConsumerState<CustomerDetailsScreen>
                                           ),
                                           smText(
                                             text:
-                                                'Rs.${bill.paidAmount.toStringAsFixed(2)}',
+                                                '${CurrencyService.symbol}${bill.paidAmount.toStringAsFixed(2)}',
                                             color: Colors.green,
                                           ),
                                         ],
@@ -868,7 +871,7 @@ class CustomerDetailsScreenState extends ConsumerState<CustomerDetailsScreen>
                                           ),
                                           smTextBold(
                                             text:
-                                                'Rs.${pendingAmount.toStringAsFixed(2)}',
+                                                '${CurrencyService.symbol}${pendingAmount.toStringAsFixed(2)}',
                                             color: Colors.red,
                                           ),
                                         ],
@@ -1097,7 +1100,7 @@ class CustomerDetailsScreenState extends ConsumerState<CustomerDetailsScreen>
                         infoRow(
                           context,
                           "Total Spending",
-                          'Rs.${totalSpending.toStringAsFixed(2)}',
+                          '${CurrencyService.symbol}${totalSpending.toStringAsFixed(2)}',
                           Icons.attach_money_outlined,
                           win11IconPath: ImageAssets.win11DollarBag,
                         ),
@@ -1105,7 +1108,7 @@ class CustomerDetailsScreenState extends ConsumerState<CustomerDetailsScreen>
                         infoRow(
                           context,
                           "Pending Amount",
-                          'Rs.${totalPending.toStringAsFixed(2)}',
+                          '${CurrencyService.symbol}${totalPending.toStringAsFixed(2)}',
                           Icons.pending_actions_outlined,
                           win11IconPath: ImageAssets.win11Pending,
                         ),
@@ -1240,7 +1243,7 @@ class CustomerDetailsScreenState extends ConsumerState<CustomerDetailsScreen>
                         Flexible(
                           child: smTextBold(
                             text:
-                                'Paid (Rs.${completedTotal.toStringAsFixed(0)})',
+                                'Paid (${CurrencyService.symbol}${completedTotal.toStringAsFixed(0)})',
                           ),
                         ),
                       ],
@@ -1259,7 +1262,7 @@ class CustomerDetailsScreenState extends ConsumerState<CustomerDetailsScreen>
                         Flexible(
                           child: smTextBold(
                             text:
-                                'Unpaid (Rs.${pendingTotal.toStringAsFixed(0)})',
+                                'Unpaid (${CurrencyService.symbol}${pendingTotal.toStringAsFixed(0)})',
                           ),
                         ),
                       ],

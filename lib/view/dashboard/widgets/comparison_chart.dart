@@ -1,3 +1,4 @@
+import '../../../utils/currency_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -204,7 +205,7 @@ Widget _buildComparisonChartContent(
                       final day = dailySales[spot.x.toInt()].date;
                       final isIncome = spot.barIndex == 0;
                       return LineTooltipItem(
-                        '${isIncome ? 'Income' : 'Outflow'}\n${DateFormat('MMM d').format(day)}: Rs.${spot.y.toStringAsFixed(0)}',
+                        '${isIncome ? 'Income' : 'Outflow'}\n${DateFormat('MMM d').format(day)}: ${CurrencyService.symbol}${spot.y.toStringAsFixed(0)}',
                         TextStyle(
                           color: isIncome ? AppColors.success : AppColors.error,
                           fontSize: 11.spMin,
@@ -250,17 +251,17 @@ Widget _buildSummaryRow(DashboardState state) {
     children: [
       _buildSummaryItem(
         'Total Income',
-        'Rs.${state.totalSalesThisMonth.toStringAsFixed(0)}',
+        '${CurrencyService.symbol}${state.totalSalesThisMonth.toStringAsFixed(0)}',
         AppColors.success,
       ),
       _buildSummaryItem(
         'Total Outflow',
-        'Rs.${state.totalOutflowThisMonth.toStringAsFixed(0)}',
+        '${CurrencyService.symbol}${state.totalOutflowThisMonth.toStringAsFixed(0)}',
         AppColors.error,
       ),
       _buildSummaryItem(
         'Net Balance',
-        'Rs.${state.netProfit.toStringAsFixed(0)}',
+        '${CurrencyService.symbol}${state.netProfit.toStringAsFixed(0)}',
         state.netProfit >= 0 ? AppColors.primary : AppColors.error,
       ),
     ],

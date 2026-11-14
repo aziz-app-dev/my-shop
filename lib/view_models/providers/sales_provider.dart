@@ -17,7 +17,8 @@ class SalesNotifier extends StateNotifier<SalesState> {
   SalesNotifier(this.dbService, this._settingsState)
     : super(SalesState(isPaid: _settingsState.isPaid, paymentMethod: 'Cash')) {
     // Start scanning for printers if thermal printing is enabled
-    if (_settingsState.isPrintEnabled && _settingsState.printFormat == PrintFormat.thermal) {
+    if (_settingsState.isPrintEnabled &&
+        _settingsState.printFormat == PrintFormat.thermal) {
       scanForPrinters();
     }
   }

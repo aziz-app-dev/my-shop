@@ -1,3 +1,4 @@
+import '../../../utils/currency_service.dart';
 import 'package:desktopapp/res/colors/app_color.dart';
 import 'package:desktopapp/res/components/app_button.dart';
 import 'package:desktopapp/res/components/app_text_widgrt.dart';
@@ -100,7 +101,7 @@ Widget buildMultiCartSection(
                                     mdText(text: 'Subtotal'),
                                     mdText(
                                       text:
-                                          'Rs.${activeCart.totalAmount.toStringAsFixed(0)}',
+                                          '${CurrencyService.symbol}${activeCart.totalAmount.toStringAsFixed(0)}',
                                     ),
                                   ],
                                 ),
@@ -132,7 +133,7 @@ Widget buildMultiCartSection(
                                       mdText(text: 'Discount'),
                                       mdText(
                                         text:
-                                            '-Rs.${activeCart.discount.toStringAsFixed(0)}',
+                                            '-${CurrencyService.symbol}${activeCart.discount.toStringAsFixed(0)}',
                                         color: Colors.red,
                                       ),
                                     ],
@@ -164,7 +165,7 @@ Widget buildMultiCartSection(
                                     mdTextBold(text: 'Total'),
                                     mdTextBold(
                                       text:
-                                          'Rs.${(activeCart.totalAmount - activeCart.discount).toStringAsFixed(0)}',
+                                          '${CurrencyService.symbol}${(activeCart.totalAmount - activeCart.discount).toStringAsFixed(0)}',
                                     ),
                                   ],
                                 ),

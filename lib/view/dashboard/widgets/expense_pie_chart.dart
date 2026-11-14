@@ -1,3 +1,4 @@
+import '../../../utils/currency_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -57,7 +58,7 @@ Widget _buildExpensePieChartContent(
             mdTextBold(text: 'Expenses by Category'),
             const Spacer(),
             smText(
-              text: 'Rs.${total.toStringAsFixed(0)}',
+              text: '${CurrencyService.symbol}${total.toStringAsFixed(0)}',
               color: AppColors.error,
             ),
           ],

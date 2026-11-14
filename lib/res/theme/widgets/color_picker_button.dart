@@ -36,15 +36,13 @@ class ColorPickerButton extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: 10.w,
               children: [
-                Icon(
-                  icons,
-                  color: currentColor,
-                  size: 25.spMin,
-                ),
+                Icon(icons, color: currentColor, size: 25.spMin),
                 Text(
                   title,
                   style: TextStyle(
-                      fontSize: 16.spMin, fontWeight: FontWeight.w500),
+                    fontSize: 16.spMin,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),

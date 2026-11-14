@@ -39,7 +39,10 @@ class RemindersAlertBanner extends ConsumerWidget {
           borderRadius: BorderRadius.circular(12.r),
           onTap: () => _openReminders(ref),
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.spMin, vertical: 12.spMin),
+            padding: EdgeInsets.symmetric(
+              horizontal: 16.spMin,
+              vertical: 12.spMin,
+            ),
             child: Row(
               children: [
                 Icon(TablerIcons.bell_ringing, color: accent, size: 22.spMin),

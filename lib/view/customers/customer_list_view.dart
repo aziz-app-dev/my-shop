@@ -6,6 +6,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../../res/assets/image_assets.dart';
 import '../../res/colors/app_color.dart';
+import '../../utils/currency_service.dart';
 import '../../res/components/app_bar_widget.dart';
 import '../../res/components/app_icon.dart';
 import '../../res/components/app_text_widgrt.dart';
@@ -177,7 +178,7 @@ class CustomerListScreen extends ConsumerWidget {
                                   SizedBox(width: 4.w),
                                   xsText(
                                     text:
-                                        'Pending: ${state.pendingBillCounts[customer.id] ?? 0} (Rs ${pendingAmount.toStringAsFixed(2)})',
+                                        'Pending: ${state.pendingBillCounts[customer.id] ?? 0} (${CurrencyService.symbol} ${pendingAmount.toStringAsFixed(2)})',
                                     color: Colors.orange,
                                   ),
                                 ] else if (completedCount > 0) ...[
@@ -501,7 +502,7 @@ class CustomerListScreen extends ConsumerWidget {
                               pendingAmount > 0
                                   ? TableDataCellText(
                                     text:
-                                        'Pending: ${state.pendingBillCounts[customer.id] ?? 0} (Rs ${pendingAmount.toStringAsFixed(2)})',
+                                        'Pending: ${state.pendingBillCounts[customer.id] ?? 0} (${CurrencyService.symbol} ${pendingAmount.toStringAsFixed(2)})',
                                     color: Colors.orange,
                                   )
                                   : completedCount > 0

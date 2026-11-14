@@ -6,11 +6,7 @@ class ForecastState {
   final ForecastResult? result;
   final String? error;
 
-  const ForecastState({
-    this.isLoading = false,
-    this.result,
-    this.error,
-  });
+  const ForecastState({this.isLoading = false, this.result, this.error});
 
   bool get hasResult => result != null;
 

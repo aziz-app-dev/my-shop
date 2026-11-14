@@ -25,11 +25,11 @@ class RepairItem {
   }
 
   Map<String, dynamic> toMap() => {
-        'productId': productId,
-        'name': name,
-        'price': price,
-        'quantity': quantity,
-      };
+    'productId': productId,
+    'name': name,
+    'price': price,
+    'quantity': quantity,
+  };
 
   RepairItem copyWith({
     String? productId,
@@ -105,8 +105,7 @@ class Repair {
   });
 
   // Sum of all line items (parts/services).
-  double get itemsTotal =>
-      items.fold(0.0, (sum, item) => sum + item.total);
+  double get itemsTotal => items.fold(0.0, (sum, item) => sum + item.total);
 
   // Remaining balance to collect when the item is handed back.
   double get balanceDue =>

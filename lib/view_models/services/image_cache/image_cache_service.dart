@@ -89,10 +89,7 @@ class ImageCacheService {
 
   /// Download and cache image from URL
   /// Returns local file path on success, null on failure
-  Future<String?> downloadAndCacheImage(
-    String url, {
-    String? folder,
-  }) async {
+  Future<String?> downloadAndCacheImage(String url, {String? folder}) async {
     try {
       final localPath = await getLocalPathForUrl(url, folder: folder);
       final file = File(localPath);
@@ -105,9 +102,9 @@ class ImageCacheService {
 
       // Download the image
       debugPrint('Downloading image: $url');
-      final response = await http.get(Uri.parse(url)).timeout(
-        const Duration(seconds: 30),
-      );
+      final response = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         await file.writeAsBytes(response.bodyBytes);

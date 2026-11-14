@@ -247,10 +247,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     final pickedFile = await ImagePickerHelper.pickImageFromGallery();
     if (!mounted) return;
     if (pickedFile != null) {
-      state = state.copyWith(
-        shopLogo: pickedFile,
-        errorMessage: null,
-      );
+      state = state.copyWith(shopLogo: pickedFile, errorMessage: null);
     }
   }
 
@@ -258,10 +255,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     final pickedFile = await ImagePickerHelper.pickImageFromGallery();
     if (!mounted) return;
     if (pickedFile != null) {
-      state = state.copyWith(
-        userImage: pickedFile,
-        errorMessage: null,
-      );
+      state = state.copyWith(userImage: pickedFile, errorMessage: null);
     }
   }
 
@@ -401,7 +395,10 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       try {
         final remote = await _cloudUserService.getProfile();
         if (remote != null) {
-          user = _cloudUserService.mergePreferLocal(local: user, remote: remote);
+          user = _cloudUserService.mergePreferLocal(
+            local: user,
+            remote: remote,
+          );
         }
       } catch (_) {
         // Ignore cloud errors; local profile still works offline.
@@ -441,6 +438,8 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
 final profileProvider =
     StateNotifierProvider.autoDispose<ProfileNotifier, ProfileState>(
-      (ref) =>
-          ProfileNotifier(ref.read(databaseServiceProvider), CloudUserService()),
+      (ref) => ProfileNotifier(
+        ref.read(databaseServiceProvider),
+        CloudUserService(),
+      ),
     );

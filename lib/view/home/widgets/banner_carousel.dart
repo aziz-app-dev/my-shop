@@ -38,9 +38,7 @@ class _BannerCarouselState extends State<BannerCarousel> {
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.sizeOf(context).width;
     final double height =
-        AppSizes.isMobile(context)
-            ? screenWidth * 0.350
-            : screenWidth * 0.150;
+        AppSizes.isMobile(context) ? screenWidth * 0.350 : screenWidth * 0.150;
     final bool hasMultiple = widget.imagePaths.length > 1;
 
     return Column(
@@ -67,10 +65,7 @@ class _BannerCarouselState extends State<BannerCarousel> {
                 return _BannerSlide(imagePath: imagePath);
               }).toList(),
         ),
-        if (hasMultiple) ...[
-          SizedBox(height: 10.spMin),
-          _buildIndicators(),
-        ],
+        if (hasMultiple) ...[SizedBox(height: 10.spMin), _buildIndicators()],
       ],
     );
   }
@@ -138,10 +133,7 @@ class _BannerSlide extends StatelessWidget {
                   SizedBox(height: 8.spMin),
                   Text(
                     'Image not found',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 12.spMin,
-                    ),
+                    style: TextStyle(color: Colors.grey, fontSize: 12.spMin),
                   ),
                 ],
               ),

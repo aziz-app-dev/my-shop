@@ -19,16 +19,18 @@ void showBillsFilterDialog(BuildContext context) {
           final state = ref.watch(billsProvider);
           final notifier = ref.read(billsProvider.notifier);
 
-          final methods = state.allBills
-              .map((b) => b.paymentMethod)
-              .where((m) => m != null && m.trim().isNotEmpty)
-              .cast<String>()
-              .toSet()
-              .toList()
-            ..sort();
+          final methods =
+              state.allBills
+                  .map((b) => b.paymentMethod)
+                  .where((m) => m != null && m.trim().isNotEmpty)
+                  .cast<String>()
+                  .toSet()
+                  .toList()
+                ..sort();
           final range = state.dateRangeFilter;
           final df = DateFormat('dd MMM');
-          final hasAnyFilter = state.statusFilter != null ||
+          final hasAnyFilter =
+              state.statusFilter != null ||
               state.paymentMethodFilter != null ||
               state.dateRangeFilter != null;
 
@@ -77,8 +79,12 @@ void showBillsFilterDialog(BuildContext context) {
                 Divider(height: 1, color: AppColors.grey400),
               ],
             ),
-            contentPadding:
-                EdgeInsets.fromLTRB(20.spMin, 16.spMin, 20.spMin, 8.spMin),
+            contentPadding: EdgeInsets.fromLTRB(
+              20.spMin,
+              16.spMin,
+              20.spMin,
+              8.spMin,
+            ),
             content: SizedBox(
               width: 320.spMin,
               child: SingleChildScrollView(
@@ -92,14 +98,20 @@ void showBillsFilterDialog(BuildContext context) {
                       spacing: 8.spMin,
                       runSpacing: 8.spMin,
                       children: [
-                        filterChip('Paid', state.statusFilter == 'Paid',
-                            () => notifier.setStatusFilter(
-                                state.statusFilter == 'Paid' ? null : 'Paid')),
-                        filterChip('Pending', state.statusFilter == 'Pending',
-                            () => notifier.setStatusFilter(
-                                state.statusFilter == 'Pending'
-                                    ? null
-                                    : 'Pending')),
+                        filterChip(
+                          'Paid',
+                          state.statusFilter == 'Paid',
+                          () => notifier.setStatusFilter(
+                            state.statusFilter == 'Paid' ? null : 'Paid',
+                          ),
+                        ),
+                        filterChip(
+                          'Pending',
+                          state.statusFilter == 'Pending',
+                          () => notifier.setStatusFilter(
+                            state.statusFilter == 'Pending' ? null : 'Pending',
+                          ),
+                        ),
                       ],
                     ),
                     if (methods.isNotEmpty) ...[
@@ -152,9 +164,10 @@ void showBillsFilterDialog(BuildContext context) {
                             ),
                             style: OutlinedButton.styleFrom(
                               side: BorderSide(
-                                color: range != null
-                                    ? AppColors.primary
-                                    : AppColors.grey400,
+                                color:
+                                    range != null
+                                        ? AppColors.primary
+                                        : AppColors.grey400,
                               ),
                               foregroundColor:
                                   range != null ? AppColors.primary : null,
@@ -166,8 +179,11 @@ void showBillsFilterDialog(BuildContext context) {
                             tooltip: 'Clear date',
                             visualDensity: VisualDensity.compact,
                             onPressed: () => notifier.setDateRangeFilter(null),
-                            icon: Icon(TablerIcons.x,
-                                size: 16.spMin, color: AppColors.error),
+                            icon: Icon(
+                              TablerIcons.x,
+                              size: 16.spMin,
+                              color: AppColors.error,
+                            ),
                           ),
                       ],
                     ),
@@ -175,8 +191,12 @@ void showBillsFilterDialog(BuildContext context) {
                 ),
               ),
             ),
-            actionsPadding:
-                EdgeInsets.fromLTRB(20.spMin, 0, 16.spMin, 12.spMin),
+            actionsPadding: EdgeInsets.fromLTRB(
+              20.spMin,
+              0,
+              16.spMin,
+              12.spMin,
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),

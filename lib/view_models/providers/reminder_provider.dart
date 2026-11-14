@@ -6,7 +6,8 @@ import 'package:riverpod/legacy.dart';
 
 import '../../models/bills_model.dart';
 import '../../utils/payment_calculator.dart';
-import '../services/database/database_services.dart' hide databaseServiceProvider;
+import '../services/database/database_services.dart'
+    hide databaseServiceProvider;
 import '../services/notifications/notification_service.dart';
 import '../states/reminder_state.dart';
 import 'bills_provider.dart';
@@ -62,7 +63,8 @@ class ReminderNotifier extends StateNotifier<ReminderState> {
     for (final bill in state.reminders) {
       final due = bill.dueDate;
       if (due == null) continue;
-      final alreadyNotified = bill.reminderNotifiedAt != null &&
+      final alreadyNotified =
+          bill.reminderNotifiedAt != null &&
           !bill.reminderNotifiedAt!.isBefore(due);
       if (now.isAfter(due) && !alreadyNotified) {
         await NotificationService.instance.showReminder(
@@ -92,23 +94,30 @@ class ReminderNotifier extends StateNotifier<ReminderState> {
     final base = bill.dueDate ?? DateTime.now();
     final newDue = base.add(Duration(days: days));
     // Clear the notify stamp so the snoozed reminder can fire again.
-    final updated =
-        bill.copyWith(dueDate: newDue, clearReminderNotifiedAt: true);
+    final updated = bill.copyWith(
+      dueDate: newDue,
+      clearReminderNotifiedAt: true,
+    );
     await _dbService.saveBill(updated);
     await _refreshEverywhere();
   }
 
   /// Sets or updates a bill's payment-due date+time.
   Future<void> setDueDate(Bill bill, DateTime dueDate) async {
-    final updated =
-        bill.copyWith(dueDate: dueDate, clearReminderNotifiedAt: true);
+    final updated = bill.copyWith(
+      dueDate: dueDate,
+      clearReminderNotifiedAt: true,
+    );
     await _dbService.saveBill(updated);
     await _refreshEverywhere();
   }
 
   /// Removes a bill's reminder without touching its payment.
   Future<void> clearReminder(Bill bill) async {
-    final updated = bill.copyWith(clearDueDate: true, clearReminderNotifiedAt: true);
+    final updated = bill.copyWith(
+      clearDueDate: true,
+      clearReminderNotifiedAt: true,
+    );
     await _dbService.saveBill(updated);
     await _refreshEverywhere();
   }
@@ -143,8 +152,9 @@ class ReminderNotifier extends StateNotifier<ReminderState> {
   }
 }
 
-final reminderProvider =
-    StateNotifierProvider<ReminderNotifier, ReminderState>((ref) {
-  final dbService = ref.read(databaseServiceProvider);
-  return ReminderNotifier(dbService, ref);
-});
+final reminderProvider = StateNotifierProvider<ReminderNotifier, ReminderState>(
+  (ref) {
+    final dbService = ref.read(databaseServiceProvider);
+    return ReminderNotifier(dbService, ref);
+  },
+);

@@ -68,7 +68,9 @@ class _AboutViewState extends ConsumerState<AboutView> {
     final showShoppingList = ref.watch(
       settingsProvider.select((s) => s.showShoppingListModule),
     );
-    final useMultiCart = ref.watch(settingsProvider.select((s) => s.useMultiCart));
+    final useMultiCart = ref.watch(
+      settingsProvider.select((s) => s.useMultiCart),
+    );
     final navItems = navItemsFor(showRepairs: showRepairs);
 
     // Live F-key labels for each nav section (F1–F10, then F12 for the 11th).
@@ -181,9 +183,7 @@ class _AboutViewState extends ConsumerState<AboutView> {
                     'Every module, what it does, and exactly where to find it.',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (final m in modules) _moduleEntry(m),
-                  ],
+                  children: [for (final m in modules) _moduleEntry(m)],
                 ),
               ),
             if (shortcuts.isNotEmpty)
@@ -267,13 +267,14 @@ class _AboutViewState extends ConsumerState<AboutView> {
         icon: TablerIcons.shopping_bag,
         title: 'Sales',
         navKey: navKeys['Sales'],
-        what: useMultiCart
-            ? 'Ring up a sale. Multi-cart mode is ON: you can keep several '
-                'carts open at once (e.g. one per customer) and switch between '
-                'them before completing each sale.'
-            : 'Ring up a sale. Tap a product to add it to the cart, adjust '
-                'quantity, apply a discount, choose the customer and take '
-                'payment.',
+        what:
+            useMultiCart
+                ? 'Ring up a sale. Multi-cart mode is ON: you can keep several '
+                    'carts open at once (e.g. one per customer) and switch between '
+                    'them before completing each sale.'
+                : 'Ring up a sale. Tap a product to add it to the cart, adjust '
+                    'quantity, apply a discount, choose the customer and take '
+                    'payment.',
         where: 'Sidebar → Sales',
         actions: [
           'Tap a product card — or press F1–F9 / 1–9 — to add it to the cart',
@@ -438,9 +439,7 @@ class _AboutViewState extends ConsumerState<AboutView> {
     return modules;
   }
 
-  List<_ShortcutDoc> _buildShortcuts({
-    required List<NavigationItem> navItems,
-  }) {
+  List<_ShortcutDoc> _buildShortcuts({required List<NavigationItem> navItems}) {
     final navRows = <_ShortcutDoc>[];
     for (var i = 0; i < navItems.length; i++) {
       navRows.add(
@@ -547,7 +546,8 @@ class _AboutViewState extends ConsumerState<AboutView> {
     _TaskDoc(
       icon: TablerIcons.toggle_right,
       task: 'Turn the Repairs module on or off',
-      path: 'Settings → Modules → Repairs. The sidebar and its F-key update instantly.',
+      path:
+          'Settings → Modules → Repairs. The sidebar and its F-key update instantly.',
     ),
   ];
 
@@ -570,10 +570,7 @@ class _AboutViewState extends ConsumerState<AboutView> {
           children: [
             Text(
               title,
-              style: TextStyle(
-                fontSize: 19.spMin,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 19.spMin, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 3.h),
             if (subtitle != null) ...[
@@ -762,9 +759,7 @@ class _AboutViewState extends ConsumerState<AboutView> {
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: _isDark ? 0.10 : 0.05),
               border: Border(bottom: BorderSide(color: borderColor)),
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(10.r),
-              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(10.r)),
             ),
             child: Row(
               children: [
@@ -905,7 +900,10 @@ class _AboutViewState extends ConsumerState<AboutView> {
       onChanged: (v) => setState(() => _query = v),
       decoration: InputDecoration(
         hintText: 'Search the documentation…',
-        hintStyle: TextStyle(fontSize: 12.5.spMin, color: AppColors.textSecondary),
+        hintStyle: TextStyle(
+          fontSize: 12.5.spMin,
+          color: AppColors.textSecondary,
+        ),
         prefixIcon: Icon(Icons.search, size: 20.spMin),
         suffixIcon:
             _query.isEmpty
@@ -990,11 +988,7 @@ class _AboutViewState extends ConsumerState<AboutView> {
           child: Row(
             children: [
               if (icon != null) ...[
-                Icon(
-                  icon,
-                  size: 15.spMin,
-                  color: AppColors.textSecondary,
-                ),
+                Icon(icon, size: 15.spMin, color: AppColors.textSecondary),
                 SizedBox(width: 8.w),
               ],
               Expanded(
@@ -1119,11 +1113,7 @@ class _TaskDoc {
   final String task;
   final String path;
 
-  const _TaskDoc({
-    required this.icon,
-    required this.task,
-    required this.path,
-  });
+  const _TaskDoc({required this.icon, required this.task, required this.path});
 
   bool matches(String q) =>
       task.toLowerCase().contains(q) || path.toLowerCase().contains(q);

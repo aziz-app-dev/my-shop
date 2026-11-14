@@ -2,15 +2,9 @@ class SettingsPageState {
   final bool isProcessing;
   final String? error;
 
-  const SettingsPageState({
-    this.isProcessing = false,
-    this.error,
-  });
+  const SettingsPageState({this.isProcessing = false, this.error});
 
-  SettingsPageState copyWith({
-    bool? isProcessing,
-    String? error,
-  }) {
+  SettingsPageState copyWith({bool? isProcessing, String? error}) {
     return SettingsPageState(
       isProcessing: isProcessing ?? this.isProcessing,
       error: error,

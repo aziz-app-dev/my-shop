@@ -1,3 +1,4 @@
+import '../../../utils/currency_service.dart';
 import 'dart:typed_data';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
@@ -34,11 +35,12 @@ class FinancialReportPDFGenerator {
 
   bool get _yearly => state.isYearlyView;
 
-  String get _periodLabel => _yearly
-      ? 'Year ${state.selectedMonth.year}'
-      : DateFormat('MMMM yyyy').format(state.selectedMonth);
+  String get _periodLabel =>
+      _yearly
+          ? 'Year ${state.selectedMonth.year}'
+          : DateFormat('MMMM yyyy').format(state.selectedMonth);
 
-  String _rs(double v) => 'Rs.${v.toStringAsFixed(0)}';
+  String _rs(double v) => '${CurrencyService.symbol}${v.toStringAsFixed(0)}';
 
   pw.Document generatePDF() {
     final pdf = pw.Document();
@@ -48,27 +50,28 @@ class FinancialReportPDFGenerator {
         margin: const pw.EdgeInsets.all(20),
         header: (context) => _buildHeader(),
         footer: (context) => _buildFooter(context),
-        build: (context) => [
-          _buildSummarySection(),
-          pw.SizedBox(height: 14),
-          _buildReceivablesSection(),
-          pw.SizedBox(height: 14),
-          if (aiInsights != null && aiInsights!.trim().isNotEmpty) ...[
-            _buildAiInsights(),
-            pw.SizedBox(height: 14),
-          ],
-          if (_yearly && state.monthlyBreakdown.isNotEmpty) ...[
-            _buildMonthlyBreakdown(),
-            pw.SizedBox(height: 14),
-          ],
-          _buildTopCustomers(),
-          pw.SizedBox(height: 14),
-          _buildTopSellingItems(),
-          pw.SizedBox(height: 14),
-          _buildCategoryProfit(),
-          pw.SizedBox(height: 14),
-          _buildExpenseBreakdown(),
-        ],
+        build:
+            (context) => [
+              _buildSummarySection(),
+              pw.SizedBox(height: 14),
+              _buildReceivablesSection(),
+              pw.SizedBox(height: 14),
+              if (aiInsights != null && aiInsights!.trim().isNotEmpty) ...[
+                _buildAiInsights(),
+                pw.SizedBox(height: 14),
+              ],
+              if (_yearly && state.monthlyBreakdown.isNotEmpty) ...[
+                _buildMonthlyBreakdown(),
+                pw.SizedBox(height: 14),
+              ],
+              _buildTopCustomers(),
+              pw.SizedBox(height: 14),
+              _buildTopSellingItems(),
+              pw.SizedBox(height: 14),
+              _buildCategoryProfit(),
+              pw.SizedBox(height: 14),
+              _buildExpenseBreakdown(),
+            ],
       ),
     );
     return pdf;
@@ -99,17 +102,28 @@ class FinancialReportPDFGenerator {
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text(shopName,
-                      style: pw.TextStyle(
-                          fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                  pw.Text(
+                    shopName,
+                    style: pw.TextStyle(
+                      fontSize: 18,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
                   if (ownerName != null && ownerName!.isNotEmpty)
-                    pw.Text(ownerName!, style: const pw.TextStyle(fontSize: 10)),
+                    pw.Text(
+                      ownerName!,
+                      style: const pw.TextStyle(fontSize: 10),
+                    ),
                   if (phoneNumber != null && phoneNumber!.isNotEmpty)
-                    pw.Text('Phone: $phoneNumber',
-                        style: const pw.TextStyle(fontSize: 10)),
+                    pw.Text(
+                      'Phone: $phoneNumber',
+                      style: const pw.TextStyle(fontSize: 10),
+                    ),
                   if (shopAddress != null && shopAddress!.isNotEmpty)
-                    pw.Text(shopAddress!,
-                        style: const pw.TextStyle(fontSize: 10)),
+                    pw.Text(
+                      shopAddress!,
+                      style: const pw.TextStyle(fontSize: 10),
+                    ),
                 ],
               ),
             ],
@@ -117,20 +131,30 @@ class FinancialReportPDFGenerator {
           pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.end,
             children: [
-              pw.Text('FINANCIAL REPORT',
-                  style: pw.TextStyle(
-                      fontSize: 16,
-                      fontWeight: pw.FontWeight.bold,
-                      color: _brand)),
-              pw.SizedBox(height: 3),
-              pw.Text(_periodLabel,
-                  style: pw.TextStyle(
-                      fontSize: 12, fontWeight: pw.FontWeight.bold)),
+              pw.Text(
+                'FINANCIAL REPORT',
+                style: pw.TextStyle(
+                  fontSize: 16,
+                  fontWeight: pw.FontWeight.bold,
+                  color: _brand,
+                ),
+              ),
               pw.SizedBox(height: 3),
               pw.Text(
-                  'Generated: ${DateFormat('dd MMM yyyy, HH:mm').format(DateTime.now())}',
-                  style:
-                      const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+                _periodLabel,
+                style: pw.TextStyle(
+                  fontSize: 12,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 3),
+              pw.Text(
+                'Generated: ${DateFormat('dd MMM yyyy, HH:mm').format(DateTime.now())}',
+                style: const pw.TextStyle(
+                  fontSize: 9,
+                  color: PdfColors.grey600,
+                ),
+              ),
             ],
           ),
         ],
@@ -147,10 +171,14 @@ class FinancialReportPDFGenerator {
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
-          pw.Text('Financial Report - $_periodLabel',
-              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
-          pw.Text('Page ${context.pageNumber} of ${context.pagesCount}',
-              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+          pw.Text(
+            'Financial Report - $_periodLabel',
+            style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+          ),
+          pw.Text(
+            'Page ${context.pageNumber} of ${context.pagesCount}',
+            style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+          ),
         ],
       ),
     );
@@ -159,11 +187,11 @@ class FinancialReportPDFGenerator {
   // --------------------------------------------------------------- summary
 
   pw.Widget _buildSummarySection() {
-    final sales = _yearly ? state.totalSalesThisYear : state.totalSalesThisMonth;
+    final sales =
+        _yearly ? state.totalSalesThisYear : state.totalSalesThisMonth;
     final expenses =
         _yearly ? state.totalExpensesThisYear : state.totalOutflowThisMonth;
-    final netProfit =
-        _yearly ? state.netProfitThisYear : state.netProfit;
+    final netProfit = _yearly ? state.netProfitThisYear : state.netProfit;
     final received =
         _yearly ? state.totalReceivedThisYear : state.totalReceivedThisMonth;
     final pending =
@@ -176,31 +204,51 @@ class FinancialReportPDFGenerator {
         pw.SizedBox(height: 8),
         pw.Row(
           children: [
-            _summaryCard('Total Sales', _rs(sales), PdfColors.blue700,
-                PdfColors.blue50),
-            pw.SizedBox(width: 8),
-            _summaryCard('Total Outflow', _rs(expenses), PdfColors.orange800,
-                PdfColors.orange50),
+            _summaryCard(
+              'Total Sales',
+              _rs(sales),
+              PdfColors.blue700,
+              PdfColors.blue50,
+            ),
             pw.SizedBox(width: 8),
             _summaryCard(
-                'Net Profit',
-                _rs(netProfit),
-                netProfit >= 0 ? PdfColors.green700 : PdfColors.red700,
-                netProfit >= 0 ? PdfColors.green50 : PdfColors.red50),
+              'Total Outflow',
+              _rs(expenses),
+              PdfColors.orange800,
+              PdfColors.orange50,
+            ),
+            pw.SizedBox(width: 8),
+            _summaryCard(
+              'Net Profit',
+              _rs(netProfit),
+              netProfit >= 0 ? PdfColors.green700 : PdfColors.red700,
+              netProfit >= 0 ? PdfColors.green50 : PdfColors.red50,
+            ),
           ],
         ),
         pw.SizedBox(height: 8),
         pw.Row(
           children: [
-            _summaryCard('Payments Received', _rs(received),
-                PdfColors.green700, PdfColors.green50),
+            _summaryCard(
+              'Payments Received',
+              _rs(received),
+              PdfColors.green700,
+              PdfColors.green50,
+            ),
             pw.SizedBox(width: 8),
-            _summaryCard('Pending (period)', _rs(pending),
-                pending > 0 ? PdfColors.red700 : PdfColors.green700,
-                pending > 0 ? PdfColors.red50 : PdfColors.green50),
+            _summaryCard(
+              'Pending (period)',
+              _rs(pending),
+              pending > 0 ? PdfColors.red700 : PdfColors.green700,
+              pending > 0 ? PdfColors.red50 : PdfColors.green50,
+            ),
             pw.SizedBox(width: 8),
-            _summaryCard('Transactions', '${state.totalTransactions}',
-                PdfColors.grey800, PdfColors.grey100),
+            _summaryCard(
+              'Transactions',
+              '${state.totalTransactions}',
+              PdfColors.grey800,
+              PdfColors.grey100,
+            ),
           ],
         ),
         pw.SizedBox(height: 8),
@@ -216,10 +264,14 @@ class FinancialReportPDFGenerator {
               mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
               children: [
                 _inlineStat('Gross Profit', _rs(state.grossProfit)),
-                _inlineStat('Gross Margin',
-                    '${state.grossProfitMargin.toStringAsFixed(1)}%'),
-                _inlineStat('Total Expenses',
-                    _rs(state.totalExpensesThisMonth)),
+                _inlineStat(
+                  'Gross Margin',
+                  '${state.grossProfitMargin.toStringAsFixed(1)}%',
+                ),
+                _inlineStat(
+                  'Total Expenses',
+                  _rs(state.totalExpensesThisMonth),
+                ),
               ],
             ),
           ),
@@ -247,15 +299,22 @@ class FinancialReportPDFGenerator {
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('Total Outstanding (all-time)',
-                        style: const pw.TextStyle(
-                            fontSize: 9, color: PdfColors.grey700)),
+                    pw.Text(
+                      'Total Outstanding (all-time)',
+                      style: const pw.TextStyle(
+                        fontSize: 9,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
                     pw.SizedBox(height: 4),
-                    pw.Text(_rs(state.totalPendingReceivables),
-                        style: pw.TextStyle(
-                            fontSize: 15,
-                            fontWeight: pw.FontWeight.bold,
-                            color: PdfColors.red700)),
+                    pw.Text(
+                      _rs(state.totalPendingReceivables),
+                      style: pw.TextStyle(
+                        fontSize: 15,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.red700,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -271,27 +330,41 @@ class FinancialReportPDFGenerator {
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('Sales by Payment Method',
-                        style: const pw.TextStyle(
-                            fontSize: 9, color: PdfColors.grey700)),
+                    pw.Text(
+                      'Sales by Payment Method',
+                      style: const pw.TextStyle(
+                        fontSize: 9,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
                     pw.SizedBox(height: 4),
                     if (byMethod.isEmpty)
-                      pw.Text('No data',
-                          style: const pw.TextStyle(
-                              fontSize: 10, color: PdfColors.grey600))
+                      pw.Text(
+                        'No data',
+                        style: const pw.TextStyle(
+                          fontSize: 10,
+                          color: PdfColors.grey600,
+                        ),
+                      )
                     else
-                      ...byMethod.entries.map((e) => pw.Row(
-                            mainAxisAlignment:
-                                pw.MainAxisAlignment.spaceBetween,
-                            children: [
-                              pw.Text(e.key,
-                                  style: const pw.TextStyle(fontSize: 10)),
-                              pw.Text(_rs(e.value),
-                                  style: pw.TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: pw.FontWeight.bold)),
-                            ],
-                          )),
+                      ...byMethod.entries.map(
+                        (e) => pw.Row(
+                          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                          children: [
+                            pw.Text(
+                              e.key,
+                              style: const pw.TextStyle(fontSize: 10),
+                            ),
+                            pw.Text(
+                              _rs(e.value),
+                              style: pw.TextStyle(
+                                fontSize: 10,
+                                fontWeight: pw.FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -313,9 +386,14 @@ class FinancialReportPDFGenerator {
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text('AI Insights & Forecast',
-              style: pw.TextStyle(
-                  fontSize: 13, fontWeight: pw.FontWeight.bold, color: _brand)),
+          pw.Text(
+            'AI Insights & Forecast',
+            style: pw.TextStyle(
+              fontSize: 13,
+              fontWeight: pw.FontWeight.bold,
+              color: _brand,
+            ),
+          ),
           pw.SizedBox(height: 6),
           pw.Text(aiInsights!, style: const pw.TextStyle(fontSize: 10)),
         ],
@@ -350,13 +428,17 @@ class FinancialReportPDFGenerator {
                 _cell('Pending', header: true, align: pw.TextAlign.right),
               ],
             ),
-            ...rows.map((m) => pw.TableRow(children: [
+            ...rows.map(
+              (m) => pw.TableRow(
+                children: [
                   _cell(m.monthName),
                   _cell(_rs(m.sales), align: pw.TextAlign.right),
                   _cell(_rs(m.expenses), align: pw.TextAlign.right),
                   _cell(_rs(m.received), align: pw.TextAlign.right),
                   _cell(_rs(m.pending), align: pw.TextAlign.right),
-                ])),
+                ],
+              ),
+            ),
           ],
         ),
       ],
@@ -368,13 +450,19 @@ class FinancialReportPDFGenerator {
     return _tableSection(
       'Top Customers by Revenue',
       ['Customer', 'Transactions', 'Revenue'],
-      const [pw.FlexColumnWidth(3), pw.FlexColumnWidth(1.4), pw.FlexColumnWidth(1.6)],
+      const [
+        pw.FlexColumnWidth(3),
+        pw.FlexColumnWidth(1.4),
+        pw.FlexColumnWidth(1.6),
+      ],
       rows
-          .map((c) => [
-                _cell(c.name),
-                _cell('${c.transactionCount}', align: pw.TextAlign.center),
-                _cell(_rs(c.totalRevenue), align: pw.TextAlign.right),
-              ])
+          .map(
+            (c) => [
+              _cell(c.name),
+              _cell('${c.transactionCount}', align: pw.TextAlign.center),
+              _cell(_rs(c.totalRevenue), align: pw.TextAlign.right),
+            ],
+          )
           .toList(),
       emptyText: 'No customer sales in this period',
     );
@@ -392,12 +480,14 @@ class FinancialReportPDFGenerator {
         pw.FlexColumnWidth(1.4),
       ],
       rows
-          .map((i) => [
-                _cell(i.name),
-                _cell('${i.quantitySold}', align: pw.TextAlign.center),
-                _cell(_rs(i.totalRevenue), align: pw.TextAlign.right),
-                _cell(_rs(i.totalProfit), align: pw.TextAlign.right),
-              ])
+          .map(
+            (i) => [
+              _cell(i.name),
+              _cell('${i.quantitySold}', align: pw.TextAlign.center),
+              _cell(_rs(i.totalRevenue), align: pw.TextAlign.right),
+              _cell(_rs(i.totalProfit), align: pw.TextAlign.right),
+            ],
+          )
           .toList(),
       emptyText: 'No item sales in this period',
     );
@@ -416,31 +506,38 @@ class FinancialReportPDFGenerator {
         pw.FlexColumnWidth(1),
       ],
       rows
-          .map((c) => [
-                _cell(c.category),
-                _cell(_rs(c.revenue), align: pw.TextAlign.right),
-                _cell(_rs(c.cost), align: pw.TextAlign.right),
-                _cell(_rs(c.profit), align: pw.TextAlign.right),
-                _cell('${c.profitMargin.toStringAsFixed(0)}%',
-                    align: pw.TextAlign.right),
-              ])
+          .map(
+            (c) => [
+              _cell(c.category),
+              _cell(_rs(c.revenue), align: pw.TextAlign.right),
+              _cell(_rs(c.cost), align: pw.TextAlign.right),
+              _cell(_rs(c.profit), align: pw.TextAlign.right),
+              _cell(
+                '${c.profitMargin.toStringAsFixed(0)}%',
+                align: pw.TextAlign.right,
+              ),
+            ],
+          )
           .toList(),
       emptyText: 'No category data',
     );
   }
 
   pw.Widget _buildExpenseBreakdown() {
-    final entries = state.expensesByCategory.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final entries =
+        state.expensesByCategory.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
     return _tableSection(
       'Expenses by Category',
       ['Category', 'Amount'],
       const [pw.FlexColumnWidth(3), pw.FlexColumnWidth(1.6)],
       entries
-          .map((e) => [
-                _cell(e.key),
-                _cell(_rs(e.value), align: pw.TextAlign.right),
-              ])
+          .map(
+            (e) => [
+              _cell(e.key),
+              _cell(_rs(e.value), align: pw.TextAlign.right),
+            ],
+          )
           .toList(),
       emptyText: 'No expenses in this period',
     );
@@ -448,11 +545,17 @@ class FinancialReportPDFGenerator {
 
   // ------------------------------------------------------------- ui atoms
 
-  pw.Widget _sectionTitle(String text) => pw.Text(text,
-      style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold));
+  pw.Widget _sectionTitle(String text) => pw.Text(
+    text,
+    style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
+  );
 
   pw.Widget _summaryCard(
-      String title, String value, PdfColor textColor, PdfColor bgColor) {
+    String title,
+    String value,
+    PdfColor textColor,
+    PdfColor bgColor,
+  ) {
     return pw.Expanded(
       child: pw.Container(
         padding: const pw.EdgeInsets.all(10),
@@ -463,17 +566,23 @@ class FinancialReportPDFGenerator {
         child: pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.Text(title,
-                style: pw.TextStyle(
-                    fontSize: 9,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.grey700)),
+            pw.Text(
+              title,
+              style: pw.TextStyle(
+                fontSize: 9,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.grey700,
+              ),
+            ),
             pw.SizedBox(height: 5),
-            pw.Text(value,
-                style: pw.TextStyle(
-                    fontSize: 15,
-                    fontWeight: pw.FontWeight.bold,
-                    color: textColor)),
+            pw.Text(
+              value,
+              style: pw.TextStyle(
+                fontSize: 15,
+                fontWeight: pw.FontWeight.bold,
+                color: textColor,
+              ),
+            ),
           ],
         ),
       ),
@@ -483,10 +592,14 @@ class FinancialReportPDFGenerator {
   pw.Widget _inlineStat(String label, String value) {
     return pw.Column(
       children: [
-        pw.Text(value,
-            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-        pw.Text(label,
-            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+        pw.Text(
+          value,
+          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+        ),
+        pw.Text(
+          label,
+          style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+        ),
       ],
     );
   }
@@ -504,8 +617,10 @@ class FinancialReportPDFGenerator {
         _sectionTitle(title),
         pw.SizedBox(height: 8),
         if (rows.isEmpty)
-          pw.Text(emptyText,
-              style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600))
+          pw.Text(
+            emptyText,
+            style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
+          )
         else
           pw.Table(
             border: pw.TableBorder.all(color: PdfColors.grey300),
@@ -515,13 +630,17 @@ class FinancialReportPDFGenerator {
                 decoration: const pw.BoxDecoration(color: PdfColors.grey200),
                 children: [
                   for (var i = 0; i < headers.length; i++)
-                    _cell(headers[i],
-                        header: true,
-                        align: i == 0
-                            ? pw.TextAlign.left
-                            : (headers[i] == 'Transactions' || headers[i] == 'Qty'
-                                ? pw.TextAlign.center
-                                : pw.TextAlign.right)),
+                    _cell(
+                      headers[i],
+                      header: true,
+                      align:
+                          i == 0
+                              ? pw.TextAlign.left
+                              : (headers[i] == 'Transactions' ||
+                                      headers[i] == 'Qty'
+                                  ? pw.TextAlign.center
+                                  : pw.TextAlign.right),
+                    ),
                 ],
               ),
               ...rows.map((cells) => pw.TableRow(children: cells)),
@@ -531,8 +650,11 @@ class FinancialReportPDFGenerator {
     );
   }
 
-  pw.Widget _cell(String text,
-      {bool header = false, pw.TextAlign align = pw.TextAlign.left}) {
+  pw.Widget _cell(
+    String text, {
+    bool header = false,
+    pw.TextAlign align = pw.TextAlign.left,
+  }) {
     return pw.Padding(
       padding: const pw.EdgeInsets.all(4),
       child: pw.Text(

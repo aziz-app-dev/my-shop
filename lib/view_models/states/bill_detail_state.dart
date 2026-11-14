@@ -29,7 +29,10 @@ class BillDetailState {
       customer: clearCustomer ? null : (customer ?? this.customer),
       isLoading: isLoading ?? this.isLoading,
       printers: printers ?? this.printers,
-      selectedPrinter: clearSelectedPrinter ? null : (selectedPrinter ?? this.selectedPrinter),
+      selectedPrinter:
+          clearSelectedPrinter
+              ? null
+              : (selectedPrinter ?? this.selectedPrinter),
       isPrintingThermal: isPrintingThermal ?? this.isPrintingThermal,
     );
   }

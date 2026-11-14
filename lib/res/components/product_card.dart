@@ -43,7 +43,7 @@
 //                     overflow: TextOverflow.ellipsis,
 //                   ),
 //                   Text(
-//                     'Rs.${product.price.toStringAsFixed(0)}',
+//                     '${CurrencyService.symbol}${product.price.toStringAsFixed(0)}',
 //                     style: TextStyle(fontSize: 12.spMin, color: Colors.green),
 //                   ),
 //                 ],
@@ -81,6 +81,7 @@
 //   }
 // }
 
+import '../../utils/currency_service.dart';
 import 'dart:io';
 import 'package:desktopapp/res/colors/app_color.dart';
 import 'package:desktopapp/res/components/app_text_widgrt.dart';
@@ -331,7 +332,8 @@ class ProductCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         smText(
-                          text: 'Rs.${product.price.toStringAsFixed(0)}',
+                          text:
+                              '${CurrencyService.symbol}${product.price.toStringAsFixed(0)}',
                           color: AppColors.primary,
                         ),
                         product.isService

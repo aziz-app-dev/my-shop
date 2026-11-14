@@ -22,7 +22,8 @@ class AppRoutes {
 
       case RouteName.shoppingListSearchView:
         return MaterialPageRoute(
-            builder: (_) => const ShoppingListSearchView());
+          builder: (_) => const ShoppingListSearchView(),
+        );
 
       // case RouteName.thridScreen:
       //   if (arguments is Map<String, String>) {

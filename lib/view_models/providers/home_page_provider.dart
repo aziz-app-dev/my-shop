@@ -118,16 +118,18 @@ class HomePageNotifier extends StateNotifier<HomePageState> {
 
     // --- Brands/categories that have products, deduped by name ---
     final seenBrandNames = <String>{};
-    final filteredBrands = allBrands
-        .where((b) => brandNamesWithProducts.contains(b.name))
-        .where((b) => seenBrandNames.add(b.name))
-        .toList();
+    final filteredBrands =
+        allBrands
+            .where((b) => brandNamesWithProducts.contains(b.name))
+            .where((b) => seenBrandNames.add(b.name))
+            .toList();
 
     final seenCategoryNames = <String>{};
-    final filteredCategories = allCategories
-        .where((c) => categoryNamesWithProducts.contains(c.name))
-        .where((c) => seenCategoryNames.add(c.name))
-        .toList();
+    final filteredCategories =
+        allCategories
+            .where((c) => categoryNamesWithProducts.contains(c.name))
+            .where((c) => seenCategoryNames.add(c.name))
+            .toList();
 
     return _DerivedSections(
       topSelling: topSelling.take(10).toList(),

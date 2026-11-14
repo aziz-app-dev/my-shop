@@ -49,24 +49,26 @@ class ForecastNotifier extends StateNotifier<ForecastState> {
     for (var i = months - 1; i >= 0; i--) {
       final m = DateTime(now.year, now.month - i, 1);
       final sales = bills
-          .where((b) =>
-              b.dateTime.year == m.year && b.dateTime.month == m.month)
+          .where(
+            (b) => b.dateTime.year == m.year && b.dateTime.month == m.month,
+          )
           .fold<double>(0.0, (s, b) => s + b.totalAfterDiscount);
       final exp = expenses
           .where((e) => e.date.year == m.year && e.date.month == m.month)
           .fold<double>(0.0, (s, e) => s + e.amount);
-      points.add(MonthlyPoint(
-        month: m,
-        label: DateFormat('MMM yyyy').format(m),
-        sales: sales,
-        expenses: exp,
-      ));
+      points.add(
+        MonthlyPoint(
+          month: m,
+          label: DateFormat('MMM yyyy').format(m),
+          sales: sales,
+          expenses: exp,
+        ),
+      );
     }
     return points;
   }
 }
 
-final forecastProvider =
-    StateNotifierProvider<ForecastNotifier, ForecastState>(
+final forecastProvider = StateNotifierProvider<ForecastNotifier, ForecastState>(
   (ref) => ForecastNotifier(),
 );

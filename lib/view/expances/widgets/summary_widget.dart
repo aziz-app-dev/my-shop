@@ -1,3 +1,4 @@
+import '../../../utils/currency_service.dart';
 import 'package:desktopapp/utils/app_sizes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -26,7 +27,8 @@ Widget buildSummarySection(BuildContext context, ExpenseState state) {
               icon: TablerIcons.receipt,
               win11Icon: ImageAssets.win11ProfitReport,
               title: 'This Month',
-              value: 'Rs.${thisMonthTotal.toStringAsFixed(2)}',
+              value:
+                  '${CurrencyService.symbol}${thisMonthTotal.toStringAsFixed(2)}',
               color: AppColors.primary,
             ),
           ),
@@ -47,7 +49,7 @@ Widget buildSummarySection(BuildContext context, ExpenseState state) {
         icon: TablerIcons.calculator,
         win11Icon: ImageAssets.win11Accounting,
         title: 'Average Expense',
-        value: 'Rs.${avgExpense.toStringAsFixed(2)}',
+        value: '${CurrencyService.symbol}${avgExpense.toStringAsFixed(2)}',
         color: Colors.teal,
       ),
     ],
@@ -68,7 +70,7 @@ Widget buildSummaryDesktopSection(BuildContext context, ExpenseState state) {
         icon: TablerIcons.receipt,
         win11Icon: ImageAssets.win11ProfitReport,
         title: 'This Month',
-        value: 'Rs.${thisMonthTotal.toStringAsFixed(2)}',
+        value: '${CurrencyService.symbol}${thisMonthTotal.toStringAsFixed(2)}',
         color: AppColors.primary,
       ),
       _buildSummaryCard(
@@ -84,7 +86,7 @@ Widget buildSummaryDesktopSection(BuildContext context, ExpenseState state) {
         icon: TablerIcons.calculator,
         win11Icon: ImageAssets.win11Accounting,
         title: 'Average Expense',
-        value: 'Rs.${avgExpense.toStringAsFixed(2)}',
+        value: '${CurrencyService.symbol}${avgExpense.toStringAsFixed(2)}',
         color: Colors.teal,
       ),
     ],

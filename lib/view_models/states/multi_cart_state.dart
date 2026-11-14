@@ -63,10 +63,7 @@ class MultiCartState {
   final List<CartSession> carts;
   final String? activeCartId;
 
-  MultiCartState({
-    this.carts = const [],
-    this.activeCartId,
-  });
+  MultiCartState({this.carts = const [], this.activeCartId});
 
   CartSession? get activeCart {
     if (activeCartId == null) return null;
@@ -77,10 +74,7 @@ class MultiCartState {
     }
   }
 
-  MultiCartState copyWith({
-    List<CartSession>? carts,
-    String? activeCartId,
-  }) {
+  MultiCartState copyWith({List<CartSession>? carts, String? activeCartId}) {
     return MultiCartState(
       carts: carts ?? this.carts,
       activeCartId: activeCartId ?? this.activeCartId,

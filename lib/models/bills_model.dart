@@ -49,7 +49,8 @@ class Bill {
   }
 
   /// Returns true if the bill is fully paid
-  bool get isFullyPaid => pendingAmount <= 0.01; // Using small tolerance for floating point
+  bool get isFullyPaid =>
+      pendingAmount <= 0.01; // Using small tolerance for floating point
 
   /// Returns true if this is a partial payment
   bool get isPartialPayment => paidAmount > 0 && pendingAmount > 0.01;
@@ -67,8 +68,7 @@ class Bill {
   bool get hasActiveReminder => dueDate != null && !isFullyPaid;
 
   /// True when the due date has passed and the bill isn't fully paid.
-  bool get isOverdue =>
-      hasActiveReminder && dueDate!.isBefore(DateTime.now());
+  bool get isOverdue => hasActiveReminder && dueDate!.isBefore(DateTime.now());
 
   /// Whole days until the payment is due (negative if overdue). Null when no
   /// reminder is set.
@@ -130,10 +130,8 @@ class Bill {
 
     return Bill(
       id: map['id'] as String? ?? '',
-      dateTime: DateTime.tryParse(
-            map['dateTime'] as String? ?? '',
-          ) ??
-          DateTime.now(),
+      dateTime:
+          DateTime.tryParse(map['dateTime'] as String? ?? '') ?? DateTime.now(),
       items: parsedItems,
       quantities: parsedQuantities,
       totalAmount: (map['totalAmount'] as num?)?.toDouble() ?? 0.0,
@@ -144,8 +142,9 @@ class Bill {
       discount: (map['discount'] as num?)?.toDouble() ?? 0.0,
       paidAmount: (map['paidAmount'] as num?)?.toDouble() ?? 0.0,
       dueDate: DateTime.tryParse(map['dueDate'] as String? ?? ''),
-      reminderNotifiedAt:
-          DateTime.tryParse(map['reminderNotifiedAt'] as String? ?? ''),
+      reminderNotifiedAt: DateTime.tryParse(
+        map['reminderNotifiedAt'] as String? ?? '',
+      ),
     );
   }
 
@@ -179,9 +178,10 @@ class Bill {
       discount: discount ?? this.discount,
       paidAmount: paidAmount ?? this.paidAmount,
       dueDate: clearDueDate ? null : (dueDate ?? this.dueDate),
-      reminderNotifiedAt: clearReminderNotifiedAt
-          ? null
-          : (reminderNotifiedAt ?? this.reminderNotifiedAt),
+      reminderNotifiedAt:
+          clearReminderNotifiedAt
+              ? null
+              : (reminderNotifiedAt ?? this.reminderNotifiedAt),
     );
   }
 }

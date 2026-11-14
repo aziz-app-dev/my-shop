@@ -54,7 +54,7 @@
 //                                 mdTextBold(text: 'SubTotal'),
 //                                 mdTextBold(
 //                                   text:
-//                                       'Rs.${salesState.totalAmount.toStringAsFixed(0)}',
+//                                       '${CurrencyService.symbol}${salesState.totalAmount.toStringAsFixed(0)}',
 //                                 ),
 //                               ],
 //                             ),
@@ -248,6 +248,7 @@
 //   }
 // }
 
+import '../../../utils/currency_service.dart';
 import 'package:desktopapp/res/colors/app_color.dart';
 import 'package:desktopapp/res/components/app_button.dart';
 import 'package:desktopapp/res/components/app_text_widgrt.dart';
@@ -328,7 +329,7 @@ Widget buildCartSection(
                                       mdTextBold(text: 'Total'),
                                       mdTextBold(
                                         text:
-                                            'Rs.${(salesState.totalAmount - salesState.discount).toStringAsFixed(0)}',
+                                            '${CurrencyService.symbol}${(salesState.totalAmount - salesState.discount).toStringAsFixed(0)}',
                                       ),
                                     ],
                                   ),

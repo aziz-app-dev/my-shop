@@ -1,3 +1,5 @@
+import 'currency_service.dart';
+
 /// Utility class for consistent payment calculations across the app
 class PaymentCalculator {
   PaymentCalculator._();
@@ -60,10 +62,10 @@ class PaymentCalculator {
     required double paidAmount,
   }) {
     return isFullyPaid(
-      totalAmount: totalAmount,
-      discount: discount,
-      paidAmount: paidAmount,
-    )
+          totalAmount: totalAmount,
+          discount: discount,
+          paidAmount: paidAmount,
+        )
         ? 'Paid'
         : 'Pending';
   }
@@ -131,14 +133,15 @@ class PaymentCalculator {
     return PaymentValidationResult(isValid: true);
   }
 
-  /// Formats amount to display string with currency symbol
-  static String formatAmount(double amount, {String symbol = 'Rs.'}) {
-    return '$symbol${amount.toStringAsFixed(2)}';
+  /// Formats amount to display string with the configured currency symbol
+  /// (Settings → General Settings → Currency).
+  static String formatAmount(double amount, {String? symbol}) {
+    return '${symbol ?? CurrencyService.symbol}${amount.toStringAsFixed(2)}';
   }
 
   /// Formats amount for display without decimal places
-  static String formatAmountSimple(double amount, {String symbol = 'Rs.'}) {
-    return '$symbol${amount.toStringAsFixed(0)}';
+  static String formatAmountSimple(double amount, {String? symbol}) {
+    return '${symbol ?? CurrencyService.symbol}${amount.toStringAsFixed(0)}';
   }
 }
 
@@ -147,8 +150,5 @@ class PaymentValidationResult {
   final bool isValid;
   final String? errorMessage;
 
-  PaymentValidationResult({
-    required this.isValid,
-    this.errorMessage,
-  });
+  PaymentValidationResult({required this.isValid, this.errorMessage});
 }

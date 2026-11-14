@@ -1,3 +1,4 @@
+import '../../../utils/currency_service.dart';
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -30,7 +31,10 @@ class ThermalReceiptPrinter {
   }
 
   /// Print the receipt to the selected printer
-  Future<void> printThermal(PrinterDevice? printer, VoidCallback onComplete) async {
+  Future<void> printThermal(
+    PrinterDevice? printer,
+    VoidCallback onComplete,
+  ) async {
     if (printer == null) {
       debugPrint('No printer selected');
       onComplete();
@@ -137,9 +141,21 @@ class ThermalReceiptPrinter {
     // Items header with Price column
     bytes += generator.row([
       PosColumn(text: 'Item', width: 4, styles: const PosStyles(bold: true)),
-      PosColumn(text: 'Price', width: 2, styles: const PosStyles(bold: true, align: PosAlign.right)),
-      PosColumn(text: 'Qty', width: 2, styles: const PosStyles(bold: true, align: PosAlign.right)),
-      PosColumn(text: 'Total', width: 4, styles: const PosStyles(bold: true, align: PosAlign.right)),
+      PosColumn(
+        text: 'Price',
+        width: 2,
+        styles: const PosStyles(bold: true, align: PosAlign.right),
+      ),
+      PosColumn(
+        text: 'Qty',
+        width: 2,
+        styles: const PosStyles(bold: true, align: PosAlign.right),
+      ),
+      PosColumn(
+        text: 'Total',
+        width: 4,
+        styles: const PosStyles(bold: true, align: PosAlign.right),
+      ),
     ]);
     bytes += generator.hr(ch: '-');
 
@@ -148,10 +164,25 @@ class ThermalReceiptPrinter {
       final qty = bill.quantities[item.id] ?? 1;
       final total = item.price * qty;
       bytes += generator.row([
-        PosColumn(text: item.name.length > 10 ? item.name.substring(0, 10) : item.name, width: 4),
-        PosColumn(text: 'Rs.${item.price.toStringAsFixed(2)}', width: 2, styles: const PosStyles(align: PosAlign.right)),
-        PosColumn(text: qty.toString(), width: 2, styles: const PosStyles(align: PosAlign.right)),
-        PosColumn(text: 'Rs.${total.toStringAsFixed(2)}', width: 4, styles: const PosStyles(align: PosAlign.right)),
+        PosColumn(
+          text: item.name.length > 10 ? item.name.substring(0, 10) : item.name,
+          width: 4,
+        ),
+        PosColumn(
+          text: '${CurrencyService.symbol}${item.price.toStringAsFixed(2)}',
+          width: 2,
+          styles: const PosStyles(align: PosAlign.right),
+        ),
+        PosColumn(
+          text: qty.toString(),
+          width: 2,
+          styles: const PosStyles(align: PosAlign.right),
+        ),
+        PosColumn(
+          text: '${CurrencyService.symbol}${total.toStringAsFixed(2)}',
+          width: 4,
+          styles: const PosStyles(align: PosAlign.right),
+        ),
       ]);
     }
 
@@ -159,23 +190,48 @@ class ThermalReceiptPrinter {
 
     // Subtotal
     bytes += generator.row([
-      PosColumn(text: 'Subtotal:', width: 8, styles: const PosStyles(bold: true)),
-      PosColumn(text: 'Rs.${bill.totalAmount.toStringAsFixed(2)}', width: 4, styles: const PosStyles(align: PosAlign.right, bold: true)),
+      PosColumn(
+        text: 'Subtotal:',
+        width: 8,
+        styles: const PosStyles(bold: true),
+      ),
+      PosColumn(
+        text: '${CurrencyService.symbol}${bill.totalAmount.toStringAsFixed(2)}',
+        width: 4,
+        styles: const PosStyles(align: PosAlign.right, bold: true),
+      ),
     ]);
 
     // Discount
     if (bill.discount > 0) {
       bytes += generator.row([
         PosColumn(text: 'Discount:', width: 8),
-        PosColumn(text: '-Rs.${bill.discount.toStringAsFixed(2)}', width: 4, styles: const PosStyles(align: PosAlign.right)),
+        PosColumn(
+          text: '-${CurrencyService.symbol}${bill.discount.toStringAsFixed(2)}',
+          width: 4,
+          styles: const PosStyles(align: PosAlign.right),
+        ),
       ]);
     }
 
     // Total
     final totalAfterDiscount = bill.totalAmount - bill.discount;
     bytes += generator.row([
-      PosColumn(text: 'TOTAL:', width: 8, styles: const PosStyles(bold: true, height: PosTextSize.size2)),
-      PosColumn(text: 'Rs.${totalAfterDiscount.toStringAsFixed(2)}', width: 4, styles: const PosStyles(align: PosAlign.right, bold: true, height: PosTextSize.size2)),
+      PosColumn(
+        text: 'TOTAL:',
+        width: 8,
+        styles: const PosStyles(bold: true, height: PosTextSize.size2),
+      ),
+      PosColumn(
+        text:
+            '${CurrencyService.symbol}${totalAfterDiscount.toStringAsFixed(2)}',
+        width: 4,
+        styles: const PosStyles(
+          align: PosAlign.right,
+          bold: true,
+          height: PosTextSize.size2,
+        ),
+      ),
     ]);
 
     bytes += generator.hr();
@@ -184,15 +240,28 @@ class ThermalReceiptPrinter {
     if (bill.paidAmount > 0) {
       bytes += generator.row([
         PosColumn(text: 'Paid:', width: 8),
-        PosColumn(text: 'Rs.${bill.paidAmount.toStringAsFixed(2)}', width: 4, styles: const PosStyles(align: PosAlign.right)),
+        PosColumn(
+          text:
+              '${CurrencyService.symbol}${bill.paidAmount.toStringAsFixed(2)}',
+          width: 4,
+          styles: const PosStyles(align: PosAlign.right),
+        ),
       ]);
     }
 
     final pendingAmount = totalAfterDiscount - bill.paidAmount;
     if (pendingAmount > 0) {
       bytes += generator.row([
-        PosColumn(text: 'Balance Due:', width: 8, styles: const PosStyles(bold: true)),
-        PosColumn(text: 'Rs.${pendingAmount.toStringAsFixed(2)}', width: 4, styles: const PosStyles(align: PosAlign.right, bold: true)),
+        PosColumn(
+          text: 'Balance Due:',
+          width: 8,
+          styles: const PosStyles(bold: true),
+        ),
+        PosColumn(
+          text: '${CurrencyService.symbol}${pendingAmount.toStringAsFixed(2)}',
+          width: 4,
+          styles: const PosStyles(align: PosAlign.right, bold: true),
+        ),
       ]);
     }
 
@@ -274,8 +343,16 @@ class ThermalReceiptPrinter {
     // Items header
     bytes += generator.row([
       PosColumn(text: 'Item', width: 6, styles: const PosStyles(bold: true)),
-      PosColumn(text: 'Qty', width: 2, styles: const PosStyles(bold: true, align: PosAlign.right)),
-      PosColumn(text: 'Total', width: 4, styles: const PosStyles(bold: true, align: PosAlign.right)),
+      PosColumn(
+        text: 'Qty',
+        width: 2,
+        styles: const PosStyles(bold: true, align: PosAlign.right),
+      ),
+      PosColumn(
+        text: 'Total',
+        width: 4,
+        styles: const PosStyles(bold: true, align: PosAlign.right),
+      ),
     ]);
     bytes += generator.hr(ch: '-');
 
@@ -284,9 +361,20 @@ class ThermalReceiptPrinter {
       final qty = bill.quantities[item.id] ?? 1;
       final total = item.price * qty;
       bytes += generator.row([
-        PosColumn(text: item.name.length > 14 ? item.name.substring(0, 14) : item.name, width: 6),
-        PosColumn(text: qty.toString(), width: 2, styles: const PosStyles(align: PosAlign.right)),
-        PosColumn(text: 'Rs.${total.toStringAsFixed(2)}', width: 4, styles: const PosStyles(align: PosAlign.right)),
+        PosColumn(
+          text: item.name.length > 14 ? item.name.substring(0, 14) : item.name,
+          width: 6,
+        ),
+        PosColumn(
+          text: qty.toString(),
+          width: 2,
+          styles: const PosStyles(align: PosAlign.right),
+        ),
+        PosColumn(
+          text: '${CurrencyService.symbol}${total.toStringAsFixed(2)}',
+          width: 4,
+          styles: const PosStyles(align: PosAlign.right),
+        ),
       ]);
     }
 
@@ -297,13 +385,30 @@ class ThermalReceiptPrinter {
     if (bill.discount > 0) {
       bytes += generator.row([
         PosColumn(text: 'Discount:', width: 8),
-        PosColumn(text: '-Rs.${bill.discount.toStringAsFixed(2)}', width: 4, styles: const PosStyles(align: PosAlign.right)),
+        PosColumn(
+          text: '-${CurrencyService.symbol}${bill.discount.toStringAsFixed(2)}',
+          width: 4,
+          styles: const PosStyles(align: PosAlign.right),
+        ),
       ]);
     }
 
     bytes += generator.row([
-      PosColumn(text: 'TOTAL:', width: 8, styles: const PosStyles(bold: true, height: PosTextSize.size2)),
-      PosColumn(text: 'Rs.${totalAfterDiscount.toStringAsFixed(2)}', width: 4, styles: const PosStyles(align: PosAlign.right, bold: true, height: PosTextSize.size2)),
+      PosColumn(
+        text: 'TOTAL:',
+        width: 8,
+        styles: const PosStyles(bold: true, height: PosTextSize.size2),
+      ),
+      PosColumn(
+        text:
+            '${CurrencyService.symbol}${totalAfterDiscount.toStringAsFixed(2)}',
+        width: 4,
+        styles: const PosStyles(
+          align: PosAlign.right,
+          bold: true,
+          height: PosTextSize.size2,
+        ),
+      ),
     ]);
 
     // Status

@@ -1,16 +1,10 @@
 class CustomerDetailsState {
   final bool isEditing;
 
-  const CustomerDetailsState({
-    this.isEditing = false,
-  });
+  const CustomerDetailsState({this.isEditing = false});
 
-  CustomerDetailsState copyWith({
-    bool? isEditing,
-  }) {
-    return CustomerDetailsState(
-      isEditing: isEditing ?? this.isEditing,
-    );
+  CustomerDetailsState copyWith({bool? isEditing}) {
+    return CustomerDetailsState(isEditing: isEditing ?? this.isEditing);
   }
 
   @override

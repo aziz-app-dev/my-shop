@@ -83,9 +83,7 @@ class _AppCachedImageState extends State<AppCachedImage> {
           width: widget.width,
           height: widget.height,
           color: Colors.grey[200],
-          child: const Center(
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
+          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
         );
   }
 
@@ -105,10 +103,7 @@ class _AppCachedImageState extends State<AppCachedImage> {
 
   Widget _buildImage(Widget image) {
     if (widget.borderRadius != null) {
-      return ClipRRect(
-        borderRadius: widget.borderRadius!,
-        child: image,
-      );
+      return ClipRRect(borderRadius: widget.borderRadius!, child: image);
     }
     return image;
   }
@@ -186,8 +181,8 @@ class _AppCachedImageState extends State<AppCachedImage> {
                 height: widget.height,
                 fit: widget.fit,
                 cacheWidth: cacheWidth,
-                errorBuilder: (context, error, stackTrace) =>
-                    _buildErrorWidget(),
+                errorBuilder:
+                    (context, error, stackTrace) => _buildErrorWidget(),
               );
             }
           }
@@ -244,16 +239,13 @@ class CachedCircleAvatar extends StatelessWidget {
         height: radius * 2,
         fit: BoxFit.cover,
         placeholder: placeholder,
-        errorWidget: errorWidget ??
+        errorWidget:
+            errorWidget ??
             Container(
               width: radius * 2,
               height: radius * 2,
               color: Colors.grey[300],
-              child: Icon(
-                Icons.person,
-                size: radius,
-                color: Colors.grey[600],
-              ),
+              child: Icon(Icons.person, size: radius, color: Colors.grey[600]),
             ),
         folder: folder,
       ),

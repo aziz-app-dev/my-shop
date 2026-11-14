@@ -1,3 +1,4 @@
+import '../../../utils/currency_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
@@ -46,13 +47,13 @@ class RepairSummaryCards extends StatelessWidget {
         icon: TablerIcons.cash,
         win11Icon: ImageAssets.win11DollarBag,
         title: 'Balance Due',
-        value: 'Rs ${state.totalPendingBalance.toStringAsFixed(0)}',
+        value:
+            '${CurrencyService.symbol}${state.totalPendingBalance.toStringAsFixed(0)}',
         color: AppColors.primary,
       ),
     ];
 
-    final twoColumn =
-        AppSizes.isTablet(context) || AppSizes.isDesktop(context);
+    final twoColumn = AppSizes.isTablet(context) || AppSizes.isDesktop(context);
 
     if (twoColumn) {
       // All four in one row on tablet / desktop.

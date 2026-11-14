@@ -84,8 +84,6 @@ class AppColors {
   static const Color overlayDark = Color(0x80000000); // 50% black
 }
 
-
-
 // (Theme.of(context).brightness ==
 //                                           Brightness.dark
 //                                       ? AppColors.grey300

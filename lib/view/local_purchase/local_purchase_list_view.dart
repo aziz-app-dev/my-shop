@@ -1,3 +1,4 @@
+import '../../utils/currency_service.dart';
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -328,7 +329,7 @@ class _LocalPurchaseListViewState extends ConsumerState<LocalPurchaseListView> {
                             borderRadius: BorderRadius.circular(6.r),
                           ),
                           child: Text(
-                            'Rs.${agreement.totalAmount.toStringAsFixed(0)}',
+                            '${CurrencyService.symbol}${agreement.totalAmount.toStringAsFixed(0)}',
                             style: TextStyle(
                               fontSize: 12.spMin,
                               fontWeight: FontWeight.bold,
@@ -555,7 +556,7 @@ class _LocalPurchaseListViewState extends ConsumerState<LocalPurchaseListView> {
                       DataCell(
                         TableDataCellText(
                           text:
-                              'Rs.${agreement.totalAmount.toStringAsFixed(0)}',
+                              '${CurrencyService.symbol}${agreement.totalAmount.toStringAsFixed(0)}',
                           color: AppColors.primary,
                         ),
                       ),

@@ -19,7 +19,8 @@ class ProductSearchState {
     return ProductSearchState(
       searchQuery: searchQuery ?? this.searchQuery,
       selectedBrand: clearBrand ? null : (selectedBrand ?? this.selectedBrand),
-      selectedCategory: clearCategory ? null : (selectedCategory ?? this.selectedCategory),
+      selectedCategory:
+          clearCategory ? null : (selectedCategory ?? this.selectedCategory),
     );
   }
 

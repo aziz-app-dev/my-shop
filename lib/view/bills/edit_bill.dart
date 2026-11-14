@@ -1,5 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 
+import '../../utils/currency_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:data_table_2/data_table_2.dart';
@@ -571,7 +572,7 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
     return CustomTextField(
       controller: discountController,
       hintText:
-          '${customerFormState.fieldConfigs['discount']!.hintText} (max: Rs.${totalAmount.toStringAsFixed(0)})',
+          '${customerFormState.fieldConfigs['discount']!.hintText} (max: ${CurrencyService.symbol}${totalAmount.toStringAsFixed(0)})',
       label: customerFormState.fieldConfigs['discount']!.title,
       keyboardType: TextInputType.number,
       filled: true,
@@ -595,7 +596,7 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
             return 'Enter a valid number';
           }
           if (amt > totalAmount) {
-            return 'Cannot exceed total: Rs.${totalAmount.toStringAsFixed(0)}';
+            return 'Cannot exceed total: ${CurrencyService.symbol}${totalAmount.toStringAsFixed(0)}';
           }
           if (amt < 0) {
             return 'Discount cannot be negative';
@@ -642,7 +643,7 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
         CustomTextField(
           controller: paidAmountController,
           hintText:
-              '${customerFormState.fieldConfigs['paidAmount']!.hintText} (max: Rs.${totalAfterDiscount.toStringAsFixed(0)})',
+              '${customerFormState.fieldConfigs['paidAmount']!.hintText} (max: ${CurrencyService.symbol}${totalAfterDiscount.toStringAsFixed(0)})',
           label: customerFormState.fieldConfigs['paidAmount']!.title,
           keyboardType: TextInputType.number,
           filled: true,
@@ -668,7 +669,7 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
                 return 'Enter a valid number';
               }
               if (amt > totalAfterDiscount) {
-                return 'Cannot exceed total: Rs.${totalAfterDiscount.toStringAsFixed(0)}';
+                return 'Cannot exceed total: ${CurrencyService.symbol}${totalAfterDiscount.toStringAsFixed(0)}';
               }
               if (amt < 0) {
                 return 'Amount cannot be negative';
@@ -689,7 +690,8 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
           children: [
             mdText(text: 'Pending Amount:', color: Colors.grey),
             mdText(
-              text: 'Rs.${pendingAmount.toStringAsFixed(0)}',
+              text:
+                  '${CurrencyService.symbol}${pendingAmount.toStringAsFixed(0)}',
               color: pendingAmount > 0 ? Colors.red : Colors.green,
             ),
           ],
@@ -913,10 +915,16 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
                             ),
                           ),
                           DataCell(
-                            smText(text: 'Rs.${item.price.toStringAsFixed(2)}'),
+                            smText(
+                              text:
+                                  '${CurrencyService.symbol}${item.price.toStringAsFixed(2)}',
+                            ),
                           ),
                           DataCell(
-                            smText(text: 'Rs.${itemTotal.toStringAsFixed(2)}'),
+                            smText(
+                              text:
+                                  '${CurrencyService.symbol}${itemTotal.toStringAsFixed(2)}',
+                            ),
                           ),
                           DataCell(
                             IconButton(

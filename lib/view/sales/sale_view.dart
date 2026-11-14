@@ -1,5 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 
+import '../../utils/currency_service.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:desktopapp/res/colors/app_color.dart';
@@ -820,7 +821,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                             ],
                           ),
                           label: Text(
-                            'Rs.${(salesState.totalAmount - salesState.discount).toStringAsFixed(0)}',
+                            '${CurrencyService.symbol}${(salesState.totalAmount - salesState.discount).toStringAsFixed(0)}',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 14.spMin,

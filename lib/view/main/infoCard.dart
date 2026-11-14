@@ -17,11 +17,10 @@ import 'screens.dart';
 /// is resolved by label so a nav reorder never breaks the jump.
 void _goToCustomers(WidgetRef ref) {
   WidgetsBinding.instance.addPostFrameCallback((_) {
-    ref.read(selectedIndexProvider.notifier).state =
-        navIndexForLabel(
-          'Customers',
-          showRepairs: ref.read(settingsProvider).showRepairsModule,
-        );
+    ref.read(selectedIndexProvider.notifier).state = navIndexForLabel(
+      'Customers',
+      showRepairs: ref.read(settingsProvider).showRepairsModule,
+    );
   });
 }
 

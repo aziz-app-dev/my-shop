@@ -44,7 +44,10 @@ class SalesState {
       discount: discount ?? this.discount,
       paidAmount: paidAmount ?? this.paidAmount,
       printers: printers ?? this.printers,
-      selectedPrinter: clearSelectedPrinter ? null : (selectedPrinter ?? this.selectedPrinter),
+      selectedPrinter:
+          clearSelectedPrinter
+              ? null
+              : (selectedPrinter ?? this.selectedPrinter),
       isPrintingThermal: isPrintingThermal ?? this.isPrintingThermal,
     );
   }

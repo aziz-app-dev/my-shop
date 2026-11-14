@@ -1,3 +1,4 @@
+import '../../../utils/currency_service.dart';
 import 'package:desktopapp/res/colors/app_color.dart';
 import 'package:desktopapp/res/components/app_icon.dart';
 import 'package:flutter/material.dart';
@@ -197,7 +198,8 @@ class DataTableWidget extends ConsumerWidget {
                           SizedBox(width: 8.w),
                           // Status
                           smTextBold(
-                            text: 'Rs.${bill.totalAmount.toStringAsFixed(2)}',
+                            text:
+                                '${CurrencyService.symbol}${bill.totalAmount.toStringAsFixed(2)}',
                             color: AppColors.primary,
                           ),
                         ],
@@ -484,7 +486,8 @@ class DataTableWidget extends ConsumerWidget {
                     DataCell(TableDataCellText(text: '${bill.items.length}')),
                     DataCell(
                       TableDataCellText(
-                        text: 'Rs.${bill.totalAmount.toStringAsFixed(2)}',
+                        text:
+                            '${CurrencyService.symbol}${bill.totalAmount.toStringAsFixed(2)}',
                         color: Colors.green.shade700,
                       ),
                     ),

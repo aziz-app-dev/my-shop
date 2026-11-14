@@ -1,5 +1,6 @@
 // ignore_for_file: deprecated_member_use
 
+import '../../../utils/currency_service.dart';
 import 'package:desktopapp/res/components/app_text_widgrt.dart';
 import 'package:desktopapp/utils/app_sizes.dart';
 import 'package:flutter/material.dart';
@@ -382,7 +383,7 @@ class ExpenseDialogs {
             ),
             title: const Text('Delete Expense'),
             content: Text(
-              'Delete expense of Rs.${expense.amount.toStringAsFixed(2)}?',
+              'Delete expense of ${CurrencyService.symbol}${expense.amount.toStringAsFixed(2)}?',
             ),
             actions: [
               AppButton().primaryButton(

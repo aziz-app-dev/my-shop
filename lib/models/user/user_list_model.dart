@@ -4,9 +4,7 @@ class UserListModel {
   UserListModel({this.data});
 
   factory UserListModel.fromJson(List<dynamic> json) {
-    return UserListModel(
-      data: json.map((e) => User.fromJson(e)).toList(),
-    );
+    return UserListModel(data: json.map((e) => User.fromJson(e)).toList());
   }
 }
 
@@ -52,13 +50,7 @@ class Address {
   String? zipcode;
   Geo? geo;
 
-  Address({
-    this.street,
-    this.suite,
-    this.city,
-    this.zipcode,
-    this.geo,
-  });
+  Address({this.street, this.suite, this.city, this.zipcode, this.geo});
 
   factory Address.fromJson(Map<String, dynamic> json) {
     return Address(
@@ -75,16 +67,10 @@ class Geo {
   String? lat;
   String? lng;
 
-  Geo({
-    this.lat,
-    this.lng,
-  });
+  Geo({this.lat, this.lng});
 
   factory Geo.fromJson(Map<String, dynamic> json) {
-    return Geo(
-      lat: json['lat'],
-      lng: json['lng'],
-    );
+    return Geo(lat: json['lat'], lng: json['lng']);
   }
 }
 
@@ -93,11 +79,7 @@ class Company {
   String? catchPhrase;
   String? bs;
 
-  Company({
-    this.name,
-    this.catchPhrase,
-    this.bs,
-  });
+  Company({this.name, this.catchPhrase, this.bs});
 
   factory Company.fromJson(Map<String, dynamic> json) {
     return Company(

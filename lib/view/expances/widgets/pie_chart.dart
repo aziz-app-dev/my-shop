@@ -1,3 +1,4 @@
+import '../../../utils/currency_service.dart';
 import 'package:desktopapp/utils/app_sizes.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -71,7 +72,7 @@ Widget buildPieChartSection(ExpenseState state, bool isDark, WidgetRef ref) {
           children: [
             buildMonthSelector(ref, expenseState),
             mdTextBold(
-              text: 'Rs.${total.toStringAsFixed(2)}',
+              text: '${CurrencyService.symbol}${total.toStringAsFixed(2)}',
               color: AppColors.primary,
             ),
           ],
@@ -186,7 +187,7 @@ List<Widget> _buildLegend(Map<String, double> expensesByCategory) {
           ),
           SizedBox(width: 6.w),
           Expanded(child: smText(text: category, maxLines: 1)),
-          smText(text: 'Rs.${amount.toStringAsFixed(0)}'),
+          smText(text: '${CurrencyService.symbol}${amount.toStringAsFixed(0)}'),
         ],
       ),
     );

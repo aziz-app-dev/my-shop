@@ -1,3 +1,4 @@
+import '../../utils/currency_service.dart';
 import 'package:desktopapp/res/colors/app_color.dart';
 import 'package:desktopapp/res/components/app_button.dart';
 import 'package:desktopapp/res/components/app_text_widgrt.dart';
@@ -167,7 +168,7 @@ class MobileMultiCartPage extends ConsumerWidget {
                               mdText(text: 'Subtotal'),
                               mdText(
                                 text:
-                                    'Rs.${currentCart.totalAmount.toStringAsFixed(2)}',
+                                    '${CurrencyService.symbol}${currentCart.totalAmount.toStringAsFixed(2)}',
                               ),
                             ],
                           ),
@@ -179,7 +180,7 @@ class MobileMultiCartPage extends ConsumerWidget {
                                 mdText(text: 'Discount'),
                                 mdText(
                                   text:
-                                      '-Rs.${currentCart.discount.toStringAsFixed(2)}',
+                                      '-${CurrencyService.symbol}${currentCart.discount.toStringAsFixed(2)}',
                                   color: Colors.red,
                                 ),
                               ],
@@ -193,7 +194,7 @@ class MobileMultiCartPage extends ConsumerWidget {
                               lgTextBold(text: 'Total'),
                               lgTextBold(
                                 text:
-                                    'Rs.${(currentCart.totalAmount - currentCart.discount).toStringAsFixed(2)}',
+                                    '${CurrencyService.symbol}${(currentCart.totalAmount - currentCart.discount).toStringAsFixed(2)}',
                                 color: AppColors.primary,
                               ),
                             ],

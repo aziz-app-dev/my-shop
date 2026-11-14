@@ -1,3 +1,4 @@
+import '../../../utils/currency_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,7 +36,11 @@ class ForecastCard extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Icon(TablerIcons.chart_dots, size: 20.spMin, color: AppColors.primary),
+              Icon(
+                TablerIcons.chart_dots,
+                size: 20.spMin,
+                color: AppColors.primary,
+              ),
               SizedBox(width: 8.spMin),
               Text(
                 'AI Finance Forecast',
@@ -268,7 +273,10 @@ class ForecastCard extends ConsumerWidget {
     ForecastResult result,
   ) async {
     final dashboard = ref.read(dashboardProvider);
-    AppFlushbar.success(context, message: 'Generating report with AI insights…');
+    AppFlushbar.success(
+      context,
+      message: 'Generating report with AI insights…',
+    );
     try {
       await FinancialReportService.buildSaveOpen(
         ref: ref,
@@ -309,16 +317,17 @@ class _ForecastChart extends StatelessWidget {
 
     final h = history.length;
 
-    List<FlSpot> actual(double Function(MonthlyPoint) sel) =>
-        [for (var i = 0; i < h; i++) FlSpot(i.toDouble(), sel(history[i]))];
+    List<FlSpot> actual(double Function(MonthlyPoint) sel) => [
+      for (var i = 0; i < h; i++) FlSpot(i.toDouble(), sel(history[i])),
+    ];
 
     // Forecast segment begins at the last actual point so the dashed line
     // visually continues the solid one.
     List<FlSpot> projected(double Function(MonthlyPoint) sel) => [
-          if (h > 0) FlSpot((h - 1).toDouble(), sel(history[h - 1])),
-          for (var i = 0; i < forecast.length; i++)
-            FlSpot((h + i).toDouble(), sel(forecast[i])),
-        ];
+      if (h > 0) FlSpot((h - 1).toDouble(), sel(history[h - 1])),
+      for (var i = 0; i < forecast.length; i++)
+        FlSpot((h + i).toDouble(), sel(forecast[i])),
+    ];
 
     double maxY = 0;
     for (final p in all) {
@@ -342,13 +351,13 @@ class _ForecastChart extends StatelessWidget {
         dashArray: dashed ? [6, 4] : null,
         dotData: FlDotData(
           show: true,
-          getDotPainter: (spot, percent, barData, index) =>
-              FlDotCirclePainter(
-            radius: 2.5,
-            color: color,
-            strokeWidth: 1,
-            strokeColor: Colors.white,
-          ),
+          getDotPainter:
+              (spot, percent, barData, index) => FlDotCirclePainter(
+                radius: 2.5,
+                color: color,
+                strokeWidth: 1,
+                strokeColor: Colors.white,
+              ),
         ),
         belowBarData: BarAreaData(show: false),
       );
@@ -362,11 +371,12 @@ class _ForecastChart extends StatelessWidget {
           show: true,
           drawVerticalLine: false,
           horizontalInterval: maxY / 4,
-          getDrawingHorizontalLine: (v) => FlLine(
-            color: isDark ? AppColors.grey700 : AppColors.grey300,
-            strokeWidth: 1,
-            dashArray: [5, 5],
-          ),
+          getDrawingHorizontalLine:
+              (v) => FlLine(
+                color: isDark ? AppColors.grey700 : AppColors.grey300,
+                strokeWidth: 1,
+                dashArray: [5, 5],
+              ),
         ),
         titlesData: FlTitlesData(
           leftTitles: AxisTitles(
@@ -399,18 +409,19 @@ class _ForecastChart extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 8.spMin,
                       color: i >= h ? AppColors.primary : Colors.grey,
-                      fontWeight:
-                          i >= h ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: i >= h ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
                 );
               },
             ),
           ),
-          topTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
         ),
         borderData: FlBorderData(show: false),
         lineBarsData: [
@@ -421,19 +432,23 @@ class _ForecastChart extends StatelessWidget {
         ],
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
-            getTooltipColor: (spot) => isDark ? AppColors.grey700 : Colors.white,
-            getTooltipItems: (spots) => spots.map((s) {
-              final i = s.x.toInt();
-              final label = (i >= 0 && i < all.length) ? all[i].label : '';
-              return LineTooltipItem(
-                '$label\nRs.${s.y.toStringAsFixed(0)}',
-                TextStyle(
-                  color: isDark ? Colors.white : Colors.black,
-                  fontSize: 11.spMin,
-                  fontWeight: FontWeight.bold,
-                ),
-              );
-            }).toList(),
+            getTooltipColor:
+                (spot) => isDark ? AppColors.grey700 : Colors.white,
+            getTooltipItems:
+                (spots) =>
+                    spots.map((s) {
+                      final i = s.x.toInt();
+                      final label =
+                          (i >= 0 && i < all.length) ? all[i].label : '';
+                      return LineTooltipItem(
+                        '$label\n${CurrencyService.symbol}${s.y.toStringAsFixed(0)}',
+                        TextStyle(
+                          color: isDark ? Colors.white : Colors.black,
+                          fontSize: 11.spMin,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
+                    }).toList(),
           ),
         ),
       ),

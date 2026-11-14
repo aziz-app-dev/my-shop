@@ -33,8 +33,7 @@ class ForecastResult {
   });
 
   /// Projected total sales across the forecast horizon.
-  double get projectedSales =>
-      forecast.fold(0.0, (sum, p) => sum + p.sales);
+  double get projectedSales => forecast.fold(0.0, (sum, p) => sum + p.sales);
 
   /// Projected total net profit across the forecast horizon.
   double get projectedNetProfit =>

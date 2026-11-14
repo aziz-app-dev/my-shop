@@ -4,7 +4,9 @@ import '../../models/repair_model.dart';
 import '../services/database/database_services.dart';
 import '../states/repair_state.dart';
 
-final repairProvider = StateNotifierProvider<RepairNotifier, RepairState>((ref) {
+final repairProvider = StateNotifierProvider<RepairNotifier, RepairState>((
+  ref,
+) {
   return RepairNotifier();
 });
 

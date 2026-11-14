@@ -1,3 +1,4 @@
+import '../../../utils/currency_service.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -30,14 +31,15 @@ class ExpensePDFGenerator {
         margin: const pw.EdgeInsets.all(40),
         header: (context) => _buildHeader(),
         footer: (context) => _buildFooter(context),
-        build: (context) => [
-          pw.SizedBox(height: 20),
-          _buildSummarySection(),
-          pw.SizedBox(height: 20),
-          _buildCategoryBreakdown(),
-          pw.SizedBox(height: 20),
-          _buildExpenseTable(),
-        ],
+        build:
+            (context) => [
+              pw.SizedBox(height: 20),
+              _buildSummarySection(),
+              pw.SizedBox(height: 20),
+              _buildCategoryBreakdown(),
+              pw.SizedBox(height: 20),
+              _buildExpenseTable(),
+            ],
       ),
     );
 
@@ -120,7 +122,8 @@ class ExpensePDFGenerator {
   }
 
   pw.Widget _buildSummarySection() {
-    final avgExpense = expenses.isNotEmpty ? totalAmount / expenses.length : 0.0;
+    final avgExpense =
+        expenses.isNotEmpty ? totalAmount / expenses.length : 0.0;
 
     return pw.Container(
       padding: const pw.EdgeInsets.all(16),
@@ -132,9 +135,21 @@ class ExpensePDFGenerator {
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
         children: [
-          _buildSummaryItem('Total Expenses', 'Rs.${totalAmount.toStringAsFixed(2)}', PdfColors.blue800),
-          _buildSummaryItem('Transactions', expenses.length.toString(), PdfColors.orange800),
-          _buildSummaryItem('Average', 'Rs.${avgExpense.toStringAsFixed(2)}', PdfColors.green800),
+          _buildSummaryItem(
+            'Total Expenses',
+            '${CurrencyService.symbol}${totalAmount.toStringAsFixed(2)}',
+            PdfColors.blue800,
+          ),
+          _buildSummaryItem(
+            'Transactions',
+            expenses.length.toString(),
+            PdfColors.orange800,
+          ),
+          _buildSummaryItem(
+            'Average',
+            '${CurrencyService.symbol}${avgExpense.toStringAsFixed(2)}',
+            PdfColors.green800,
+          ),
         ],
       ),
     );
@@ -165,18 +180,16 @@ class ExpensePDFGenerator {
       return pw.SizedBox();
     }
 
-    final sortedCategories = expensesByCategory.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final sortedCategories =
+        expensesByCategory.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
 
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
         pw.Text(
           'Category Breakdown',
-          style: pw.TextStyle(
-            fontSize: 14,
-            fontWeight: pw.FontWeight.bold,
-          ),
+          style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(height: 10),
         pw.Container(
@@ -188,7 +201,10 @@ class ExpensePDFGenerator {
             children: [
               // Header
               pw.Container(
-                padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                padding: const pw.EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 12,
+                ),
                 decoration: const pw.BoxDecoration(
                   color: PdfColors.grey200,
                   borderRadius: pw.BorderRadius.only(
@@ -202,14 +218,20 @@ class ExpensePDFGenerator {
                       flex: 3,
                       child: pw.Text(
                         'Category',
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+                        style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize: 10,
+                        ),
                       ),
                     ),
                     pw.SizedBox(
                       width: 80,
                       child: pw.Text(
                         'Amount',
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+                        style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize: 10,
+                        ),
                         textAlign: pw.TextAlign.right,
                       ),
                     ),
@@ -217,7 +239,10 @@ class ExpensePDFGenerator {
                       width: 60,
                       child: pw.Text(
                         '%',
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+                        style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize: 10,
+                        ),
                         textAlign: pw.TextAlign.right,
                       ),
                     ),
@@ -228,22 +253,31 @@ class ExpensePDFGenerator {
               ...sortedCategories.map((entry) {
                 final percentage = (entry.value / totalAmount) * 100;
                 return pw.Container(
-                  padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                  padding: const pw.EdgeInsets.symmetric(
+                    vertical: 6,
+                    horizontal: 12,
+                  ),
                   decoration: const pw.BoxDecoration(
                     border: pw.Border(
-                      bottom: pw.BorderSide(color: PdfColors.grey200, width: 0.5),
+                      bottom: pw.BorderSide(
+                        color: PdfColors.grey200,
+                        width: 0.5,
+                      ),
                     ),
                   ),
                   child: pw.Row(
                     children: [
                       pw.Expanded(
                         flex: 3,
-                        child: pw.Text(entry.key, style: const pw.TextStyle(fontSize: 10)),
+                        child: pw.Text(
+                          entry.key,
+                          style: const pw.TextStyle(fontSize: 10),
+                        ),
                       ),
                       pw.SizedBox(
                         width: 80,
                         child: pw.Text(
-                          'Rs.${entry.value.toStringAsFixed(2)}',
+                          '${CurrencyService.symbol}${entry.value.toStringAsFixed(2)}',
                           style: const pw.TextStyle(fontSize: 10),
                           textAlign: pw.TextAlign.right,
                         ),
@@ -289,10 +323,7 @@ class ExpensePDFGenerator {
       children: [
         pw.Text(
           'Expense Details',
-          style: pw.TextStyle(
-            fontSize: 14,
-            fontWeight: pw.FontWeight.bold,
-          ),
+          style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(height: 10),
         pw.Table(
@@ -315,18 +346,20 @@ class ExpensePDFGenerator {
               ],
             ),
             // Data rows
-            ...sortedExpenses.map((expense) => pw.TableRow(
-              children: [
-                _tableCell(DateFormat('dd/MM').format(expense.date)),
-                _tableCell(expense.categoryName ?? 'Other'),
-                _tableCell(expense.note ?? '-'),
-                _tableCell(
-                  'Rs.${expense.amount.toStringAsFixed(2)}',
-                  align: pw.TextAlign.right,
-                  isBold: true,
-                ),
-              ],
-            )),
+            ...sortedExpenses.map(
+              (expense) => pw.TableRow(
+                children: [
+                  _tableCell(DateFormat('dd/MM').format(expense.date)),
+                  _tableCell(expense.categoryName ?? 'Other'),
+                  _tableCell(expense.note ?? '-'),
+                  _tableCell(
+                    '${CurrencyService.symbol}${expense.amount.toStringAsFixed(2)}',
+                    align: pw.TextAlign.right,
+                    isBold: true,
+                  ),
+                ],
+              ),
+            ),
             // Total row
             pw.TableRow(
               decoration: const pw.BoxDecoration(color: PdfColors.blue50),
@@ -335,7 +368,7 @@ class ExpensePDFGenerator {
                 _tableCell(''),
                 _tableCell('Total', isBold: true, align: pw.TextAlign.right),
                 _tableCell(
-                  'Rs.${totalAmount.toStringAsFixed(2)}',
+                  '${CurrencyService.symbol}${totalAmount.toStringAsFixed(2)}',
                   align: pw.TextAlign.right,
                   isBold: true,
                   color: PdfColors.blue800,
@@ -348,7 +381,10 @@ class ExpensePDFGenerator {
     );
   }
 
-  pw.Widget _tableHeader(String text, {pw.TextAlign align = pw.TextAlign.left}) {
+  pw.Widget _tableHeader(
+    String text, {
+    pw.TextAlign align = pw.TextAlign.left,
+  }) {
     return pw.Padding(
       padding: const pw.EdgeInsets.all(8),
       child: pw.Text(

@@ -40,10 +40,7 @@ class _AppExpansionTileState extends State<AppExpansionTile> {
       tilePadding: widget.tilePadding ?? EdgeInsets.symmetric(horizontal: 16.w),
       childrenPadding: widget.childrenPadding ?? EdgeInsets.all(16.h),
       title: widget.title,
-      trailing: AnimatedExpansionIcon(
-        isExpanded: _isExpanded,
-        size: 24.spMin,
-      ),
+      trailing: AnimatedExpansionIcon(isExpanded: _isExpanded, size: 24.spMin),
       onExpansionChanged: (expanded) {
         setState(() {
           _isExpanded = expanded;

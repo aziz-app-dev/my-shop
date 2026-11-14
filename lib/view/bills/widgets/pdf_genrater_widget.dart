@@ -1,5 +1,6 @@
 // ignore_for_file: unused_local_variable
 
+import '../../../utils/currency_service.dart';
 import 'dart:typed_data';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
@@ -335,7 +336,7 @@ class ReceiptPDFGenerator {
                   ),
                 ),
                 pw.Text(
-                  "Rs.${total.toStringAsFixed(0)}",
+                  "${CurrencyService.symbol}${total.toStringAsFixed(0)}",
                   style: const pw.TextStyle(fontSize: 7),
                 ),
               ],
@@ -352,7 +353,7 @@ class ReceiptPDFGenerator {
             children: [
               pw.Text("Discount", style: const pw.TextStyle(fontSize: 7)),
               pw.Text(
-                "-Rs.${bill.discount.toStringAsFixed(0)}",
+                "-${CurrencyService.symbol}${bill.discount.toStringAsFixed(0)}",
                 style: const pw.TextStyle(fontSize: 7),
               ),
             ],
@@ -365,7 +366,7 @@ class ReceiptPDFGenerator {
               style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
             ),
             pw.Text(
-              "Rs.${bill.totalAfterDiscount.toStringAsFixed(0)}",
+              "${CurrencyService.symbol}${bill.totalAfterDiscount.toStringAsFixed(0)}",
               style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
             ),
           ],
@@ -377,7 +378,7 @@ class ReceiptPDFGenerator {
             children: [
               pw.Text("Paid", style: const pw.TextStyle(fontSize: 7)),
               pw.Text(
-                "Rs.${bill.paidAmount.toStringAsFixed(0)}",
+                "${CurrencyService.symbol}${bill.paidAmount.toStringAsFixed(0)}",
                 style: const pw.TextStyle(fontSize: 7),
               ),
             ],
@@ -390,7 +391,7 @@ class ReceiptPDFGenerator {
                 style: pw.TextStyle(fontSize: 7, color: PdfColors.red),
               ),
               pw.Text(
-                "Rs.${bill.pendingAmount.toStringAsFixed(0)}",
+                "${CurrencyService.symbol}${bill.pendingAmount.toStringAsFixed(0)}",
                 style: pw.TextStyle(fontSize: 7, color: PdfColors.red),
               ),
             ],
@@ -621,12 +622,12 @@ class ReceiptPDFGenerator {
                 children: [
                   _modernTableCell(item.name),
                   _modernTableCell(
-                    'Rs.${item.price.toStringAsFixed(0)}',
+                    '${CurrencyService.symbol}${item.price.toStringAsFixed(0)}',
                     align: pw.TextAlign.right,
                   ),
                   _modernTableCell(qty.toString(), align: pw.TextAlign.center),
                   _modernTableCell(
-                    'Rs.${total.toStringAsFixed(0)}',
+                    '${CurrencyService.symbol}${total.toStringAsFixed(0)}',
                     align: pw.TextAlign.right,
                   ),
                 ],
@@ -646,29 +647,29 @@ class ReceiptPDFGenerator {
                 children: [
                   _modernTotalRow(
                     'Subtotal',
-                    'Rs.${bill.totalAmount.toStringAsFixed(0)}',
+                    '${CurrencyService.symbol}${bill.totalAmount.toStringAsFixed(0)}',
                   ),
                   if (bill.discount > 0)
                     _modernTotalRow(
                       'Discount',
-                      '-Rs.${bill.discount.toStringAsFixed(0)}',
+                      '-${CurrencyService.symbol}${bill.discount.toStringAsFixed(0)}',
                     ),
                   pw.Divider(),
                   _modernTotalRow(
                     'Total',
-                    'Rs.${bill.totalAfterDiscount.toStringAsFixed(0)}',
+                    '${CurrencyService.symbol}${bill.totalAfterDiscount.toStringAsFixed(0)}',
                     isBold: true,
                     fontSize: 14,
                   ),
                   if (bill.paidAmount > 0)
                     _modernTotalRow(
                       'Paid',
-                      'Rs.${bill.paidAmount.toStringAsFixed(0)}',
+                      '${CurrencyService.symbol}${bill.paidAmount.toStringAsFixed(0)}',
                     ),
                   if (bill.pendingAmount > 0)
                     _modernTotalRow(
                       'Balance Due',
-                      'Rs.${bill.pendingAmount.toStringAsFixed(0)}',
+                      '${CurrencyService.symbol}${bill.pendingAmount.toStringAsFixed(0)}',
                       isBold: true,
                       textColor: PdfColors.red,
                     ),
@@ -1039,11 +1040,11 @@ class ReceiptPDFGenerator {
                           align: pw.TextAlign.center,
                         ),
                         _invoiceTableCell(
-                          'Rs.${item.price.toStringAsFixed(0)}',
+                          '${CurrencyService.symbol}${item.price.toStringAsFixed(0)}',
                           align: pw.TextAlign.right,
                         ),
                         _invoiceTableCell(
-                          'Rs.${total.toStringAsFixed(0)}',
+                          '${CurrencyService.symbol}${total.toStringAsFixed(0)}',
                           align: pw.TextAlign.right,
                         ),
                       ],
@@ -1076,24 +1077,24 @@ class ReceiptPDFGenerator {
                       children: [
                         _invoiceTotalRow(
                           'Sub Total',
-                          'Rs.${bill.totalAfterDiscount.toStringAsFixed(0)}',
+                          '${CurrencyService.symbol}${bill.totalAfterDiscount.toStringAsFixed(0)}',
                         ),
                         if (bill.discount > 0)
                           _invoiceTotalRow(
                             'Discount',
-                            'Rs.${bill.discount.toStringAsFixed(0)}',
+                            '${CurrencyService.symbol}${bill.discount.toStringAsFixed(0)}',
                           ),
                         _invoiceTotalRow(
                           'Advance',
                           bill.paidAmount > 0
-                              ? 'Rs.${bill.paidAmount.toStringAsFixed(0)}'
+                              ? '${CurrencyService.symbol}${bill.paidAmount.toStringAsFixed(0)}'
                               : '',
                         ),
                         _invoiceTotalRow(
                           'Balance',
                           bill.pendingAmount > 0
-                              ? 'Rs.${bill.pendingAmount.toStringAsFixed(0)}'
-                              : 'Rs.0',
+                              ? '${CurrencyService.symbol}${bill.pendingAmount.toStringAsFixed(0)}'
+                              : '{CurrencyService.symbol}0',
                           isBold: true,
                         ),
                       ],
@@ -1353,7 +1354,7 @@ class ReceiptPDFGenerator {
             pw.SizedBox(
               width: 30,
               child: pw.Text(
-                "Rs.${item.price.toStringAsFixed(0)}",
+                "${CurrencyService.symbol}${item.price.toStringAsFixed(0)}",
                 style: const pw.TextStyle(fontSize: 7),
                 textAlign: pw.TextAlign.right,
               ),
@@ -1371,7 +1372,7 @@ class ReceiptPDFGenerator {
             pw.SizedBox(
               width: 30,
               child: pw.Text(
-                "Rs.${total.toStringAsFixed(0)}",
+                "${CurrencyService.symbol}${total.toStringAsFixed(0)}",
                 style: const pw.TextStyle(fontSize: 7),
                 textAlign: pw.TextAlign.right,
               ),
@@ -1390,7 +1391,7 @@ class ReceiptPDFGenerator {
           children: [
             pw.Text("Subtotal:", style: const pw.TextStyle(fontSize: 8)),
             pw.Text(
-              "Rs.${bill.totalAmount.toStringAsFixed(2)}",
+              "${CurrencyService.symbol}${bill.totalAmount.toStringAsFixed(2)}",
               style: const pw.TextStyle(fontSize: 8),
             ),
           ],
@@ -1402,7 +1403,7 @@ class ReceiptPDFGenerator {
             children: [
               pw.Text("Discount:", style: const pw.TextStyle(fontSize: 7)),
               pw.Text(
-                "- Rs.${bill.discount.toStringAsFixed(2)}",
+                "- ${CurrencyService.symbol}${bill.discount.toStringAsFixed(2)}",
                 style: pw.TextStyle(
                   fontWeight: pw.FontWeight.bold,
                   fontSize: 8,
@@ -1417,7 +1418,7 @@ class ReceiptPDFGenerator {
           children: [
             pw.Text("Total:", style: const pw.TextStyle(fontSize: 7)),
             pw.Text(
-              "Rs.${bill.totalAfterDiscount.toStringAsFixed(2)}",
+              "${CurrencyService.symbol}${bill.totalAfterDiscount.toStringAsFixed(2)}",
               style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8),
             ),
           ],
@@ -1432,7 +1433,7 @@ class ReceiptPDFGenerator {
                 style: const pw.TextStyle(fontSize: 7),
               ),
               pw.Text(
-                "Rs.${bill.paidAmount.toStringAsFixed(2)}",
+                "${CurrencyService.symbol}${bill.paidAmount.toStringAsFixed(2)}",
                 style: pw.TextStyle(
                   fontWeight: pw.FontWeight.bold,
                   fontSize: 8,
@@ -1461,7 +1462,7 @@ class ReceiptPDFGenerator {
                   ),
                 ),
                 pw.Text(
-                  "Rs.${bill.pendingAmount.toStringAsFixed(2)}",
+                  "${CurrencyService.symbol}${bill.pendingAmount.toStringAsFixed(2)}",
                   style: pw.TextStyle(
                     fontSize: 8,
                     fontWeight: pw.FontWeight.bold,

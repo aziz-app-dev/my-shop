@@ -1,3 +1,4 @@
+import '../../../utils/currency_service.dart';
 import 'dart:typed_data';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
@@ -37,13 +38,14 @@ class CustomerReportPDFGenerator {
         margin: const pw.EdgeInsets.all(20),
         header: (context) => _buildHeader(),
         footer: (context) => _buildFooter(context),
-        build: (pw.Context context) => [
-          _buildCustomerInfo(),
-          pw.SizedBox(height: 15),
-          _buildSummarySection(),
-          pw.SizedBox(height: 15),
-          _buildPurchaseHistory(),
-        ],
+        build:
+            (pw.Context context) => [
+              _buildCustomerInfo(),
+              pw.SizedBox(height: 15),
+              _buildSummarySection(),
+              pw.SizedBox(height: 15),
+              _buildPurchaseHistory(),
+            ],
       ),
     );
 
@@ -113,7 +115,10 @@ class CustomerReportPDFGenerator {
               pw.SizedBox(height: 5),
               pw.Text(
                 'Generated: ${DateFormat('dd MMM yyyy, HH:mm').format(DateTime.now())}',
-                style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+                style: const pw.TextStyle(
+                  fontSize: 9,
+                  color: PdfColors.grey600,
+                ),
               ),
             ],
           ),
@@ -177,7 +182,9 @@ class CustomerReportPDFGenerator {
                     pw.SizedBox(height: 5),
                     _infoRow(
                       'Phone',
-                      customer.phoneNumber.isEmpty ? 'N/A' : customer.phoneNumber,
+                      customer.phoneNumber.isEmpty
+                          ? 'N/A'
+                          : customer.phoneNumber,
                     ),
                   ],
                 ),
@@ -210,16 +217,10 @@ class CustomerReportPDFGenerator {
       children: [
         pw.Text(
           '$label: ',
-          style: pw.TextStyle(
-            fontSize: 10,
-            fontWeight: pw.FontWeight.bold,
-          ),
+          style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
         ),
         pw.Expanded(
-          child: pw.Text(
-            value,
-            style: const pw.TextStyle(fontSize: 10),
-          ),
+          child: pw.Text(value, style: const pw.TextStyle(fontSize: 10)),
         ),
       ],
     );
@@ -231,7 +232,7 @@ class CustomerReportPDFGenerator {
         pw.Expanded(
           child: _summaryCard(
             'Total Spending',
-            'Rs.${totalSpending.toStringAsFixed(2)}',
+            '${CurrencyService.symbol}${totalSpending.toStringAsFixed(2)}',
             PdfColors.green700,
             PdfColors.green50,
           ),
@@ -240,7 +241,7 @@ class CustomerReportPDFGenerator {
         pw.Expanded(
           child: _summaryCard(
             'Pending Amount',
-            'Rs.${totalPending.toStringAsFixed(2)}',
+            '${CurrencyService.symbol}${totalPending.toStringAsFixed(2)}',
             totalPending > 0 ? PdfColors.red700 : PdfColors.green700,
             totalPending > 0 ? PdfColors.red50 : PdfColors.green50,
           ),
@@ -312,10 +313,7 @@ class CustomerReportPDFGenerator {
       children: [
         pw.Text(
           'Purchase History',
-          style: pw.TextStyle(
-            fontSize: 14,
-            fontWeight: pw.FontWeight.bold,
-          ),
+          style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(height: 10),
         ...bills.map((bill) => _buildBillCard(bill)),
@@ -368,7 +366,8 @@ class CustomerReportPDFGenerator {
                       style: pw.TextStyle(
                         fontSize: 8,
                         fontWeight: pw.FontWeight.bold,
-                        color: isPaid ? PdfColors.green800 : PdfColors.orange800,
+                        color:
+                            isPaid ? PdfColors.green800 : PdfColors.orange800,
                       ),
                     ),
                   ),
@@ -376,7 +375,10 @@ class CustomerReportPDFGenerator {
               ),
               pw.Text(
                 DateFormat('dd MMM yyyy, HH:mm').format(bill.dateTime),
-                style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+                style: const pw.TextStyle(
+                  fontSize: 9,
+                  color: PdfColors.grey600,
+                ),
               ),
             ],
           ),
@@ -398,8 +400,16 @@ class CustomerReportPDFGenerator {
                 children: [
                   _tableCell('Item', isHeader: true),
                   _tableCell('Qty', isHeader: true, align: pw.TextAlign.center),
-                  _tableCell('Price', isHeader: true, align: pw.TextAlign.right),
-                  _tableCell('Total', isHeader: true, align: pw.TextAlign.right),
+                  _tableCell(
+                    'Price',
+                    isHeader: true,
+                    align: pw.TextAlign.right,
+                  ),
+                  _tableCell(
+                    'Total',
+                    isHeader: true,
+                    align: pw.TextAlign.right,
+                  ),
                 ],
               ),
               // Item rows
@@ -411,11 +421,11 @@ class CustomerReportPDFGenerator {
                     _tableCell(item.name),
                     _tableCell(qty.toString(), align: pw.TextAlign.center),
                     _tableCell(
-                      'Rs.${item.price.toStringAsFixed(2)}',
+                      '${CurrencyService.symbol}${item.price.toStringAsFixed(2)}',
                       align: pw.TextAlign.right,
                     ),
                     _tableCell(
-                      'Rs.${total.toStringAsFixed(2)}',
+                      '${CurrencyService.symbol}${total.toStringAsFixed(2)}',
                       align: pw.TextAlign.right,
                     ),
                   ],
@@ -433,29 +443,32 @@ class CustomerReportPDFGenerator {
                 width: 150,
                 child: pw.Column(
                   children: [
-                    _summaryRow('Subtotal', 'Rs.${bill.totalAmount.toStringAsFixed(2)}'),
+                    _summaryRow(
+                      'Subtotal',
+                      '${CurrencyService.symbol}${bill.totalAmount.toStringAsFixed(2)}',
+                    ),
                     if (bill.discount > 0)
                       _summaryRow(
                         'Discount',
-                        '-Rs.${bill.discount.toStringAsFixed(2)}',
+                        '-${CurrencyService.symbol}${bill.discount.toStringAsFixed(2)}',
                         textColor: PdfColors.green700,
                       ),
                     pw.Divider(color: PdfColors.grey400),
                     _summaryRow(
                       'Total',
-                      'Rs.${finalAmount.toStringAsFixed(2)}',
+                      '${CurrencyService.symbol}${finalAmount.toStringAsFixed(2)}',
                       isBold: true,
                     ),
                     if (bill.paidAmount > 0)
                       _summaryRow(
                         'Paid',
-                        'Rs.${bill.paidAmount.toStringAsFixed(2)}',
+                        '${CurrencyService.symbol}${bill.paidAmount.toStringAsFixed(2)}',
                         textColor: PdfColors.green700,
                       ),
                     if (pendingAmount > 0)
                       _summaryRow(
                         'Due',
-                        'Rs.${pendingAmount.toStringAsFixed(2)}',
+                        '${CurrencyService.symbol}${pendingAmount.toStringAsFixed(2)}',
                         textColor: PdfColors.red700,
                         isBold: true,
                       ),

@@ -88,11 +88,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       fit: BoxFit.cover,
       width: double.infinity,
       height: double.infinity,
-      errorBuilder: (context, error, stackTrace) => Icon(
-        Icons.store,
-        size: 60.spMin,
-        color: AppColors.primary,
-      ),
+      errorBuilder:
+          (context, error, stackTrace) =>
+              Icon(Icons.store, size: 60.spMin, color: AppColors.primary),
     );
   }
 

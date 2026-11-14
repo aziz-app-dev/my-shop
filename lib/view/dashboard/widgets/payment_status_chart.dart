@@ -1,3 +1,4 @@
+import '../../../utils/currency_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -136,21 +137,24 @@ Widget _buildPaymentStatusChartContent(
                     _buildLegendItem(
                       color: AppColors.success,
                       label: 'Received',
-                      value: 'Rs.${received.toStringAsFixed(0)}',
+                      value:
+                          '${CurrencyService.symbol}${received.toStringAsFixed(0)}',
                       percentage: receivedPercentage,
                     ),
                     SizedBox(height: 10.h),
                     _buildLegendItem(
                       color: AppColors.warning,
                       label: 'Pending',
-                      value: 'Rs.${pending.toStringAsFixed(0)}',
+                      value:
+                          '${CurrencyService.symbol}${pending.toStringAsFixed(0)}',
                       percentage: pendingPercentage,
                     ),
                     SizedBox(height: 10.h),
                     _buildLegendItem(
                       color: AppColors.error,
                       label: 'Expenses',
-                      value: 'Rs.${expenses.toStringAsFixed(0)}',
+                      value:
+                          '${CurrencyService.symbol}${expenses.toStringAsFixed(0)}',
                       percentage: expensesPercentage,
                     ),
                   ],
@@ -237,7 +241,7 @@ Widget _buildMonthlyBreakdownChartContent(
                     final value = rodIndex == 0 ? month.sales : month.expenses;
                     final label = rodIndex == 0 ? 'Sales' : 'Expenses';
                     return BarTooltipItem(
-                      '${month.monthName}\n$label: Rs.${value.toStringAsFixed(0)}',
+                      '${month.monthName}\n$label: ${CurrencyService.symbol}${value.toStringAsFixed(0)}',
                       TextStyle(
                         color: isDark ? Colors.white : Colors.black,
                         fontSize: 11.spMin,

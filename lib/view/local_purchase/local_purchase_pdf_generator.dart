@@ -1,3 +1,4 @@
+import '../../utils/currency_service.dart';
 import 'dart:typed_data';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
@@ -265,11 +266,11 @@ class LocalPurchasePDFGenerator {
                     align: pw.TextAlign.center,
                   ),
                   _tableCell(
-                    'Rs.${item.unitPrice.toStringAsFixed(0)}',
+                    '${CurrencyService.symbol}${item.unitPrice.toStringAsFixed(0)}',
                     align: pw.TextAlign.right,
                   ),
                   _tableCell(
-                    'Rs.${item.totalPrice.toStringAsFixed(0)}',
+                    '${CurrencyService.symbol}${item.totalPrice.toStringAsFixed(0)}',
                     align: pw.TextAlign.right,
                   ),
                 ],
@@ -299,7 +300,7 @@ class LocalPurchasePDFGenerator {
                     ),
                   ),
                   pw.Text(
-                    'Rs.${agreement.totalAmount.toStringAsFixed(0)}',
+                    '${CurrencyService.symbol}${agreement.totalAmount.toStringAsFixed(0)}',
                     style: pw.TextStyle(
                       fontSize: 11,
                       fontWeight: pw.FontWeight.bold,
@@ -357,7 +358,7 @@ class LocalPurchasePDFGenerator {
                 _infoRow('Payment Type:', agreement.paymentType),
                 _infoRow(
                   'Total Amount:',
-                  'Rs.${agreement.totalAmount.toStringAsFixed(0)}',
+                  '${CurrencyService.symbol}${agreement.totalAmount.toStringAsFixed(0)}',
                 ),
               ],
             ),

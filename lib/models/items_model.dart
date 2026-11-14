@@ -40,7 +40,7 @@ class FieldConfig {
         break;
       case 'price':
         defaultTitle = 'Price';
-        defaultHintText = 'Enter price in Rs';
+        defaultHintText = 'Enter price';
         defaultValidatorText = 'Valid price is required';
         break;
       case 'imageFile':
@@ -70,7 +70,7 @@ class FieldConfig {
         break;
       case 'purchasePrice':
         defaultTitle = 'Purchase Price';
-        defaultHintText = 'Enter purchase price in Rs';
+        defaultHintText = 'Enter purchase price';
         defaultValidatorText = 'Valid purchase price is required';
         break;
       case 'stock':

@@ -66,11 +66,14 @@ class FinancialReportService {
       await directory.create(recursive: true);
     }
 
-    final period = state.isYearlyView
-        ? '${state.selectedMonth.year}'
-        : DateFormat('yyyy_MM').format(state.selectedMonth);
+    final period =
+        state.isYearlyView
+            ? '${state.selectedMonth.year}'
+            : DateFormat('yyyy_MM').format(state.selectedMonth);
     final stamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-    final file = File('${directory.path}/financial_report_${period}_$stamp.pdf');
+    final file = File(
+      '${directory.path}/financial_report_${period}_$stamp.pdf',
+    );
     await file.writeAsBytes(await pdf.save());
 
     await OpenFile.open(file.path);

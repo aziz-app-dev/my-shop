@@ -14,12 +14,7 @@ class ExpenseCategory {
   }) : id = id ?? const Uuid().v4();
 
   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'icon': icon,
-      'isDefault': isDefault,
-    };
+    return {'id': id, 'name': name, 'icon': icon, 'isDefault': isDefault};
   }
 
   factory ExpenseCategory.fromMap(Map<String, dynamic> map) {
@@ -48,14 +43,54 @@ class ExpenseCategory {
   // Predefined default categories
   static List<ExpenseCategory> get defaultCategories => [
     ExpenseCategory(id: 'rent', name: 'Rent', icon: 'home', isDefault: true),
-    ExpenseCategory(id: 'utilities', name: 'Utilities', icon: 'bolt', isDefault: true),
-    ExpenseCategory(id: 'salaries', name: 'Salaries', icon: 'people', isDefault: true),
-    ExpenseCategory(id: 'supplies', name: 'Supplies', icon: 'inventory', isDefault: true),
-    ExpenseCategory(id: 'marketing', name: 'Marketing', icon: 'campaign', isDefault: true),
-    ExpenseCategory(id: 'transport', name: 'Transport', icon: 'directions_car', isDefault: true),
-    ExpenseCategory(id: 'maintenance', name: 'Maintenance', icon: 'build', isDefault: true),
-    ExpenseCategory(id: 'taxes', name: 'Taxes', icon: 'receipt', isDefault: true),
-    ExpenseCategory(id: 'other', name: 'Other', icon: 'more_horiz', isDefault: true),
+    ExpenseCategory(
+      id: 'utilities',
+      name: 'Utilities',
+      icon: 'bolt',
+      isDefault: true,
+    ),
+    ExpenseCategory(
+      id: 'salaries',
+      name: 'Salaries',
+      icon: 'people',
+      isDefault: true,
+    ),
+    ExpenseCategory(
+      id: 'supplies',
+      name: 'Supplies',
+      icon: 'inventory',
+      isDefault: true,
+    ),
+    ExpenseCategory(
+      id: 'marketing',
+      name: 'Marketing',
+      icon: 'campaign',
+      isDefault: true,
+    ),
+    ExpenseCategory(
+      id: 'transport',
+      name: 'Transport',
+      icon: 'directions_car',
+      isDefault: true,
+    ),
+    ExpenseCategory(
+      id: 'maintenance',
+      name: 'Maintenance',
+      icon: 'build',
+      isDefault: true,
+    ),
+    ExpenseCategory(
+      id: 'taxes',
+      name: 'Taxes',
+      icon: 'receipt',
+      isDefault: true,
+    ),
+    ExpenseCategory(
+      id: 'other',
+      name: 'Other',
+      icon: 'more_horiz',
+      isDefault: true,
+    ),
   ];
 }
 
@@ -103,9 +138,10 @@ class Expense {
       date: DateTime.parse(map['date'] as String),
       note: map['note'] as String?,
       createdAt: DateTime.parse(map['createdAt'] as String),
-      updatedAt: map['updatedAt'] != null
-          ? DateTime.parse(map['updatedAt'] as String)
-          : null,
+      updatedAt:
+          map['updatedAt'] != null
+              ? DateTime.parse(map['updatedAt'] as String)
+              : null,
     );
   }
 

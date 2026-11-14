@@ -1,3 +1,4 @@
+import '../../utils/currency_service.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -393,7 +394,7 @@ class _LocalPurchaseDetailViewState
                     Expanded(
                       flex: 2,
                       child: Text(
-                        'Rs.${item.unitPrice.toStringAsFixed(0)}',
+                        '${CurrencyService.symbol}${item.unitPrice.toStringAsFixed(0)}',
                         textAlign: TextAlign.right,
                         style: TextStyle(fontSize: 12.spMin),
                       ),
@@ -401,7 +402,7 @@ class _LocalPurchaseDetailViewState
                     Expanded(
                       flex: 2,
                       child: Text(
-                        'Rs.${item.totalPrice.toStringAsFixed(0)}',
+                        '${CurrencyService.symbol}${item.totalPrice.toStringAsFixed(0)}',
                         textAlign: TextAlign.right,
                         style: TextStyle(
                           fontSize: 12.spMin,
@@ -425,7 +426,7 @@ class _LocalPurchaseDetailViewState
                   ),
                 ),
                 Text(
-                  'Rs.${a.totalAmount.toStringAsFixed(0)}',
+                  '${CurrencyService.symbol}${a.totalAmount.toStringAsFixed(0)}',
                   style: TextStyle(
                     fontSize: 16.spMin,
                     fontWeight: FontWeight.bold,
@@ -453,7 +454,10 @@ class _LocalPurchaseDetailViewState
             ),
             Divider(height: 16.h),
             _detailRow('Type', a.paymentType),
-            _detailRow('Amount', 'Rs.${a.totalAmount.toStringAsFixed(0)}'),
+            _detailRow(
+              'Amount',
+              '${CurrencyService.symbol}${a.totalAmount.toStringAsFixed(0)}',
+            ),
           ],
         ),
       ),

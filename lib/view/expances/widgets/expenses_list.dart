@@ -1,3 +1,4 @@
+import '../../../utils/currency_service.dart';
 import 'package:desktopapp/res/components/empty_widget.dart';
 import 'package:desktopapp/utils/app_sizes.dart';
 import 'package:flutter/material.dart';
@@ -129,7 +130,8 @@ Widget _buildExpenseCard(
             ),
           ),
           mdTextBold(
-            text: 'Rs.${expense.amount.toStringAsFixed(2)}',
+            text:
+                '${CurrencyService.symbol}${expense.amount.toStringAsFixed(2)}',
             color: Colors.red,
           ),
         ],

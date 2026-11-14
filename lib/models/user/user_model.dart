@@ -113,7 +113,8 @@ class User {
       // Migration: existing users saved before this flag existed are treated
       // as set up if they already have a shop name, so they aren't sent back
       // through the setup screen.
-      shopSetupComplete: map['shopSetupComplete'] as bool? ??
+      shopSetupComplete:
+          map['shopSetupComplete'] as bool? ??
           ((map['shopName'] as String?)?.isNotEmpty ?? false),
     );
   }

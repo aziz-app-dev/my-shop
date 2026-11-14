@@ -54,10 +54,7 @@ class BrandCard extends StatelessWidget {
                   topLeft: Radius.circular(8.r),
                   topRight: Radius.circular(8.r),
                 ),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: _buildImage(),
-                ),
+                child: SizedBox(width: double.infinity, child: _buildImage()),
               ),
             ),
             SizedBox(height: 8.spMin),

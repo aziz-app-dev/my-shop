@@ -173,7 +173,9 @@ List<Widget> pages(
   final list = <Widget>[
     HomePage(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
     const SalesScreenSelector(), // Dynamically shows single or multi-cart based on settings
-    LocalPurchaseListView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
+    LocalPurchaseListView(
+      openDrawer: () => scaffoldKey.currentState?.openDrawer(),
+    ),
     CustomerListScreen(),
     ExpensesView(openDrawer: () => scaffoldKey.currentState?.openDrawer()),
     BillsScreen(),

@@ -127,8 +127,8 @@ class LocalPurchaseAgreement {
 
     return LocalPurchaseAgreement(
       id: map['id'] as String? ?? '',
-      dateTime: DateTime.tryParse(map['dateTime'] as String? ?? '') ??
-          DateTime.now(),
+      dateTime:
+          DateTime.tryParse(map['dateTime'] as String? ?? '') ?? DateTime.now(),
       sellerName: map['sellerName'] as String? ?? '',
       sellerPhone: map['sellerPhone'] as String?,
       sellerIdCard: map['sellerIdCard'] as String?,
@@ -139,12 +139,14 @@ class LocalPurchaseAgreement {
       items: parsedItems,
       totalAmount: (map['totalAmount'] as num?)?.toDouble() ?? 0.0,
       termsAndConditions:
-          parsedTerms.isNotEmpty ? parsedTerms : const [
-            '1. The seller confirms ownership of all items listed above.',
-            '2. Items are sold as-is; no returns after agreement is signed.',
-            '3. The shop reserves the right to inspect items before final payment.',
-            '4. Any dispute shall be resolved under local jurisdiction.',
-          ],
+          parsedTerms.isNotEmpty
+              ? parsedTerms
+              : const [
+                '1. The seller confirms ownership of all items listed above.',
+                '2. Items are sold as-is; no returns after agreement is signed.',
+                '3. The shop reserves the right to inspect items before final payment.',
+                '4. Any dispute shall be resolved under local jurisdiction.',
+              ],
       notes: map['notes'] as String?,
     );
   }
@@ -174,18 +176,17 @@ class LocalPurchaseAgreement {
       id: id ?? this.id,
       dateTime: dateTime ?? this.dateTime,
       sellerName: sellerName ?? this.sellerName,
-      sellerPhone:
-          clearSellerPhone ? null : (sellerPhone ?? this.sellerPhone),
+      sellerPhone: clearSellerPhone ? null : (sellerPhone ?? this.sellerPhone),
       sellerIdCard:
           clearSellerIdCard ? null : (sellerIdCard ?? this.sellerIdCard),
       sellerAddress:
           clearSellerAddress ? null : (sellerAddress ?? this.sellerAddress),
-      sellerSignature: clearSellerSignature
-          ? null
-          : (sellerSignature ?? this.sellerSignature),
-      ownerSignature: clearOwnerSignature
-          ? null
-          : (ownerSignature ?? this.ownerSignature),
+      sellerSignature:
+          clearSellerSignature
+              ? null
+              : (sellerSignature ?? this.sellerSignature),
+      ownerSignature:
+          clearOwnerSignature ? null : (ownerSignature ?? this.ownerSignature),
       paymentType: paymentType ?? this.paymentType,
       items: items ?? this.items,
       totalAmount: totalAmount ?? this.totalAmount,

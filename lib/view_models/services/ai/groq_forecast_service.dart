@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
+import '../../../utils/currency_service.dart';
+
 import '../../../models/finance_forecast.dart';
 import '../../../res/app_url/app_url.dart';
 
@@ -30,7 +32,8 @@ class GroqForecastService {
       return ForecastResult(
         history: history,
         forecast: const [],
-        insights: 'Not enough sales history yet to forecast. Record a few '
+        insights:
+            'Not enough sales history yet to forecast. Record a few '
             'months of bills and check back.',
         usedAi: false,
       );
@@ -53,27 +56,33 @@ class GroqForecastService {
     List<MonthlyPoint> history,
     int monthsAhead,
   ) async {
-    final historyJson = history
-        .map((p) => {
-              'month': p.label,
-              'sales': p.sales.round(),
-              'expenses': p.expenses.round(),
-            })
-        .toList();
+    final historyJson =
+        history
+            .map(
+              (p) => {
+                'month': p.label,
+                'sales': p.sales.round(),
+                'expenses': p.expenses.round(),
+              },
+            )
+            .toList();
 
-    final nextLabels = _futureMonths(history.last.month, monthsAhead)
-        .map((d) => DateFormat('MMM yyyy').format(d))
-        .toList();
+    final nextLabels =
+        _futureMonths(
+          history.last.month,
+          monthsAhead,
+        ).map((d) => DateFormat('MMM yyyy').format(d)).toList();
 
     final systemPrompt =
         'You are a retail finance analyst. Given monthly sales and expenses '
-        '(currency Rs.), project the next $monthsAhead months and give one '
+        '(currency ${CurrencyService.symbol}), project the next $monthsAhead months and give one '
         'short, practical insight. Respond ONLY with strict JSON of the form: '
         '{"forecast":[{"month":"<label>","sales":<number>,"expenses":<number>}],'
         '"insights":"<2-3 sentences>"}. Use exactly these month labels in order: '
         '${nextLabels.join(', ')}.';
 
-    final userPrompt = 'Monthly history (oldest first): '
+    final userPrompt =
+        'Monthly history (oldest first): '
         '${jsonEncode(historyJson)}';
 
     final response = await http
@@ -116,21 +125,24 @@ class GroqForecastService {
       if (item is! Map) continue;
       final sales = (item['sales'] as num?)?.toDouble() ?? 0;
       final expenses = (item['expenses'] as num?)?.toDouble() ?? 0;
-      forecast.add(MonthlyPoint(
-        month: futureMonths[i],
-        label: DateFormat('MMM yyyy').format(futureMonths[i]),
-        sales: sales < 0 ? 0 : sales,
-        expenses: expenses < 0 ? 0 : expenses,
-      ));
+      forecast.add(
+        MonthlyPoint(
+          month: futureMonths[i],
+          label: DateFormat('MMM yyyy').format(futureMonths[i]),
+          sales: sales < 0 ? 0 : sales,
+          expenses: expenses < 0 ? 0 : expenses,
+        ),
+      );
     }
     if (forecast.isEmpty) return null;
 
     return ForecastResult(
       history: history,
       forecast: forecast,
-      insights: insights.isEmpty
-          ? 'AI projected the next $monthsAhead months from your recent trend.'
-          : insights,
+      insights:
+          insights.isEmpty
+              ? 'AI projected the next $monthsAhead months from your recent trend.'
+              : insights,
       usedAi: true,
     );
   }
@@ -154,12 +166,14 @@ class GroqForecastService {
     final forecast = <MonthlyPoint>[];
     for (var i = 0; i < futureMonths.length; i++) {
       final x = (n + i).toDouble();
-      forecast.add(MonthlyPoint(
-        month: futureMonths[i],
-        label: DateFormat('MMM yyyy').format(futureMonths[i]),
-        sales: _floor0(salesTrend.intercept + salesTrend.slope * x),
-        expenses: _floor0(expenseTrend.intercept + expenseTrend.slope * x),
-      ));
+      forecast.add(
+        MonthlyPoint(
+          month: futureMonths[i],
+          label: DateFormat('MMM yyyy').format(futureMonths[i]),
+          sales: _floor0(salesTrend.intercept + salesTrend.slope * x),
+          expenses: _floor0(expenseTrend.intercept + expenseTrend.slope * x),
+        ),
+      );
     }
 
     return ForecastResult(
@@ -175,15 +189,16 @@ class GroqForecastService {
     List<MonthlyPoint> forecast,
     double salesSlope,
   ) {
-    final dir = salesSlope > 1
-        ? 'trending up'
-        : (salesSlope < -1 ? 'trending down' : 'roughly flat');
-    final projected =
-        forecast.fold(0.0, (s, p) => s + p.sales).round();
+    final dir =
+        salesSlope > 1
+            ? 'trending up'
+            : (salesSlope < -1 ? 'trending down' : 'roughly flat');
+    final projected = forecast.fold(0.0, (s, p) => s + p.sales).round();
     final profit = forecast.fold(0.0, (s, p) => s + p.netProfit).round();
     return 'Based on your recent months, sales are $dir. Estimated sales over '
-        'the next ${forecast.length} months are about Rs.$projected with a '
-        'projected net profit near Rs.$profit. (Local estimate — add a Groq API '
+        'the next ${forecast.length} months are about '
+        '${CurrencyService.symbol}$projected with a '
+        'projected net profit near ${CurrencyService.symbol}$profit. (Local estimate — add a Groq API '
         'key for AI-driven forecasting.)';
   }
 

@@ -28,13 +28,14 @@ Future<String?> showSelectionBottomSheet(
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
     ),
-    builder: (sheetContext) => _SelectionSheet(
-      title: title,
-      names: names,
-      addNewLabel: addNewLabel,
-      onAddNew: onAddNew,
-      selectedName: selectedName,
-    ),
+    builder:
+        (sheetContext) => _SelectionSheet(
+          title: title,
+          names: names,
+          addNewLabel: addNewLabel,
+          onAddNew: onAddNew,
+          selectedName: selectedName,
+        ),
   );
 }
 
@@ -112,7 +113,8 @@ class _SelectionSheetState extends State<_SelectionSheet> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final hintColor = isDark ? AppColors.dTFieldHintColor : AppColors.lTFieldHintColor;
+    final hintColor =
+        isDark ? AppColors.dTFieldHintColor : AppColors.lTFieldHintColor;
 
     final filtered =
         widget.names
@@ -234,7 +236,9 @@ class _SelectionSheetState extends State<_SelectionSheet> {
                       ),
                       TextButton(
                         onPressed:
-                            _saving ? null : () => setState(() => _adding = false),
+                            _saving
+                                ? null
+                                : () => setState(() => _adding = false),
                         child: Text(
                           'Cancel',
                           style: TextStyle(
@@ -335,9 +339,7 @@ class _SelectionSheetState extends State<_SelectionSheet> {
                                             ? FontWeight.bold
                                             : FontWeight.w500,
                                     color:
-                                        isSelected
-                                            ? AppColors.primary
-                                            : null,
+                                        isSelected ? AppColors.primary : null,
                                   ),
                                 ),
                                 onTap: () => Navigator.pop(context, name),
@@ -351,10 +353,11 @@ class _SelectionSheetState extends State<_SelectionSheet> {
                   child: SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () => setState(() {
-                        _adding = true;
-                        _addError = null;
-                      }),
+                      onPressed:
+                          () => setState(() {
+                            _adding = true;
+                            _addError = null;
+                          }),
                       icon: Icon(Icons.add, size: 18.spMin),
                       label: Text(
                         widget.addNewLabel,

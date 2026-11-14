@@ -1,3 +1,4 @@
+import '../../utils/currency_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -527,7 +528,7 @@ class _LocalPurchaseFormViewState extends ConsumerState<LocalPurchaseFormView> {
             style: TextStyle(fontSize: 14.spMin, fontWeight: FontWeight.bold),
           ),
           Text(
-            'Rs.${_totalAmount.toStringAsFixed(0)}',
+            '${CurrencyService.symbol}${_totalAmount.toStringAsFixed(0)}',
             style: TextStyle(
               fontSize: 16.spMin,
               fontWeight: FontWeight.bold,

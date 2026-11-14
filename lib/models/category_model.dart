@@ -18,8 +18,10 @@ class Category {
       id: map['id'],
       name: map['name'],
       imageUrl: map['imageUrl'],
-      createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt']) : null,
-      updatedAt: map['updatedAt'] != null ? DateTime.parse(map['updatedAt']) : null,
+      createdAt:
+          map['createdAt'] != null ? DateTime.parse(map['createdAt']) : null,
+      updatedAt:
+          map['updatedAt'] != null ? DateTime.parse(map['updatedAt']) : null,
     );
   }
 
@@ -52,7 +54,10 @@ class Category {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is Category && other.id == id && other.name == name && other.imageUrl == imageUrl;
+    return other is Category &&
+        other.id == id &&
+        other.name == name &&
+        other.imageUrl == imageUrl;
   }
 
   @override

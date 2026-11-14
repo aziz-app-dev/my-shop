@@ -1,3 +1,4 @@
+import '../../../utils/currency_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -72,7 +73,7 @@ Widget _buildCustomerBarChartContent(
                   getTooltipItem: (group, groupIndex, rod, rodIndex) {
                     final customer = topCustomers[group.x.toInt()];
                     return BarTooltipItem(
-                      '${customer.name}\nRs.${customer.totalRevenue.toStringAsFixed(0)}\n${customer.transactionCount} orders',
+                      '${customer.name}\n${CurrencyService.symbol}${customer.totalRevenue.toStringAsFixed(0)}\n${customer.transactionCount} orders',
                       TextStyle(
                         color: isDark ? Colors.white : Colors.black,
                         fontSize: 11.spMin,

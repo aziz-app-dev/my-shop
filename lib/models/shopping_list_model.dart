@@ -76,7 +76,8 @@ class ShoppingListItem {
   factory ShoppingListItem.fromMap(Map<String, dynamic> map) {
     return ShoppingListItem(
       id: map['id'],
-      listId: map['listId'] ?? '', // Default to empty for backward compatibility
+      listId:
+          map['listId'] ?? '', // Default to empty for backward compatibility
       productId: map['productId'],
       productName: map['productName'],
       productImageUrl: map['productImageUrl'],

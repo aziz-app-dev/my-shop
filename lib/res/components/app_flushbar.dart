@@ -45,33 +45,30 @@ class AppFlushbar {
       duration: duration,
       flushbarPosition: position,
       backgroundColor: backgroundColor,
-      icon: Icon(
-        icon,
-        color: Colors.white,
-        size: 24.spMin,
-      ),
+      icon: Icon(icon, color: Colors.white, size: 24.spMin),
       margin: EdgeInsets.all(12.r),
       borderRadius: BorderRadius.circular(8.r),
       titleColor: Colors.white,
       messageColor: Colors.white,
       titleSize: 14.spMin,
       messageSize: 13.spMin,
-      mainButton: actionText != null && onActionPressed != null
-          ? TextButton(
-              onPressed: () {
-                onActionPressed();
-                Navigator.of(context).pop();
-              },
-              child: Text(
-                actionText,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 13.spMin,
-                  fontWeight: FontWeight.bold,
+      mainButton:
+          actionText != null && onActionPressed != null
+              ? TextButton(
+                onPressed: () {
+                  onActionPressed();
+                  Navigator.of(context).pop();
+                },
+                child: Text(
+                  actionText,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13.spMin,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            )
-          : null,
+              )
+              : null,
       onTap: onTap != null ? (_) => onTap() : null,
     ).show(context);
   }
@@ -114,11 +111,7 @@ class AppFlushbar {
       duration: duration,
       flushbarPosition: position,
       backgroundColor: backgroundColor,
-      icon: Icon(
-        icon,
-        color: Colors.white,
-        size: 24.spMin,
-      ),
+      icon: Icon(icon, color: Colors.white, size: 24.spMin),
       margin: EdgeInsets.all(12.r),
       borderRadius: BorderRadius.circular(8.r),
       titleColor: Colors.white,

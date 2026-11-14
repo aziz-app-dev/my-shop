@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../utils/currency_service.dart';
+
 class Currency extends StatelessWidget {
   final double amount;
   final double size;
@@ -38,7 +40,7 @@ class Currency extends StatelessWidget {
       children: [
         /// Currency symbol
         Text(
-          'Rs.',
+          CurrencyService.symbol,
           style: TextStyle(
             fontSize: size * 0.75,
             fontWeight: currencyWeight,

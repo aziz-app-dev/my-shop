@@ -40,61 +40,65 @@ class _RemindersViewState extends ConsumerState<RemindersView> {
 
     return Scaffold(
       appBar: AppBar(
-        leading: AppSizes.isMobile(context)
-            ? IconButton(
-                icon: Icon(Icons.menu, size: 22.spMin),
-                onPressed: openAppDrawer,
-              )
-            : null,
+        leading:
+            AppSizes.isMobile(context)
+                ? IconButton(
+                  icon: Icon(Icons.menu, size: 22.spMin),
+                  onPressed: openAppDrawer,
+                )
+                : null,
         title: Text('Payment Reminders'),
         actions: [
           IconButton(
             tooltip: 'Refresh',
             icon: Icon(TablerIcons.refresh, size: 20.spMin),
-            onPressed: () => ref.read(reminderProvider.notifier).loadReminders(),
+            onPressed:
+                () => ref.read(reminderProvider.notifier).loadReminders(),
           ),
         ],
       ),
-      body: state.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: () =>
-                  ref.read(reminderProvider.notifier).loadReminders(),
-              child: state.reminders.isEmpty
-                  ? _buildEmptyState(isDark)
-                  : ListView(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: horizontal,
-                        vertical: 16.spMin,
-                      ),
-                      children: [
-                        _buildSummaryStrip(state, isDark),
-                        SizedBox(height: 16.spMin),
-                        _buildSection(
-                          title: 'Overdue',
-                          icon: TablerIcons.alert_triangle,
-                          color: AppColors.error,
-                          bills: state.overdue,
-                          isDark: isDark,
+      body:
+          state.isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+                onRefresh:
+                    () => ref.read(reminderProvider.notifier).loadReminders(),
+                child:
+                    state.reminders.isEmpty
+                        ? _buildEmptyState(isDark)
+                        : ListView(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: horizontal,
+                            vertical: 16.spMin,
+                          ),
+                          children: [
+                            _buildSummaryStrip(state, isDark),
+                            SizedBox(height: 16.spMin),
+                            _buildSection(
+                              title: 'Overdue',
+                              icon: TablerIcons.alert_triangle,
+                              color: AppColors.error,
+                              bills: state.overdue,
+                              isDark: isDark,
+                            ),
+                            _buildSection(
+                              title: 'Due Today',
+                              icon: TablerIcons.clock_hour_4,
+                              color: AppColors.warning,
+                              bills: state.dueToday,
+                              isDark: isDark,
+                            ),
+                            _buildSection(
+                              title: 'Upcoming',
+                              icon: TablerIcons.calendar_event,
+                              color: AppColors.info,
+                              bills: state.upcoming,
+                              isDark: isDark,
+                            ),
+                            SizedBox(height: 24.spMin),
+                          ],
                         ),
-                        _buildSection(
-                          title: 'Due Today',
-                          icon: TablerIcons.clock_hour_4,
-                          color: AppColors.warning,
-                          bills: state.dueToday,
-                          isDark: isDark,
-                        ),
-                        _buildSection(
-                          title: 'Upcoming',
-                          icon: TablerIcons.calendar_event,
-                          color: AppColors.info,
-                          bills: state.upcoming,
-                          isDark: isDark,
-                        ),
-                        SizedBox(height: 24.spMin),
-                      ],
-                    ),
-            ),
+              ),
     );
   }
 
@@ -136,8 +140,10 @@ class _RemindersViewState extends ConsumerState<RemindersView> {
                     Text(
                       'Set a due date on a pending bill and it will appear here.',
                       textAlign: TextAlign.center,
-                      style:
-                          TextStyle(fontSize: 12.spMin, color: AppColors.grey500),
+                      style: TextStyle(
+                        fontSize: 12.spMin,
+                        color: AppColors.grey500,
+                      ),
                     ),
                   ],
                 ),
@@ -187,14 +193,24 @@ class _RemindersViewState extends ConsumerState<RemindersView> {
 
     return Row(
       children: [
-        tile('Needs action', '${state.actionableCount}', AppColors.error,
-            TablerIcons.urgent),
-        tile('Overdue amount',
-            PaymentCalculator.formatAmount(state.totalOverdueAmount),
-            AppColors.warning, TablerIcons.cash_banknote),
-        tile('Total pending',
-            PaymentCalculator.formatAmount(state.totalReminderAmount),
-            AppColors.info, TablerIcons.receipt),
+        tile(
+          'Needs action',
+          '${state.actionableCount}',
+          AppColors.error,
+          TablerIcons.urgent,
+        ),
+        tile(
+          'Overdue amount',
+          PaymentCalculator.formatAmount(state.totalOverdueAmount),
+          AppColors.warning,
+          TablerIcons.cash_banknote,
+        ),
+        tile(
+          'Total pending',
+          PaymentCalculator.formatAmount(state.totalReminderAmount),
+          AppColors.info,
+          TablerIcons.receipt,
+        ),
       ],
     );
   }
@@ -314,8 +330,7 @@ class _RemindersViewState extends ConsumerState<RemindersView> {
             SizedBox(height: 10.spMin),
             Row(
               children: [
-                Icon(TablerIcons.calendar_due,
-                    size: 14.spMin, color: accent),
+                Icon(TablerIcons.calendar_due, size: 14.spMin, color: accent),
                 SizedBox(width: 6.spMin),
                 Text(
                   dueLabel,
@@ -327,7 +342,9 @@ class _RemindersViewState extends ConsumerState<RemindersView> {
                 SizedBox(width: 8.spMin),
                 Container(
                   padding: EdgeInsets.symmetric(
-                      horizontal: 8.spMin, vertical: 2.spMin),
+                    horizontal: 8.spMin,
+                    vertical: 2.spMin,
+                  ),
                   decoration: BoxDecoration(
                     color: accent.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20.r),
@@ -359,8 +376,10 @@ class _RemindersViewState extends ConsumerState<RemindersView> {
                   label: 'Remove',
                   icon: TablerIcons.bell_off,
                   color: AppColors.grey600,
-                  onTap: () =>
-                      ref.read(reminderProvider.notifier).clearReminder(bill),
+                  onTap:
+                      () => ref
+                          .read(reminderProvider.notifier)
+                          .clearReminder(bill),
                 ),
               ],
             ),
@@ -379,10 +398,7 @@ class _RemindersViewState extends ConsumerState<RemindersView> {
     return OutlinedButton.icon(
       onPressed: onTap,
       icon: Icon(icon, size: 14.spMin, color: color),
-      label: Text(
-        label,
-        style: TextStyle(fontSize: 11.spMin, color: color),
-      ),
+      label: Text(label, style: TextStyle(fontSize: 11.spMin, color: color)),
       style: OutlinedButton.styleFrom(
         side: BorderSide(color: color.withValues(alpha: 0.4)),
         padding: EdgeInsets.symmetric(horizontal: 10.spMin, vertical: 4.spMin),
@@ -395,13 +411,15 @@ class _RemindersViewState extends ConsumerState<RemindersView> {
   Widget _snoozeButton(Bill bill) {
     return PopupMenuButton<int>(
       tooltip: 'Snooze',
-      onSelected: (days) =>
-          ref.read(reminderProvider.notifier).snooze(bill, days: days),
-      itemBuilder: (context) => [
-        PopupMenuItem(value: 1, child: Text('Snooze 1 day')),
-        PopupMenuItem(value: 3, child: Text('Snooze 3 days')),
-        PopupMenuItem(value: 7, child: Text('Snooze 1 week')),
-      ],
+      onSelected:
+          (days) =>
+              ref.read(reminderProvider.notifier).snooze(bill, days: days),
+      itemBuilder:
+          (context) => [
+            PopupMenuItem(value: 1, child: Text('Snooze 1 day')),
+            PopupMenuItem(value: 3, child: Text('Snooze 3 days')),
+            PopupMenuItem(value: 7, child: Text('Snooze 1 week')),
+          ],
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 10.spMin, vertical: 5.spMin),
         decoration: BoxDecoration(
@@ -411,10 +429,16 @@ class _RemindersViewState extends ConsumerState<RemindersView> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(TablerIcons.clock_pause, size: 14.spMin, color: AppColors.info),
+            Icon(
+              TablerIcons.clock_pause,
+              size: 14.spMin,
+              color: AppColors.info,
+            ),
             SizedBox(width: 6.spMin),
-            Text('Snooze',
-                style: TextStyle(fontSize: 11.spMin, color: AppColors.info)),
+            Text(
+              'Snooze',
+              style: TextStyle(fontSize: 11.spMin, color: AppColors.info),
+            ),
           ],
         ),
       ),
@@ -424,24 +448,25 @@ class _RemindersViewState extends ConsumerState<RemindersView> {
   Future<void> _confirmMarkPaid(Bill bill) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Mark as paid?'),
-        content: Text(
-          'Record ${PaymentCalculator.formatAmount(bill.pendingAmount)} from '
-          '${bill.customerName ?? 'this customer'} as collected? This closes '
-          'the bill and removes the reminder.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel'),
+      builder:
+          (context) => AlertDialog(
+            title: Text('Mark as paid?'),
+            content: Text(
+              'Record ${PaymentCalculator.formatAmount(bill.pendingAmount)} from '
+              '${bill.customerName ?? 'this customer'} as collected? This closes '
+              'the bill and removes the reminder.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text('Mark paid'),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Mark paid'),
-          ),
-        ],
-      ),
     );
     if (ok == true) {
       await ref.read(reminderProvider.notifier).markPaid(bill);

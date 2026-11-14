@@ -1,3 +1,4 @@
+import '../../utils/currency_service.dart';
 import 'dart:io';
 import 'package:desktopapp/res/components/app_button.dart';
 import 'package:desktopapp/utils/app_sizes.dart';
@@ -378,7 +379,8 @@ class _ShoppingListSearchViewState
                           children: [
                             customText(
                               size: 11.spMin,
-                              text: 'Rs.${product.price.toStringAsFixed(0)}',
+                              text:
+                                  '${CurrencyService.symbol}${product.price.toStringAsFixed(0)}',
                               color: Colors.green,
                               fontWeight: FontWeight.bold,
                             ),

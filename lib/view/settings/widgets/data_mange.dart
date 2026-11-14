@@ -22,10 +22,7 @@ class DataManagementPage extends ConsumerWidget {
         context: context,
       ),
       body: ListView(
-        padding: EdgeInsets.symmetric(
-          horizontal: 16.spMin,
-          vertical: 8.spMin,
-        ),
+        padding: EdgeInsets.symmetric(horizontal: 16.spMin, vertical: 8.spMin),
         children: [
           // Manage Brands
           Card(

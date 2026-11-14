@@ -68,11 +68,12 @@ class SearchBarWidget extends ConsumerWidget {
                     ? TablerIcons.filter_filled
                     : TablerIcons.filter,
                 size: 20.spMin,
-                color: hasActiveFilter
-                    ? AppColors.primary
-                    : (Theme.of(context).brightness == Brightness.dark
-                        ? AppColors.dIconColor
-                        : AppColors.lIconColor),
+                color:
+                    hasActiveFilter
+                        ? AppColors.primary
+                        : (Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.dIconColor
+                            : AppColors.lIconColor),
               ),
               onPressed: onFilterTap,
             ),
