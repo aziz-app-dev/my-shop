@@ -13,6 +13,19 @@ class Bill {
   final double discount;
   final double paidAmount;
 
+  /// Tax charged on this bill (computed at checkout from the Settings tax
+  /// rate, applied to the amount after discount). Baked into [totalAmount]
+  /// so every payment calculation (pending, paid %, reminders) includes it
+  /// automatically. 0 for bills created before the tax feature or with tax
+  /// disabled.
+  final double taxAmount;
+
+  /// Tax rate percent used when this bill was created (for display, e.g. 5.0).
+  final double taxRate;
+
+  /// Label shown next to the tax line on bills (e.g. "Tax", "GST", "VAT").
+  final String taxLabel;
+
   /// Optional payment-due date+time for pending bills. Drives the payment
   /// reminder system (null = no reminder set).
   final DateTime? dueDate;
@@ -33,6 +46,9 @@ class Bill {
     this.paymentMethod,
     this.discount = 0.0,
     this.paidAmount = 0.0,
+    this.taxAmount = 0.0,
+    this.taxRate = 0.0,
+    this.taxLabel = 'Tax',
     this.dueDate,
     this.reminderNotifiedAt,
   });
@@ -41,6 +57,10 @@ class Bill {
 
   /// Returns the total amount after applying discount
   double get totalAfterDiscount => totalAmount - discount;
+
+  /// Pre-tax items subtotal ([totalAmount] includes the baked-in
+  /// [taxAmount]). Equals [totalAmount] for bills without tax.
+  double get itemsSubtotal => totalAmount - taxAmount;
 
   /// Returns the pending/remaining amount to be paid
   double get pendingAmount {
@@ -93,6 +113,9 @@ class Bill {
       'paymentMethod': paymentMethod,
       'discount': discount,
       'paidAmount': paidAmount,
+      'taxAmount': taxAmount,
+      'taxRate': taxRate,
+      'taxLabel': taxLabel,
       'dueDate': dueDate?.toIso8601String(),
       'reminderNotifiedAt': reminderNotifiedAt?.toIso8601String(),
     };
@@ -141,6 +164,9 @@ class Bill {
       paymentMethod: map['paymentMethod'] as String?,
       discount: (map['discount'] as num?)?.toDouble() ?? 0.0,
       paidAmount: (map['paidAmount'] as num?)?.toDouble() ?? 0.0,
+      taxAmount: (map['taxAmount'] as num?)?.toDouble() ?? 0.0,
+      taxRate: (map['taxRate'] as num?)?.toDouble() ?? 0.0,
+      taxLabel: map['taxLabel'] as String? ?? 'Tax',
       dueDate: DateTime.tryParse(map['dueDate'] as String? ?? ''),
       reminderNotifiedAt: DateTime.tryParse(
         map['reminderNotifiedAt'] as String? ?? '',
@@ -160,6 +186,9 @@ class Bill {
     String? paymentMethod,
     double? discount,
     double? paidAmount,
+    double? taxAmount,
+    double? taxRate,
+    String? taxLabel,
     DateTime? dueDate,
     bool clearDueDate = false,
     DateTime? reminderNotifiedAt,
@@ -177,6 +206,9 @@ class Bill {
       paymentMethod: paymentMethod,
       discount: discount ?? this.discount,
       paidAmount: paidAmount ?? this.paidAmount,
+      taxAmount: taxAmount ?? this.taxAmount,
+      taxRate: taxRate ?? this.taxRate,
+      taxLabel: taxLabel ?? this.taxLabel,
       dueDate: clearDueDate ? null : (dueDate ?? this.dueDate),
       reminderNotifiedAt:
           clearReminderNotifiedAt

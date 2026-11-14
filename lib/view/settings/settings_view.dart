@@ -1071,6 +1071,11 @@ class SettingsPage extends ConsumerWidget {
                   // rest of Settings.
                   const _PaymentMethodsEditor(),
                   Divider(height: 24.spMin),
+                  // Tax / GST — applied at checkout on the amount after
+                  // discount, shown on bills, PDFs and thermal receipts.
+                  // Synced across devices like the rest of Settings.
+                  const _TaxEditor(),
+                  Divider(height: 24.spMin),
                   // Bank Details on Bills
                   _smallSwitchTile(
                     context: context,
@@ -2780,6 +2785,116 @@ class _RepairTypesEditorState extends State<_RepairTypesEditor> {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Settings → Bill Settings → Tax. Enables a tax (GST/VAT/…) on new bills,
+/// computed at checkout on the amount after discount, plus the rate percent
+/// and the label shown on bills. Changes save and sync immediately.
+class _TaxEditor extends ConsumerStatefulWidget {
+  const _TaxEditor();
+
+  @override
+  ConsumerState<_TaxEditor> createState() => _TaxEditorState();
+}
+
+class _TaxEditorState extends ConsumerState<_TaxEditor> {
+  late final TextEditingController _rateController;
+  late final TextEditingController _labelController;
+
+  @override
+  void initState() {
+    super.initState();
+    final settings = ref.read(settingsProvider);
+    _rateController = TextEditingController(
+      text:
+          settings.taxRatePercent == 0
+              ? ''
+              : settings.taxRatePercent.toStringAsFixed(
+                settings.taxRatePercent.truncateToDouble() ==
+                        settings.taxRatePercent
+                    ? 0
+                    : 2,
+              ),
+    );
+    _labelController = TextEditingController(text: settings.taxLabel);
+  }
+
+  @override
+  void dispose() {
+    _rateController.dispose();
+    _labelController.dispose();
+    super.dispose();
+  }
+
+  void _saveRate(String value) {
+    final rate = double.tryParse(value.trim());
+    ref.read(settingsProvider.notifier).setTaxRatePercent(rate ?? 0.0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = ref.watch(settingsProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text('Enable Tax / GST', style: TextStyle(fontSize: 14.spMin)),
+          subtitle: Text(
+            'Add tax on new bills (applied after discount, shown on bills '
+            'and receipts)',
+            style: TextStyle(fontSize: 12.spMin, color: Colors.grey),
+          ),
+          value: settings.taxEnabled,
+          onChanged: (val) {
+            ref.read(settingsProvider.notifier).setTaxEnabled(val);
+          },
+        ),
+        if (settings.taxEnabled) ...[
+          SizedBox(height: 8.spMin),
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: CustomTextField(
+                  controller: _rateController,
+                  label: 'Tax rate (%)',
+                  hintText: 'e.g. 5, 17, 18.5',
+                  keyboardType: TextInputType.number,
+                  onChange: (value) {
+                    _saveRate(value ?? '');
+                    return null;
+                  },
+                ),
+              ),
+              SizedBox(width: 12.spMin),
+              Expanded(
+                flex: 3,
+                child: CustomTextField(
+                  controller: _labelController,
+                  label: 'Tax label on bills',
+                  hintText: 'e.g. Tax, GST, VAT',
+                  onChange: (value) {
+                    ref
+                        .read(settingsProvider.notifier)
+                        .setTaxLabel(value ?? '');
+                    return null;
+                  },
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 4.spMin),
+          smText(
+            text:
+                'Example: items ${settings.currencySymbol}1,000 with a 5% '
+                'rate → ${settings.currencySymbol}50 tax → total '
+                '${settings.currencySymbol}1,050.',
+          ),
+        ],
+      ],
     );
   }
 }

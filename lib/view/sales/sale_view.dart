@@ -375,15 +375,27 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
   Bill _createBill(Customer customer, bool isPaid, String? paymentMethod) {
     final salesState = ref.read(salesProvider);
+    // Tax (Settings → Bill Settings → Tax): computed on the amount after
+    // discount and baked into the stored total so every payment calculation
+    // includes it.
+    final taxSettings = ref.read(settingsProvider);
+    final taxAmount =
+        taxSettings.taxEnabled
+            ? PaymentCalculator.calculateTax(
+              taxableAmount: salesState.totalAmount - salesState.discount,
+              ratePercent: taxSettings.taxRatePercent,
+            )
+            : 0.0;
+    final totalWithTax = salesState.totalAmount + taxAmount;
     final finalAmount = PaymentCalculator.calculateTotalAfterDiscount(
-      totalAmount: salesState.totalAmount,
+      totalAmount: totalWithTax,
       discount: salesState.discount,
     );
     final paidAmount = isPaid ? finalAmount : salesState.paidAmount;
 
     // Use PaymentCalculator for consistent status determination
     final billStatus = PaymentCalculator.calculatePaymentStatus(
-      totalAmount: salesState.totalAmount,
+      totalAmount: totalWithTax,
       discount: salesState.discount,
       paidAmount: paidAmount,
     );
@@ -395,9 +407,12 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       quantities: salesState.cartItems.map(
         (key, value) => MapEntry(key.id, value),
       ),
-      totalAmount: salesState.totalAmount,
+      totalAmount: totalWithTax,
       discount: salesState.discount,
       paidAmount: paidAmount,
+      taxAmount: taxAmount,
+      taxRate: taxSettings.taxEnabled ? taxSettings.taxRatePercent : 0.0,
+      taxLabel: taxSettings.taxLabel,
       customerName: customer.name,
       customerId: customer.id,
       status: billStatus,

@@ -326,15 +326,28 @@ class _MultiCartSalesScreenState extends ConsumerState<MultiCartSalesScreen>
     final paymentMethod = salesState.paymentMethod;
     final paidAmount = salesState.paidAmount;
 
+    // Tax (Settings → Bill Settings → Tax): computed on the amount after
+    // discount and baked into the stored total so every payment calculation
+    // includes it.
+    final taxSettings = ref.read(settingsProvider);
+    final taxAmount =
+        taxSettings.taxEnabled
+            ? PaymentCalculator.calculateTax(
+              taxableAmount: cart.totalAmount - discount,
+              ratePercent: taxSettings.taxRatePercent,
+            )
+            : 0.0;
+    final totalWithTax = cart.totalAmount + taxAmount;
+
     final finalAmount = PaymentCalculator.calculateTotalAfterDiscount(
-      totalAmount: cart.totalAmount,
+      totalAmount: totalWithTax,
       discount: discount,
     );
     final actualPaidAmount = isPaid ? finalAmount : paidAmount;
 
     // Use PaymentCalculator for consistent status determination
     final billStatus = PaymentCalculator.calculatePaymentStatus(
-      totalAmount: cart.totalAmount,
+      totalAmount: totalWithTax,
       discount: discount,
       paidAmount: actualPaidAmount,
     );
@@ -344,9 +357,12 @@ class _MultiCartSalesScreenState extends ConsumerState<MultiCartSalesScreen>
       dateTime: DateTime.now(),
       items: cart.cartItems.keys.toList(),
       quantities: cart.cartItems.map((key, value) => MapEntry(key.id, value)),
-      totalAmount: cart.totalAmount,
+      totalAmount: totalWithTax,
       discount: discount,
       paidAmount: actualPaidAmount,
+      taxAmount: taxAmount,
+      taxRate: taxSettings.taxEnabled ? taxSettings.taxRatePercent : 0.0,
+      taxLabel: taxSettings.taxLabel,
       customerName: customer.name,
       customerId: customer.id,
       status: billStatus,

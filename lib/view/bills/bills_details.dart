@@ -612,6 +612,20 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
           children: [
             mdTextBold(text: 'Billing Summary'),
             SizedBox(height: 3.h),
+            if (widget.bill.taxAmount > 0) ...[
+              MainTxtRow(
+                val: (widget.bill.totalAmount - widget.bill.taxAmount)
+                    .toStringAsFixed(2),
+                txt: 'Subtotal:',
+              ),
+              MainTxtRow(
+                val:
+                    '${widget.bill.taxAmount.toStringAsFixed(2)} '
+                    '(${widget.bill.taxLabel} '
+                    '${widget.bill.taxRate.toStringAsFixed(widget.bill.taxRate.truncateToDouble() == widget.bill.taxRate ? 0 : 1)}%)',
+                txt: 'Tax:',
+              ),
+            ],
             MainTxtRow(
               val: totalAfterDiscount.toStringAsFixed(2),
               txt: 'Total:',
@@ -720,7 +734,7 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                       isDark: isDark,
                       label: 'Subtotal',
                       value:
-                          '${CurrencyService.symbol}${widget.bill.totalAmount.toStringAsFixed(2)}',
+                          '${CurrencyService.symbol}${(widget.bill.totalAmount - widget.bill.taxAmount).toStringAsFixed(2)}',
                     ),
                     if (discount > 0)
                       _summaryRow(
@@ -729,6 +743,15 @@ class BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                         value:
                             '-${CurrencyService.symbol}${discount.toStringAsFixed(2)}',
                         valueColor: AppColors.error,
+                      ),
+                    if (widget.bill.taxAmount > 0)
+                      _summaryRow(
+                        isDark: isDark,
+                        label:
+                            '${widget.bill.taxLabel} '
+                            '(${widget.bill.taxRate.toStringAsFixed(widget.bill.taxRate.truncateToDouble() == widget.bill.taxRate ? 0 : 1)}%)',
+                        value:
+                            '${CurrencyService.symbol}${widget.bill.taxAmount.toStringAsFixed(2)}',
                       ),
                     _summaryRow(
                       isDark: isDark,

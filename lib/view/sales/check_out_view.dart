@@ -19,6 +19,7 @@ import '../../res/assets/image_assets.dart';
 import '../../res/components/app_icon.dart';
 import '../../res/components/text_field_widget.dart';
 import '../../view_models/providers/sales_provider.dart';
+import '../../view_models/providers/settings_provider.dart';
 import '../../view_models/providers/checkout_provider.dart';
 import '../../view_models/services/database/database_services.dart'
     hide databaseServiceProvider;
@@ -611,9 +612,18 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
     final customerFormState = ref.read(customerFormProvider);
     final totalAfterDiscount =
         widget.totalAmount - (customerFormState.discount ?? widget.discount);
+    final taxSettings = ref.read(settingsProvider);
+    final payableAmount =
+        totalAfterDiscount +
+        (taxSettings.taxEnabled
+            ? PaymentCalculator.calculateTax(
+              taxableAmount: totalAfterDiscount,
+              ratePercent: taxSettings.taxRatePercent,
+            )
+            : 0.0);
 
     if (!currentSalesState.isPaid &&
-        currentSalesState.paidAmount > totalAfterDiscount) {
+        currentSalesState.paidAmount > payableAmount) {
       AppFlushbar.error(context, message: 'Paid amount cannot exceed total');
       return;
     }
@@ -1209,7 +1219,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
   Widget _buildPaidAmountField(
     CustomerFormState customerFormState,
     SalesState salesState,
-    double totalAfterDiscount,
+    double payableAmount,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1217,7 +1227,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
         CustomTextField(
           controller: paidAmountController,
           hintText:
-              '${customerFormState.fieldConfigs['paidAmount']!.hintText} (max: ${CurrencyService.symbol}${totalAfterDiscount.toStringAsFixed(0)})',
+              '${customerFormState.fieldConfigs['paidAmount']!.hintText} (max: ${CurrencyService.symbol}${payableAmount.toStringAsFixed(0)})',
           label: customerFormState.fieldConfigs['paidAmount']!.title,
           keyboardType: TextInputType.number,
           prefixIcon: Icon(
@@ -1239,8 +1249,8 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
               if (amt == null) {
                 return 'Enter a valid number';
               }
-              if (amt > totalAfterDiscount) {
-                return 'Cannot exceed total: ${CurrencyService.symbol}${totalAfterDiscount.toStringAsFixed(0)}';
+              if (amt > payableAmount) {
+                return 'Cannot exceed total: ${CurrencyService.symbol}${payableAmount.toStringAsFixed(0)}';
               }
               if (amt < 0) {
                 return 'Amount cannot be negative';
@@ -1265,21 +1275,47 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
         Consumer(
           builder: (context, ref, child) {
             final currentSalesState = ref.watch(salesProvider);
+            final taxSettings = ref.watch(settingsProvider);
+            final discount = customerFormState.discount ?? widget.discount;
+            final tax =
+                taxSettings.taxEnabled
+                    ? PaymentCalculator.calculateTax(
+                      taxableAmount: widget.totalAmount - discount,
+                      ratePercent: taxSettings.taxRatePercent,
+                    )
+                    : 0.0;
             final pendingAmount = PaymentCalculator.calculatePendingAmount(
-              totalAmount: widget.totalAmount,
-              discount: customerFormState.discount ?? widget.discount,
+              totalAmount: widget.totalAmount + tax,
+              discount: discount,
               paidAmount: currentSalesState.paidAmount,
             );
             final paymentPercentage =
                 PaymentCalculator.calculatePaymentPercentage(
-                  totalAmount: widget.totalAmount,
-                  discount: customerFormState.discount ?? widget.discount,
+                  totalAmount: widget.totalAmount + tax,
+                  discount: discount,
                   paidAmount: currentSalesState.paidAmount,
                 );
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (tax > 0)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      mdText(
+                        text:
+                            '${taxSettings.taxLabel} '
+                            '(${taxSettings.taxRatePercent.toStringAsFixed(taxSettings.taxRatePercent.truncateToDouble() == taxSettings.taxRatePercent ? 0 : 1)}%):',
+                        color: Colors.grey,
+                      ),
+                      mdText(
+                        text:
+                            '${CurrencyService.symbol}${tax.toStringAsFixed(0)}',
+                        color: Colors.grey,
+                      ),
+                    ],
+                  ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1318,7 +1354,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
   Widget _buildMobileLayout(
     CustomerFormState customerFormState,
     SalesState salesState,
-    double totalAfterDiscount,
+    double payableAmount,
     bool isWalkIn,
     List<Customer> filteredCustomers,
     bool showSuggestions, {
@@ -1356,11 +1392,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
         ],
         if (customerFormState.fieldConfigs['paidAmount']!.isShow &&
             !salesState.isPaid) ...[
-          _buildPaidAmountField(
-            customerFormState,
-            salesState,
-            totalAfterDiscount,
-          ),
+          _buildPaidAmountField(customerFormState, salesState, payableAmount),
           SizedBox(height: 32.spMin),
         ],
         // Discount is the LAST field, right above the Save button.
@@ -1379,7 +1411,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
   Widget _buildTabletDesktopLayout(
     CustomerFormState customerFormState,
     SalesState salesState,
-    double totalAfterDiscount,
+    double payableAmount,
     bool isWalkIn,
     List<Customer> filteredCustomers,
     bool showSuggestions, {
@@ -1442,11 +1474,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
         SizedBox(height: 24.spMin),
         if (customerFormState.fieldConfigs['paidAmount']!.isShow &&
             !salesState.isPaid) ...[
-          _buildPaidAmountField(
-            customerFormState,
-            salesState,
-            totalAfterDiscount,
-          ),
+          _buildPaidAmountField(customerFormState, salesState, payableAmount),
           SizedBox(height: 32.spMin),
         ],
         // Discount is the LAST field, right above the Save button.
@@ -1469,6 +1497,17 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
     final checkoutState = ref.watch(checkoutProvider);
     final totalAfterDiscount =
         widget.totalAmount - (customerFormState.discount ?? widget.discount);
+    // Tax (Settings → Bill Settings → Tax) applies to the amount after
+    // discount; the customer owes the tax-inclusive total.
+    final taxSettings = ref.watch(settingsProvider);
+    final taxAmount =
+        taxSettings.taxEnabled
+            ? PaymentCalculator.calculateTax(
+              taxableAmount: totalAfterDiscount,
+              ratePercent: taxSettings.taxRatePercent,
+            )
+            : 0.0;
+    final payableAmount = totalAfterDiscount + taxAmount;
 
     // Show/hide the floating suggestions overlay to match state. Toggling must
     // happen outside build(), so defer to the next frame.
@@ -1591,7 +1630,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
             mobile: _buildMobileLayout(
               customerFormState,
               salesState,
-              totalAfterDiscount,
+              payableAmount,
               checkoutState.isWalkIn || checkoutState.isTestBill,
               checkoutState.filteredCustomers,
               checkoutState.showSuggestions,
@@ -1600,7 +1639,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
             tablet: _buildTabletDesktopLayout(
               customerFormState,
               salesState,
-              totalAfterDiscount,
+              payableAmount,
               checkoutState.isWalkIn || checkoutState.isTestBill,
               checkoutState.filteredCustomers,
               checkoutState.showSuggestions,
@@ -1609,7 +1648,7 @@ class _CustomerPaymentScreenState extends ConsumerState<CustomerPaymentScreen> {
             desktop: _buildTabletDesktopLayout(
               customerFormState,
               salesState,
-              totalAfterDiscount,
+              payableAmount,
               checkoutState.isWalkIn || checkoutState.isTestBill,
               checkoutState.filteredCustomers,
               checkoutState.showSuggestions,

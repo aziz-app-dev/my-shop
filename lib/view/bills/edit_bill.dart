@@ -20,6 +20,7 @@ import '../../utils/payment_calculator.dart';
 import '../../view_models/providers/bills_provider.dart';
 import '../../view_models/providers/edit_bill_provider.dart';
 import '../../view_models/providers/reminder_provider.dart';
+import '../../view_models/providers/settings_provider.dart';
 import '../../view_models/services/database/database_services.dart';
 import '../home/rapper.dart';
 import '../sales/check_out_view.dart';
@@ -210,9 +211,21 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
       final discount = double.tryParse(discountController.text) ?? 0.0;
       final paidAmount = double.tryParse(paidAmountController.text) ?? 0.0;
 
+      // Tax (Settings → Bill Settings → Tax): recomputed with the current
+      // settings whenever a bill is edited, baked into the stored total.
+      final taxSettings = ref.read(settingsProvider);
+      final taxAmount =
+          taxSettings.taxEnabled
+              ? PaymentCalculator.calculateTax(
+                taxableAmount: totalAmount - discount,
+                ratePercent: taxSettings.taxRatePercent,
+              )
+              : 0.0;
+      final totalWithTax = totalAmount + taxAmount;
+
       // Validate payment using PaymentCalculator
       final validation = PaymentCalculator.validatePayment(
-        totalAmount: totalAmount,
+        totalAmount: totalWithTax,
         discount: discount,
         paidAmount: paidAmount,
       );
@@ -227,7 +240,7 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
 
       // Use PaymentCalculator for consistent status determination
       final billStatus = PaymentCalculator.calculatePaymentStatus(
-        totalAmount: totalAmount,
+        totalAmount: totalWithTax,
         discount: discount,
         paidAmount: paidAmount,
       );
@@ -260,7 +273,10 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
                 : paymentMethodController.text,
         discount: discount,
         paidAmount: paidAmount,
-        totalAmount: totalAmount,
+        totalAmount: totalWithTax,
+        taxAmount: taxAmount,
+        taxRate: taxSettings.taxEnabled ? taxSettings.taxRatePercent : 0.0,
+        taxLabel: taxSettings.taxLabel,
         items: updatedItems,
         quantities: updatedQuantities,
         dueDate: isPaidNow ? null : _dueDate,
@@ -621,19 +637,31 @@ class EditBillScreenState extends ConsumerState<EditBillScreen> {
     final discount = double.tryParse(discountController.text) ?? 0.0;
     final paidAmount = double.tryParse(paidAmountController.text) ?? 0.0;
 
+    // Tax (Settings → Bill Settings → Tax): shown tax-inclusive so the max
+    // paid amount matches the real amount owed.
+    final taxSettings = ref.watch(settingsProvider);
+    final tax =
+        taxSettings.taxEnabled
+            ? PaymentCalculator.calculateTax(
+              taxableAmount: totalAmount - discount,
+              ratePercent: taxSettings.taxRatePercent,
+            )
+            : 0.0;
+    final totalWithTax = totalAmount + tax;
+
     // Use PaymentCalculator for consistent calculations
     final pendingAmount = PaymentCalculator.calculatePendingAmount(
-      totalAmount: totalAmount,
+      totalAmount: totalWithTax,
       discount: discount,
       paidAmount: paidAmount,
     );
     final paymentPercentage = PaymentCalculator.calculatePaymentPercentage(
-      totalAmount: totalAmount,
+      totalAmount: totalWithTax,
       discount: discount,
       paidAmount: paidAmount,
     );
     final totalAfterDiscount = PaymentCalculator.calculateTotalAfterDiscount(
-      totalAmount: totalAmount,
+      totalAmount: totalWithTax,
       discount: discount,
     );
 

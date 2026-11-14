@@ -196,7 +196,8 @@ class ThermalReceiptPrinter {
         styles: const PosStyles(bold: true),
       ),
       PosColumn(
-        text: '${CurrencyService.symbol}${bill.totalAmount.toStringAsFixed(2)}',
+        text:
+            '${CurrencyService.symbol}${bill.itemsSubtotal.toStringAsFixed(2)}',
         width: 4,
         styles: const PosStyles(align: PosAlign.right, bold: true),
       ),
@@ -208,6 +209,22 @@ class ThermalReceiptPrinter {
         PosColumn(text: 'Discount:', width: 8),
         PosColumn(
           text: '-${CurrencyService.symbol}${bill.discount.toStringAsFixed(2)}',
+          width: 4,
+          styles: const PosStyles(align: PosAlign.right),
+        ),
+      ]);
+    }
+
+    // Tax
+    if (bill.taxAmount > 0) {
+      bytes += generator.row([
+        PosColumn(
+          text:
+              '${bill.taxLabel} (${bill.taxRate.toStringAsFixed(bill.taxRate.truncateToDouble() == bill.taxRate ? 0 : 1)}%):',
+          width: 8,
+        ),
+        PosColumn(
+          text: '${CurrencyService.symbol}${bill.taxAmount.toStringAsFixed(2)}',
           width: 4,
           styles: const PosStyles(align: PosAlign.right),
         ),
@@ -387,6 +404,22 @@ class ThermalReceiptPrinter {
         PosColumn(text: 'Discount:', width: 8),
         PosColumn(
           text: '-${CurrencyService.symbol}${bill.discount.toStringAsFixed(2)}',
+          width: 4,
+          styles: const PosStyles(align: PosAlign.right),
+        ),
+      ]);
+    }
+
+    // Tax
+    if (bill.taxAmount > 0) {
+      bytes += generator.row([
+        PosColumn(
+          text:
+              '${bill.taxLabel} (${bill.taxRate.toStringAsFixed(bill.taxRate.truncateToDouble() == bill.taxRate ? 0 : 1)}%):',
+          width: 8,
+        ),
+        PosColumn(
+          text: '${CurrencyService.symbol}${bill.taxAmount.toStringAsFixed(2)}',
           width: 4,
           styles: const PosStyles(align: PosAlign.right),
         ),

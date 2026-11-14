@@ -84,6 +84,16 @@ class PaymentCalculator {
     return (paidAmount / totalAfterDiscount * 100).clamp(0.0, 100.0);
   }
 
+  /// Calculates tax for [taxableAmount] (the amount AFTER discount) using a
+  /// rate in percent (e.g. 5.0 for 5%).
+  static double calculateTax({
+    required double taxableAmount,
+    required double ratePercent,
+  }) {
+    if (ratePercent <= 0) return 0.0;
+    return taxableAmount * ratePercent / 100;
+  }
+
   /// Validates that discount doesn't exceed total amount
   static bool isDiscountValid({
     required double totalAmount,

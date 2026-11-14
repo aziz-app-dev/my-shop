@@ -167,6 +167,13 @@ class SettingsState {
   /// map so every device shows the same currency. Defaults to `Rs.`.
   final String currencySymbol;
 
+  /// Tax / GST settings. When enabled, tax is computed at checkout on the
+  /// amount after discount and baked into the bill's total. Synced across
+  /// devices via the settings map.
+  final bool taxEnabled;
+  final double taxRatePercent;
+  final String taxLabel;
+
   SettingsState({
     this.isPrintEnabled = false,
     this.printFormat = PrintFormat.pdf, // Default to PDF
@@ -227,6 +234,9 @@ class SettingsState {
     ],
     this.purchaseTerms = kDefaultPurchaseTerms,
     this.currencySymbol = 'Rs.',
+    this.taxEnabled = false,
+    this.taxRatePercent = 0.0,
+    this.taxLabel = 'Tax',
   });
 
   SettingsState copyWith({
@@ -279,6 +289,9 @@ class SettingsState {
     String? cloudinaryCloudName,
     String? cloudinaryUploadPreset,
     String? currencySymbol,
+    bool? taxEnabled,
+    double? taxRatePercent,
+    String? taxLabel,
   }) {
     return SettingsState(
       isPrintEnabled: isPrintEnabled ?? this.isPrintEnabled,
@@ -341,6 +354,9 @@ class SettingsState {
       cloudinaryUploadPreset:
           cloudinaryUploadPreset ?? this.cloudinaryUploadPreset,
       currencySymbol: currencySymbol ?? this.currencySymbol,
+      taxEnabled: taxEnabled ?? this.taxEnabled,
+      taxRatePercent: taxRatePercent ?? this.taxRatePercent,
+      taxLabel: taxLabel ?? this.taxLabel,
     );
   }
 
@@ -396,6 +412,9 @@ class SettingsState {
       'cloudinaryCloudName': cloudinaryCloudName,
       'cloudinaryUploadPreset': cloudinaryUploadPreset,
       'currencySymbol': currencySymbol,
+      'taxEnabled': taxEnabled,
+      'taxRatePercent': taxRatePercent,
+      'taxLabel': taxLabel,
     };
   }
 
@@ -512,6 +531,9 @@ class SettingsState {
       cloudinaryCloudName: map['cloudinaryCloudName'] as String? ?? '',
       cloudinaryUploadPreset: map['cloudinaryUploadPreset'] as String? ?? '',
       currencySymbol: map['currencySymbol'] as String? ?? 'Rs.',
+      taxEnabled: map['taxEnabled'] as bool? ?? false,
+      taxRatePercent: (map['taxRatePercent'] as num?)?.toDouble() ?? 0.0,
+      taxLabel: map['taxLabel'] as String? ?? 'Tax',
     );
   }
 }
@@ -575,6 +597,23 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   void setCurrencySymbol(String value) {
     state = state.copyWith(currencySymbol: value.trim());
     CurrencyService.update(value);
+    _saveSettings();
+  }
+
+  /// Tax / GST settings (Settings → Bill Settings → Tax). Each change saves
+  /// and syncs; new bills pick the values up at checkout.
+  void setTaxEnabled(bool value) {
+    state = state.copyWith(taxEnabled: value);
+    _saveSettings();
+  }
+
+  void setTaxRatePercent(double value) {
+    state = state.copyWith(taxRatePercent: value < 0 ? 0.0 : value);
+    _saveSettings();
+  }
+
+  void setTaxLabel(String value) {
+    state = state.copyWith(taxLabel: value.trim());
     _saveSettings();
   }
 

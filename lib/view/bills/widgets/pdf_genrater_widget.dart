@@ -358,6 +358,20 @@ class ReceiptPDFGenerator {
               ),
             ],
           ),
+        if (bill.taxAmount > 0)
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(
+                "${bill.taxLabel} (${bill.taxRate.toStringAsFixed(bill.taxRate.truncateToDouble() == bill.taxRate ? 0 : 1)}%)",
+                style: const pw.TextStyle(fontSize: 7),
+              ),
+              pw.Text(
+                "${CurrencyService.symbol}${bill.taxAmount.toStringAsFixed(0)}",
+                style: const pw.TextStyle(fontSize: 7),
+              ),
+            ],
+          ),
         pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           children: [
@@ -647,12 +661,17 @@ class ReceiptPDFGenerator {
                 children: [
                   _modernTotalRow(
                     'Subtotal',
-                    '${CurrencyService.symbol}${bill.totalAmount.toStringAsFixed(0)}',
+                    '${CurrencyService.symbol}${bill.itemsSubtotal.toStringAsFixed(0)}',
                   ),
                   if (bill.discount > 0)
                     _modernTotalRow(
                       'Discount',
                       '-${CurrencyService.symbol}${bill.discount.toStringAsFixed(0)}',
+                    ),
+                  if (bill.taxAmount > 0)
+                    _modernTotalRow(
+                      '${bill.taxLabel} (${bill.taxRate.toStringAsFixed(bill.taxRate.truncateToDouble() == bill.taxRate ? 0 : 1)}%)',
+                      '${CurrencyService.symbol}${bill.taxAmount.toStringAsFixed(0)}',
                     ),
                   pw.Divider(),
                   _modernTotalRow(
@@ -1077,12 +1096,17 @@ class ReceiptPDFGenerator {
                       children: [
                         _invoiceTotalRow(
                           'Sub Total',
-                          '${CurrencyService.symbol}${bill.totalAfterDiscount.toStringAsFixed(0)}',
+                          '${CurrencyService.symbol}${bill.itemsSubtotal.toStringAsFixed(0)}',
                         ),
                         if (bill.discount > 0)
                           _invoiceTotalRow(
                             'Discount',
                             '${CurrencyService.symbol}${bill.discount.toStringAsFixed(0)}',
+                          ),
+                        if (bill.taxAmount > 0)
+                          _invoiceTotalRow(
+                            '${bill.taxLabel} (${bill.taxRate.toStringAsFixed(bill.taxRate.truncateToDouble() == bill.taxRate ? 0 : 1)}%)',
+                            '${CurrencyService.symbol}${bill.taxAmount.toStringAsFixed(0)}',
                           ),
                         _invoiceTotalRow(
                           'Advance',
@@ -1094,7 +1118,7 @@ class ReceiptPDFGenerator {
                           'Balance',
                           bill.pendingAmount > 0
                               ? '${CurrencyService.symbol}${bill.pendingAmount.toStringAsFixed(0)}'
-                              : '{CurrencyService.symbol}0',
+                              : '${CurrencyService.symbol}0',
                           isBold: true,
                         ),
                       ],
@@ -1391,7 +1415,7 @@ class ReceiptPDFGenerator {
           children: [
             pw.Text("Subtotal:", style: const pw.TextStyle(fontSize: 8)),
             pw.Text(
-              "${CurrencyService.symbol}${bill.totalAmount.toStringAsFixed(2)}",
+              "${CurrencyService.symbol}${bill.itemsSubtotal.toStringAsFixed(2)}",
               style: const pw.TextStyle(fontSize: 8),
             ),
           ],
@@ -1404,6 +1428,25 @@ class ReceiptPDFGenerator {
               pw.Text("Discount:", style: const pw.TextStyle(fontSize: 7)),
               pw.Text(
                 "- ${CurrencyService.symbol}${bill.discount.toStringAsFixed(2)}",
+                style: pw.TextStyle(
+                  fontWeight: pw.FontWeight.bold,
+                  fontSize: 8,
+                ),
+              ),
+            ],
+          ),
+        ],
+        if (bill.taxAmount > 0) ...[
+          pw.SizedBox(height: 4),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(
+                "${bill.taxLabel} (${bill.taxRate.toStringAsFixed(bill.taxRate.truncateToDouble() == bill.taxRate ? 0 : 1)}%):",
+                style: const pw.TextStyle(fontSize: 7),
+              ),
+              pw.Text(
+                "${CurrencyService.symbol}${bill.taxAmount.toStringAsFixed(2)}",
                 style: pw.TextStyle(
                   fontWeight: pw.FontWeight.bold,
                   fontSize: 8,
